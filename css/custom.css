@@ -19,15 +19,16 @@ a {
   }
   
   .favicon p {
-    float: right;
+    float: left;
     color: #0849a3;
     margin: 0;
+    font-size: 96;
   }
   
   .powered img {
-  max-width: 100%;
+  max-width: 10%;
   line-height: 99px;
-  position: relative;
+  position: absolute;
   right: 107px;
   }
   
