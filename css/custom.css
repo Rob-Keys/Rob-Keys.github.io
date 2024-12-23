@@ -18,22 +18,17 @@ a {
   line-height: 99px;
   }
   
-  .logo img {
-  max-width: 100%;
-  line-height: 99px;
+  .favicon p {
+    float: right;
+    color: #0849a3;
+    margin: 0;
   }
   
   .powered img {
   max-width: 100%;
   line-height: 99px;
-  position: absolute;
+  position: relative;
   right: 107px;
-  }
-  
-  .powered p {
-  float: right;
-  color: #989da4;
-  margin: 0;
   }
   
   .powered a {
