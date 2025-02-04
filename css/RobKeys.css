@@ -1,3 +1,5 @@
+@charset "UTF-8"; /* Forces browser to render as UTF-8 instead of ASCII, fixes local host rendering issues */
+
 h1 {
     color: orange;
     font-family: "Times New Roman", serif;
