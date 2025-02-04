@@ -4,21 +4,38 @@ html {
     margin: 0;
     padding: 0;
     background-color: inherit;
+    height: 100%;
 }
 body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Crucial for short content */
     background-color: lightgray;
+    height: 100%;
 }
 footer {
-    background-color: white;
-    padding: 0 5px;
+    flex-shrink: 0;
+    height: 40px; /* Match padding-bottom from content */
+    background: #333;
+    color: white;
+    margin-bottom: 5px;
+    padding-bottom: 5px;
+    padding-left: 10px;
 }
 
 .About {
-    padding: 10px;
+    /*padding: 10px;*/
     background-image: url(/images/testbackground.jpg);
     background-attachment: fixed;
     color: white;
+    flex: 1 0 auto; /* Grow to fill space, don't shrink */
+    padding-bottom: 60px; /* Prevent footer overlap */
 }
+.content {
+    flex: 1 0 auto; /* Grow to fill space, don't shrink */
+    padding-bottom: 60px; /* Prevent footer overlap */
+}
+
 
 .Title h1{
     color: gold;
