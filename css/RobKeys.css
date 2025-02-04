@@ -13,7 +13,7 @@ footer {
     padding: 0 5px;
 }
 
-.allBodyText {
+.AllBodyText {
     padding: 0 10px 0px 10px;
     background-image: url(/images/testbackground.jpg);
     background-attachment: fixed;
@@ -28,4 +28,11 @@ footer {
     margin: 0;
     background-image: url(/images/little_icon.png);
     background-attachment: fixed;
+}
+.PageLink {
+    color: white;
+    background-color: crimson;
+    border-width: 5px;
+    border-color: black;
+    border-style: solid;
 }
