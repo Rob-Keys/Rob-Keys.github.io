@@ -1,6 +1,31 @@
-@charset "UTF-8"; /* Forces browser to render as UTF-8 instead of ASCII, fixes local host rendering issues */
+@charset "utf-8";
 
-h1 {
-    color: orange;
+html {
+    margin: 0;
+    padding: 0;
+    background-color: gray;
+}
+body {
+    background-color: lightgray;
+}
+footer {
+    background-color: white;
+    padding: 0 5px;
+}
+
+.allBodyText {
+    padding: 0 10px 0px 10px;
+    background-image: url(/images/testbackground.jpg);
+    background-attachment: fixed;
+    color: white;
+}
+.Title h1{
+    color: gold;
     font-family: "Times New Roman", serif;
+    text-align: center;
+    background-color: black;
+    padding: 10px;
+    margin: 0;
+    background-image: url(/images/little_icon.png);
+    background-attachment: fixed;
 }
