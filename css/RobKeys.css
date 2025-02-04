@@ -3,7 +3,7 @@
 html {
     margin: 0;
     padding: 0;
-    background-color: gray;
+    background-color: inherit;
 }
 body {
     background-color: lightgray;
@@ -13,12 +13,13 @@ footer {
     padding: 0 5px;
 }
 
-.AllBodyText {
-    padding: 0 10px 0px 10px;
+.About {
+    padding: 10px;
     background-image: url(/images/testbackground.jpg);
     background-attachment: fixed;
     color: white;
 }
+
 .Title h1{
     color: gold;
     font-family: "Times New Roman", serif;
@@ -29,10 +30,68 @@ footer {
     background-image: url(/images/little_icon.png);
     background-attachment: fixed;
 }
-.PageLink {
-    color: white;
-    background-color: crimson;
-    border-width: 5px;
+
+.page-links {
+    list-style: none;
+    width: 100%;
+    padding: 0;
+    display: flex;
+    gap: 20px;
+    flex: 1;
     border-color: black;
     border-style: solid;
+    border-width: 1px;
+    border-bottom-width: 0;
+    border-top-width: 0;
+}
+
+.page-links a {
+    text-decoration: none;
+    color: #333;
+    display: block; /* Makes entire li area clickable */
+    padding: 15px 0; /* Vertical padding */
+}
+
+.page-links a:hover {
+    color: #000;
+    text-decoration: underline;
+}
+.page-links li {
+    flex: 1;  /* Equal width distribution */
+    text-align: center; /* Center link text */
+    border-color: black;
+    border-width: 1px;
+    border-style: solid;
+    border-bottom-width: 0;
+    border-top-width: 0;
+    border-collapse: collapse;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#cellSize {
+    width: 60px;
+    margin-right: 10px;
+    padding: 5px;
+}
+
+.canvas-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+#gameCanvas {
+    border: 1px solid #000;
+    background: #fff;
+}
+.gameText {
+    text-align: center;
 }
