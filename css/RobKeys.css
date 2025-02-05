@@ -24,10 +24,10 @@ footer {
 }
 
 .About {
-    /*padding: 10px;*/
+    /*padding: 10px;
     background-image: url(/images/testbackground.jpg);
-    background-attachment: fixed;
-    color: white;
+    background-attachment: fixed;*/
+    color: black;
     flex: 1 0 auto; /* Grow to fill space, don't shrink */
     padding-bottom: 60px; /* Prevent footer overlap */
 }
