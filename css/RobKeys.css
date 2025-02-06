@@ -32,7 +32,6 @@ footer {
     height: 5vh; /* Match padding-bottom from content */
     background: #333;
     color: white;
-    margin-bottom: 0.625vh;
     padding-bottom: 0.625vh;
     padding-left: 0.7vw;
     margin-top: auto;
@@ -64,10 +63,11 @@ footer {
     font-weight: bold;
 }
 
-.About .content{
+.About, .content{
     color: black;
     flex: 1; /* Grow to fill space, don't shrink */
     padding-bottom: 0.625vh; /* Prevent footer overlap */
+    padding-left: 1vw;
 }
 
 .Header {
