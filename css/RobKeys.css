@@ -23,43 +23,64 @@ footer {
     padding-left: 10px;
 }
 
+.FrontPage{
+    background: linear-gradient(to bottom right, darkorange,orangered);
+}
+
 .About {
-    /*padding: 10px;
-    background-image: url(/images/testbackground.jpg);
-    background-attachment: fixed;*/
     color: black;
     flex: 1 0 auto; /* Grow to fill space, don't shrink */
     padding-bottom: 60px; /* Prevent footer overlap */
 }
+
 .content {
     flex: 1 0 auto; /* Grow to fill space, don't shrink */
     padding-bottom: 60px; /* Prevent footer overlap */
 }
 
+.Header {
+    display: flex; /* Enable Flexbox */
+    justify-content: space-between; /* Space items out evenly, with the first item on the left and last on the right */
+    align-items: center; /* Vertically center the content */
+    list-style: none;
+    margin: 0 50px 0 0;
+    padding: 0;
+}
 
-.Title h1{
-    color: gold;
-    font-family: "Times New Roman", serif;
-    text-align: center;
-    background-color: black;
-    padding: 10px;
-    margin: 0;
-    background-image: url(/images/little_icon.png);
-    background-attachment: fixed;
+.Header ul {
+    display: flex; /* Enable Flexbox on the list */
+    justify-content: space-between; /* Space list items across the container */
+    width: 100%; /* Make sure the list spans the width of the header */
+    overflow: hidden;
+}
+
+.Header li {
+    text-align: center; /* Center-align content inside each list item */
+}
+
+.Themes {
+    color: black;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+.Themes li {
+    display: inline;
+    padding: 0 5px 0 5px;
+    text-align: left;
+}
+.Themes li img {
+    border-color: black;
+    border-style: solid;
+    border-width: 2px;
 }
 
 .page-links {
     list-style: none;
-    width: 100%;
     padding: 0;
     display: flex;
-    gap: 20px;
-    flex: 1;
-    border-color: black;
-    border-style: solid;
-    border-width: 1px;
-    border-bottom-width: 0;
-    border-top-width: 0;
+    gap: 30px;
+    flex: 0 1 auto; /* Allow shrinking, don't grow */
 }
 
 .page-links a {
@@ -76,12 +97,23 @@ footer {
 .page-links li {
     flex: 1;  /* Equal width distribution */
     text-align: center; /* Center link text */
-    border-color: black;
-    border-width: 1px;
-    border-style: solid;
-    border-bottom-width: 0;
-    border-top-width: 0;
-    border-collapse: collapse;
+}
+
+.Branding {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    list-style: none;
+}
+
+.Branding a {
+    text-decoration: none;
+    font-weight: bold;
+    color: #333333;
+}
+.Branding ul li {
+    margin: 0;
+    padding: 0;
 }
 
 .controls {
