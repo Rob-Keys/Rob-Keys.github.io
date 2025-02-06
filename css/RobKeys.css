@@ -15,6 +15,7 @@
     --active-main: var(--ocean-main);
     --active-secondary: var(--ocean-secondary);
 }
+
 html, body {
     margin: 0;
     padding: 0;
@@ -28,12 +29,12 @@ body {
 }
 footer {
     flex-shrink: 0;
-    height: 40px; /* Match padding-bottom from content */
+    height: 5vh; /* Match padding-bottom from content */
     background: #333;
     color: white;
-    margin-bottom: 5px;
-    padding-bottom: 5px;
-    padding-left: 10px;
+    margin-bottom: 0.625vh;
+    padding-bottom: 0.625vh;
+    padding-left: 0.7vw;
     margin-top: auto;
 }
 
@@ -58,7 +59,7 @@ footer {
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
-    font-size: 50px;
+    font-size: 3.5vw;
     color: black;
     font-weight: bold;
 }
@@ -66,7 +67,7 @@ footer {
 .About .content{
     color: black;
     flex: 1; /* Grow to fill space, don't shrink */
-    padding-bottom: 40px; /* Prevent footer overlap */
+    padding-bottom: 0.625vh; /* Prevent footer overlap */
 }
 
 .Header {
@@ -74,7 +75,7 @@ footer {
     justify-content: space-between; /* Space items out evenly, with the first item on the left and last on the right */
     align-items: center; /* Vertically center the content */
     list-style: none;
-    margin: 0 50px 0 0;
+    margin: 0 1vw 0 0;
     padding: 0;
 }
 
@@ -97,13 +98,15 @@ footer {
 }
 .Themes li {
     display: inline;
-    padding: 0 5px 0 5px;
+    padding: 0 0.35vw 0 0.35vw;
     text-align: left;
 }
 .Themes li img {
+    width: 1.75vw;
+    height: 1.75vw;
     border-color: black;
     border-style: solid;
-    border-width: 2px;
+    border-width: 0.15vw;
 }
 
 .page-links {
@@ -119,7 +122,7 @@ footer {
     text-decoration: none;
     color: #333;
     display: block; /* Makes entire li area clickable */
-    padding: 15px 0; /* Vertical padding */
+    padding: 1.9vh 0; /* Vertical padding */
 }
 
 .page-links a:hover {
@@ -131,34 +134,26 @@ footer {
     text-align: center; /* Center link text */
 }
 
-.Branding {
+#Logo {
     display: flex;
     align-items: center;
     margin: 0;
     list-style: none;
-}
-
-.Branding a {
-    text-decoration: none;
-    font-weight: bold;
-    color: #333333;
-}
-.Branding ul li {
-    margin: 0;
-    padding: 0;
+    width: 3.5vw;
+    height: 3.5vw;
 }
 
 .controls {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 2.5vh;
 }
 
 #cellSize {
-    width: 60px;
-    margin-right: 10px;
-    padding: 5px;
+    width: 4.2vw;
+    margin-right: 0.7vw;
+    padding: 0.35vw;
 }
 
 .canvas-container {
