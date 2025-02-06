@@ -11,7 +11,6 @@ body {
     flex-direction: column;
     min-height: 100vh; /* Crucial for short content */
     background-color: lightgray;
-    height: 100%;
 }
 footer {
     flex-shrink: 0;
@@ -21,21 +20,40 @@ footer {
     margin-bottom: 5px;
     padding-bottom: 5px;
     padding-left: 10px;
+    margin-top: auto;
 }
 
 .FrontPage{
-    background: linear-gradient(to bottom right, darkorange,orangered);
+    height: 80vh;
+    position: relative;
+    background: linear-gradient(135deg, orange, darkorange, darkblue, blue);
+    background-size: 200% 200%;
+    animation: flowingGradient 10s ease infinite;
+    animation-delay: -2s;
 }
 
-.About {
+@keyframes flowingGradient {
+    0% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+    100% { background-position: 0% 0%; }
+
+}
+
+.FrontPage h1 {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-size: 50px;
     color: black;
-    flex: 1 0 auto; /* Grow to fill space, don't shrink */
-    padding-bottom: 60px; /* Prevent footer overlap */
+    font-weight: bold;
 }
 
-.content {
-    flex: 1 0 auto; /* Grow to fill space, don't shrink */
-    padding-bottom: 60px; /* Prevent footer overlap */
+.About .content{
+    color: black;
+    flex: 1; /* Grow to fill space, don't shrink */
+    padding-bottom: 40px; /* Prevent footer overlap */
 }
 
 .Header {
