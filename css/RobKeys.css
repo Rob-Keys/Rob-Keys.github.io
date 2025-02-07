@@ -1,42 +1,48 @@
 @charset "utf-8";
 
 :root{
-    --sunset-main: #ff6b6b ;
-    --sunset-secondary: #ffd93d;
-    --sunset-accent1: #ff9a8b;
-    --sunset-accent2: #ffb347;
-    --sunset-accent3: #ff4757;
-
-    --space-main: #0f0c29 ;
-    --space-secondary: #24243e;
-    --space-accent1: #302b63;
-    --space-accent2: #16162e;
-    --space-accent3: #473b7b;
-
-    --sunny-main: #FFD700 ;
-    --sunny-secondary: #AD8C21;
-    --sunny-accent1: #E5A823;
-    --sunny-accent2: #B8743A;
-    --sunny-accent3: #F7E1A0;
-
-    --ocean-main: #00d2ff ;
-    --ocean-secondary: #3a7bd5;
-    --ocean-accent1: #48b1bf;
-    --ocean-accent2: #06beb6;
-    --ocean-accent3: #2c3e50;
-
-    --forest-main: #536E3E;
-    --forest-secondary: #71B270;
-    --forest-accent1: #2C7734;
-    --forest-accent2: #5B8959;
-    --forest-accent3: #2E5E2E;
-
-    --active-main: var(--sunset-main);
-    --active-secondary: var(--sunset-secondary);
-    --active-accent1: var(--sunset-accent1);
-    --active-accent2: var(--sunset-accent2);
-    --active-accent3: var(--sunset-accent3);
+    --active-main: #ff6b6b;
+    --active-secondary: #ffd93d;
+    --active-accent1: #ff9a8b;
+    --active-accent2: #ffb347;
+    --active-accent3: #ff4757;
 }
+[data-theme="sunset"] {
+    --active-main: #ff6b6b;
+    --active-secondary: #ffd93d;
+    --active-accent1: #ff9a8b;
+    --active-accent2: #ffb347;
+    --active-accent3: #ff4757;
+}
+[data-theme="space"] {
+    --active-main: #0f0c29;
+    --active-secondary: #24243e;
+    --active-accent1: #302b63;
+    --active-accent2: #16162e;
+    --active-accent3: #473b7b;
+}
+[data-theme="sunny"] {
+    --active-main: #FFD700;
+    --active-secondary: #AD8C21;
+    --active-accent1: #E5A823;
+    --active-accent2: #B8743A;
+    --active-accent3: #F7E1A0;
+}
+[data-theme="ocean"] {
+    --active-main: #00d2ff;
+    --active-secondary: #3a7bd5;
+    --active-accent1: #48b1bf;
+    --active-accent2: #06beb6;
+    --active-accent3: #2c3e50;
+}
+[data-theme="forest"] {
+    --active-main: #536E3E;
+    --active-secondary: #71B270;
+    --active-accent1: #2C7734;
+    --active-accent2: #5B8959;
+    --active-accent3: #2E5E2E;
+}
+
 
 html, body {
     margin: 0;
@@ -79,7 +85,7 @@ footer {
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
-    font-size: 3.5vw;
+    font-size: 10vh;
     color: black;
     font-weight: bold;
 }
