@@ -6,6 +6,7 @@
     --active-accent1: #ff9a8b;
     --active-accent2: #ffb347;
     --active-accent3: #ff4757;
+    --active-font-color: black;
 }
 [data-theme="sunset"] {
     --active-main: #ff6b6b;
@@ -13,6 +14,7 @@
     --active-accent1: #ff9a8b;
     --active-accent2: #ffb347;
     --active-accent3: #ff4757;
+    --active-font-color: black;
 }
 [data-theme="space"] {
     --active-main: #0f0c29;
@@ -20,6 +22,7 @@
     --active-accent1: #302b63;
     --active-accent2: #16162e;
     --active-accent3: #473b7b;
+    --active-font-color: white;
 }
 [data-theme="sunny"] {
     --active-main: #FFD700;
@@ -27,6 +30,7 @@
     --active-accent1: #E5A823;
     --active-accent2: #B8743A;
     --active-accent3: #F7E1A0;
+    --active-font-color: black;
 }
 [data-theme="ocean"] {
     --active-main: #00d2ff;
@@ -34,6 +38,7 @@
     --active-accent1: #48b1bf;
     --active-accent2: #06beb6;
     --active-accent3: #2c3e50;
+    --active-font-color: black;
 }
 [data-theme="forest"] {
     --active-main: #536E3E;
@@ -41,6 +46,7 @@
     --active-accent1: #2C7734;
     --active-accent2: #5B8959;
     --active-accent3: #2E5E2E;
+    --active-font-color: white;
 }
 
 
@@ -55,6 +61,7 @@ body {
     min-height: 100vh; /* Crucial for short content */
     background-color: lightgray;
     font-family: Delius, serif;
+    color: var(--active-font-color);
 }
 footer {
     flex-shrink: 0;
@@ -89,7 +96,6 @@ footer {
     transform: translate(-50%, -50%);
     text-align: center;
     font-size: 10vh;
-    color: black;
     font-family: Pacifico, serif;
 }
 
@@ -110,7 +116,6 @@ footer {
 }
 
 .content{
-    color: black;
     flex: 1; /* Grow to fill space, don't shrink */
     padding-bottom: 0.625vh; /* Prevent footer overlap */
     padding-left: 1vw;
@@ -139,7 +144,6 @@ footer {
 }
 
 .Themes {
-    color: black;
     padding: 0;
     display: flex;
     align-items: center;
@@ -168,14 +172,13 @@ footer {
 }
 
 .page-links a {
+    color: var(--active-font-color);
     text-decoration: none;
-    color: #333;
     display: block; /* Makes entire li area clickable */
     padding: 1.9vh 0; /* Vertical padding */
 }
 
 .page-links a:hover {
-    color: #000;
     text-decoration: underline;
 
 }
