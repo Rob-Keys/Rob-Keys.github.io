@@ -3,17 +3,39 @@
 :root{
     --sunset-main: #ff6b6b ;
     --sunset-secondary: #ffd93d;
+    --sunset-accent1: #ff9a8b; /* Lighter coral */
+    --sunset-accent2: #ffb347; /* Orange gold */
+    --sunset-accent3: #ff4757; /* Deep coral */
+
     --space-main: #0f0c29 ;
     --space-secondary: #24243e;
+    --space-accent1: #302b63; /* Mid purple-blue */
+    --space-accent2: #16162e; /* Deeper blue */
+    --space-accent3: #473b7b; /* Light purple */
+
     --cyber-main: #00ff9d ;
     --cyber-secondary: #00b8ff;
+    --cyber-accent1: #00ffdd; /* Cyan */
+    --cyber-accent2: #33ff00; /* Bright green */
+    --cyber-accent3: #0088cc; /* Deep blue */
+
     --ocean-main: #00d2ff ;
     --ocean-secondary: #3a7bd5;
+    --ocean-accent1: #48b1bf; /* Teal */
+    --ocean-accent2: #06beb6; /* Turquoise */
+    --ocean-accent3: #2c3e50; /* Dark blue */
+
     --forest-main: #134E5E;
     --forest-secondary: #71B280;
+    --forest-accent1: #2C7744; /* Forest green */
+    --forest-accent2: #8BB999; /* Sage */
+    --forest-accent3: #2E5E4E; /* Deep pine */
 
-    --active-main: var(--ocean-main);
-    --active-secondary: var(--ocean-secondary);
+    --active-main: var(--sunset-main);
+    --active-secondary: var(--sunset-secondary);
+    --active-accent1: var(--sunset-accent1);
+    --active-accent2: var(--sunset-accent2);
+    --active-accent3: var(--sunset-accent3);
 }
 
 html, body {
@@ -40,14 +62,13 @@ footer {
 .FrontPage{
     height: 80vh;
     position: relative;
-    background: linear-gradient(135deg, var(--active-main),var(--active-secondary),var(--active-main),var(--active-secondary));
+    background: linear-gradient(135deg, var(--active-main),var(--active-secondary),var(--active-accent1),var(--active-accent2),var(--active-accent3),var(--active-main),var(--active-secondary),var(--active-accent1),var(--active-accent2),var(--active-accent3));
     background-size: 400% 400%;
-    animation: flowingGradient 5s linear infinite;
-    animation-delay: -5s;
+    animation: flowingGradient 8s linear infinite;
 }
 
 @keyframes flowingGradient {
-    0% { background-position: 90% 90%; }
+    0% { background-position: 74% 74%; }
     100% { background-position: 0% 0%; }
 }
 
@@ -63,6 +84,13 @@ footer {
     font-weight: bold;
 }
 
+.Navigator{
+    height: fit-content;
+    background: linear-gradient(135deg, var(--active-main), var(--active-secondary),var(--active-main),var(--active-secondary));
+    background-size: 400% 400%;
+    animation: flowingGradient 5s linear infinite;
+}
+
 .About, .content{
     color: black;
     flex: 1; /* Grow to fill space, don't shrink */
@@ -75,7 +103,7 @@ footer {
     justify-content: space-between; /* Space items out evenly, with the first item on the left and last on the right */
     align-items: center; /* Vertically center the content */
     list-style: none;
-    margin: 0 1vw 0 0;
+    margin: 0 1.2vw 0 0;
     padding: 0;
 }
 
@@ -102,7 +130,7 @@ footer {
     text-align: left;
 }
 .Themes img {
-
+    cursor: pointer;
     width: 1.75vw;
     height: auto;
     border-color: black;
@@ -129,6 +157,7 @@ footer {
 .page-links a:hover {
     color: #000;
     text-decoration: underline;
+
 }
 .page-links li {
     flex: 1;  /* Equal width distribution */

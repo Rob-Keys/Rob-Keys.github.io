@@ -12,33 +12,46 @@
 </head>
 
 <body>
+    <div class="Navigator">
+        <ul class="Header">
+            <li><ul class="Themes">
+                <li>Theme:</li>
+                <li><img src="/images/themes/footballpfp.png" alt="Rob Keys Face"></li>
+                <li><img src="/images/themes/nature.jpg" alt="Cartoon trees and flowers in a meadow"></li>
+                <li><img src="/images/themes/sludge.png" alt="Black sludge leaking down the box"></li>
+                <li><img src="/images/themes/pink.jpg" alt="White princess tiara on a solid pink background"></li>
+            </ul></li>
+            <li><nav>
+                <ul class="page-links">
+                    <li><a href="/" rel="prefetch">Home</a></li>
+                    <li><a href="/experience.html" rel="prefetch">Experience</a></li>
+                    <li><a href="/projects.html" rel="prefetch">Portfolio</a></li>
+                    <li><a href="/game.html" rel="prefetch">Game of Life</a></li>
+                    <li><a href="/contact.html" rel="prefetch">Contact</a></li>
+                </ul>
+            </nav></li>
+            <li><img id="Logo" src="images/little_icon.png" alt="Personal Logo">
+            </li>
+        </ul>
+    </div>
     <div class="Title">
         <h1>Game of Life</h1>
     </div>
-    <nav>
-        <ul class="page-links">
-            <li><a href="/">Home</a></li>
-            <li><a href="/experience.html">Experience</a></li>
-            <li><a href="/projects.html">Portfolio</a></li>
-            <li><a href="/game.html">Game of Life</a></li>
-            <li><a href="/contact.html">Contact</a></li>
-        </ul>
-    </nav>
     <div class="content">
-    <div class="gameText">
-        <h2>Game of Life</h2>
-        <p>A simple implementation of Conways Game Of Life. Cell's are alive (black) or dead (white), a cell will live if three surrounding cells are alive, and die otherwise</p>
-    </div>
-    <div class="canvas-container">
-        <canvas id="gameCanvas"></canvas>
-    </div>
-    <div class="controls">
-        <label for="cellSize"><input type="number" id="cellSize" value="10" min="5" max="50"></label>
-        <button id="applySize">Apply Size</button>
-        <button id="startButton">Start</button>
-        <button id="stopButton">Stop</button>
-        <button id="clearButton">Clear</button>
-    </div>
+        <div class="gameText">
+            <h2>Game of Life</h2>
+            <p>A simple implementation of Conways Game Of Life. Cell's are alive (black) or dead (white), a cell will live if three surrounding cells are alive, and die otherwise</p>
+        </div>
+        <div class="canvas-container">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+        <div class="controls">
+            <label for="cellSize"><input type="number" id="cellSize" value="10" min="5" max="50"></label>
+            <button id="applySize">Apply Size</button>
+            <button id="startButton">Start</button>
+            <button id="stopButton">Stop</button>
+            <button id="clearButton">Clear</button>
+        </div>
         <script src="/js/gameoflife.js" defer></script>
     </div>
 </body>
