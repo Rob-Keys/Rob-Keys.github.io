@@ -54,6 +54,7 @@ body {
     flex-direction: column;
     min-height: 100vh; /* Crucial for short content */
     background-color: lightgray;
+    font-family: Delius, serif;
 }
 footer {
     flex-shrink: 0;
@@ -63,6 +64,7 @@ footer {
     padding-bottom: 0.625vh;
     padding-left: 0.7vw;
     margin-top: auto;
+    font-family: "Times New Roman", sans-serif;
 }
 
 .FrontPage{
@@ -70,7 +72,8 @@ footer {
     position: relative;
     background: linear-gradient(135deg, var(--active-main),var(--active-secondary),var(--active-accent1),var(--active-accent2),var(--active-accent3),var(--active-main),var(--active-secondary),var(--active-accent1),var(--active-accent2),var(--active-accent3));
     background-size: 400% 400%;
-    animation: flowingGradient 8s linear infinite;
+    animation: flowingGradient 12s linear infinite;
+    font-family: Delius, serif;
 }
 
 @keyframes flowingGradient {
@@ -87,8 +90,9 @@ footer {
     text-align: center;
     font-size: 10vh;
     color: black;
-    font-weight: bold;
+    font-family: Pacifico, serif;
 }
+
 #AboutMe {
     position: absolute;
     top: 50vh;
@@ -119,6 +123,8 @@ footer {
     list-style: none;
     margin: 0 1.2vw 0 0;
     padding: 0;
+    font-family: Delius, serif;
+    /*TODO: Font sizes*/
 }
 
 .Header ul {
@@ -158,6 +164,7 @@ footer {
     display: flex;
     gap: 7vw;
     flex: 0 1 auto; /* Allow shrinking, don't grow */
+    font-family: Delius, serif;
 }
 
 .page-links a {
