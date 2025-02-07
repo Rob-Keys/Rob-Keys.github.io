@@ -60,7 +60,7 @@ footer {
 }
 
 .FrontPage{
-    height: 80vh;
+    height: 200vh;
     position: relative;
     background: linear-gradient(135deg, var(--active-main),var(--active-secondary),var(--active-accent1),var(--active-accent2),var(--active-accent3),var(--active-main),var(--active-secondary),var(--active-accent1),var(--active-accent2),var(--active-accent3));
     background-size: 400% 400%;
@@ -75,13 +75,21 @@ footer {
 
 .FrontPage h1 {
     position: absolute;
-    top: 40%;
+    top: 20vh;
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
     font-size: 3.5vw;
     color: black;
     font-weight: bold;
+}
+#AboutMe {
+    position: absolute;
+    top: 50vh;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-size: 1.5vw;
 }
 
 .Navigator{
@@ -91,7 +99,7 @@ footer {
     animation: flowingGradient 5s linear infinite;
 }
 
-.About, .content{
+.content{
     color: black;
     flex: 1; /* Grow to fill space, don't shrink */
     padding-bottom: 0.625vh; /* Prevent footer overlap */
