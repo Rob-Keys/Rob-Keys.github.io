@@ -1,12 +1,12 @@
 @charset "utf-8";
 
 :root{
-    --active-main: #ff6b6b;
-    --active-secondary: #ffd93d;
-    --active-accent1: #ff9a8b;
-    --active-accent2: #ffb347;
-    --active-accent3: #ff4757;
-    --active-font-color: black;
+    --active-main: #536E3E;
+    --active-secondary: #71B270;
+    --active-accent1: #2C7734;
+    --active-accent2: #5B8959;
+    --active-accent3: #2E5E2E;
+    --active-font-color: white;
 }
 [data-theme="sunset"] {
     --active-main: #ff6b6b;
@@ -97,6 +97,14 @@ footer {
     text-align: center;
     font-size: 10vh;
     font-family: Pacifico, serif;
+}
+.FrontPage h2 {
+    position: absolute;
+    top: 150vh;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    aos-data:"fade-up"
 }
 
 #AboutMe {
