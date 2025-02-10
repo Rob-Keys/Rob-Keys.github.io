@@ -9,3 +9,14 @@ document.addEventListener("DOMContentLoaded", () => {
         document.documentElement.setAttribute('data-theme', savedTheme);
     }
 });
+
+    // Toggle theme menu visibility
+const toggleButton = document.getElementById('themeToggle');
+const themeContainer = document.getElementById('themeContainer');
+
+toggleButton.addEventListener('click', function() {
+    themeContainer.classList.toggle('show');
+    // Update arrow indicator
+    toggleButton.innerHTML = themeContainer.classList.contains('show') ?
+    'Themes ▲' : 'Themes ▼';
+});

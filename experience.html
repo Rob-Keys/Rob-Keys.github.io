@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Delius&family=Pacifico&display=swap" rel="stylesheet">
 
     <script src="/js/themes.js" charset="UTF-8" defer></script>
+    <script src="/js/pageSelector.js" charset="UTF-8" defer></script>
 
     <title>Rob Keys</title>
 </head>
@@ -27,13 +28,14 @@
                 <li><img src="/images/themes/sludge.png" alt="Black sludge leaking down the box" onclick="setTheme('space')"></li>
                 <li><img src="/images/themes/pink.jpg" alt="White princess tiara on a solid pink background" onclick="setTheme('sunny')"></li>
             </ul></li>
-            <li><nav>
+            <li><nav class="nav-container">
+                <div class="oval-selector"></div>
                 <ul class="page-links">
-                    <li><a href="/" rel="prefetch">Home</a></li>
-                    <li><a href="/experience.html" rel="prefetch">Experience</a></li>
-                    <li><a href="/projects.html" rel="prefetch">Portfolio</a></li>
-                    <li><a href="/game.html" rel="prefetch">Game of Life</a></li>
-                    <li><a href="/contact.html" rel="prefetch">Contact</a></li>
+                    <li><a href="/" rel="prefetch" class="nav-link">Home</a></li>
+                    <li><a href="/experience.html" rel="prefetch" class="nav-link active">Experience</a></li>
+                    <li><a href="/projects.html" rel="prefetch" class="nav-link">Portfolio</a></li>
+                    <li><a href="/game.html" rel="prefetch" class="nav-link">Game of Life</a></li>
+                    <li><a href="/contact.html" rel="prefetch" class="nav-link">Contact</a></li>
                 </ul>
             </nav></li>
             <li><img id="Logo" src="images/little_icon.png" alt="Personal Logo">

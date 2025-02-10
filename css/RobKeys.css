@@ -1,5 +1,13 @@
 @charset "utf-8";
+@layer base, theme, layout, components;
 
+/* Optimize animations */
+@layer base {
+    * {
+        will-change: transform, opacity;
+        transform: translateZ(0);
+    }
+}
 :root{
     --active-main: #536E3E;
     --active-secondary: #71B270;
@@ -55,6 +63,14 @@ html, body {
     padding: 0;
     overflow-x: hidden;
 }
+html {
+    view-transition-name: none; /* Disable default flush */
+    transition: opacity 0.3s ease;
+}
+html.fade-out {
+    opacity: 0;
+}
+
 body {
     display: flex;
     flex-direction: column;
@@ -129,6 +145,11 @@ footer {
     padding-left: 1vw;
 }
 
+
+
+
+
+
 .Header {
     display: flex; /* Enable Flexbox */
     justify-content: space-between; /* Space items out evenly, with the first item on the left and last on the right */
@@ -188,7 +209,7 @@ footer {
 
 .page-links a:hover {
     text-decoration: underline;
-
+    transform: scale(1.05);
 }
 .page-links li {
     flex: 1;  /* Equal width distribution */
@@ -203,6 +224,9 @@ footer {
     width: 3.5vw;
     height: 3.5vw;
 }
+
+
+
 
 .controls {
     display: flex;
@@ -231,4 +255,105 @@ footer {
 }
 .gameText {
     text-align: center;
+}
+
+
+
+
+     /* Container for all theme controls */
+ .theme-controls {
+     position: relative;
+     display: inline-block;
+     margin: 20px;
+ }
+
+/* Main toggle button */
+#themeToggle {
+    transform: scale(1.05);
+    background: none;
+    color: var(--active-font-color);
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+#themeToggle:hover {
+    transform: scale(1.1);
+    text-decoration: underline;
+}
+
+/* Theme buttons container */
+#themeContainer {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 5px;
+    gap: 3px;
+}
+
+/* Visible state */
+#themeContainer.show {
+    display: flex;
+}
+
+/* Individual theme buttons */
+.theme-btn {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.theme-btn:hover {
+    transform: translateX(5px);
+}
+.theme-btn {
+    cursor: pointer;
+    width: 1.75vw;
+    height: auto;
+    border-color: black;
+    border-style: solid;
+    border-width: 0.15vw;
+}
+
+
+/* For the oval navigator behind shadow*/
+.nav-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    overflow: hidden;
+}
+
+.nav-link {
+    padding: 15px 30px;
+    margin: 0 10px;
+    text-decoration: none;
+    color: var(--active-font-color);
+    position: relative;
+    z-index: 1;
+    transition: color 0.3s ease;
+}
+
+.oval-selector {
+    position: absolute;
+    background: var(--active-accent1);
+    height: 40px;
+    border-radius: 20px;
+    transition:
+            width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+            left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: width, left;
+    z-index: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    backface-visibility: hidden;
+}
+
+.nav-link.active {
+    color: var(--active-font-color);
 }
