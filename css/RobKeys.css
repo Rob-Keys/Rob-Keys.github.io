@@ -1,5 +1,5 @@
 @charset "utf-8";
-@layer base, theme, layout, components;
+@layer base,layout, components, theme;
 
 /* Optimize animations */
 @layer base {
@@ -277,7 +277,7 @@ footer {
     border-radius: 5px;
     cursor: pointer;
 }
-#themeToggle:hover {
+#themeToggle:hover, #themeToggle:focus {
     transform: scale(1.1);
     text-decoration: underline;
 }
@@ -289,7 +289,7 @@ footer {
     position: absolute;
     top: 100%;
     left: 0;
-    margin-top: 5px;
+    margin-top: 3px;
     gap: 3px;
 }
 
@@ -300,11 +300,11 @@ footer {
 
 /* Individual theme buttons */
 .theme-btn {
-    padding: 8px 15px;
     border: none;
-    border-radius: 3px;
+    border-radius: 40px;
     cursor: pointer;
     transition: transform 0.2s;
+    background: lightgray;
 }
 
 .theme-btn:hover {

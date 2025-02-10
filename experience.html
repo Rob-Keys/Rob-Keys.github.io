@@ -21,13 +21,15 @@
 <body>
     <div class="Navigator">
         <ul class="Header">
-            <li><ul class="Themes">
-                <li>Theme:</li>
-                <li><img src="/images/themes/footballpfp.png" alt="Rob Keys Face" onclick="setTheme('sunset')"></li>
-                <li><img src="/images/themes/nature.jpg" alt="Cartoon trees and flowers in a meadow" onclick="setTheme('forest')"></li>
-                <li><img src="/images/themes/sludge.png" alt="Black sludge leaking down the box" onclick="setTheme('space')"></li>
-                <li><img src="/images/themes/pink.jpg" alt="White princess tiara on a solid pink background" onclick="setTheme('sunny')"></li>
-            </ul></li>
+            <li><div class="theme-controls">
+                <button id="themeToggle">Themes ▼</button>
+                <div id="themeContainer">
+                    <img class="theme-btn" src="/images/themes/footballpfp.png" alt="Rob Keys Face" onclick="setTheme('sunset')">
+                    <img class="theme-btn" src="/images/themes/nature.jpg" alt="Cartoon trees and flowers in a meadow" onclick="setTheme('forest')">
+                    <img class="theme-btn" src="/images/themes/sludge.png" alt="Black sludge leaking down the box" onclick="setTheme('space')">
+                    <img class="theme-btn" src="/images/themes/pink.jpg" alt="White princess tiara on a solid pink background" onclick="setTheme('sunny')">
+                </div>
+            </div></li>
             <li><nav class="nav-container">
                 <div class="oval-selector"></div>
                 <ul class="page-links">
