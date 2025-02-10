@@ -325,13 +325,9 @@ footer {
     position: relative;
     display: flex;
     justify-content: center;
-    padding: 20px;
-    overflow: hidden;
 }
 
 .nav-link {
-    padding: 15px 30px;
-    margin: 0 10px;
     text-decoration: none;
     color: var(--active-font-color);
     position: relative;
@@ -342,14 +338,14 @@ footer {
 .oval-selector {
     position: absolute;
     background: var(--active-accent1);
-    height: 40px;
-    border-radius: 20px;
+    height: 30px;
+    border-radius: 50px;
     transition:
             width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
             left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: width, left;
     z-index: 0;
-    top: 50%;
+    top: 61%;
     transform: translateY(-50%);
     backface-visibility: hidden;
 }

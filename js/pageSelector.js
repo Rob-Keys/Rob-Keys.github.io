@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const linkRect = link.getBoundingClientRect();
             const containerRect = pageLinks.getBoundingClientRect();
 
-            oval.style.width = `${linkRect.width}px`;
-            oval.style.left = `${linkRect.left - containerRect.left}px`;
+            oval.style.width = `${linkRect.width + 20}px`;
+            oval.style.left = `${linkRect.left - containerRect.left - 10}px`;
         });
     }
 
