@@ -37,18 +37,14 @@
         transition: color 0.3s ease;
     }
 
-    .oval-selector {
-        position: absolute;
+    .oval-indicator {
         background: var(--active-accent1);
-        height: 30px;
+        height: 2rem;
         border-radius: 50px;
-        transition:
-                width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         will-change: width, left;
         z-index: 0;
-        top: 61%;
-        transform: translateY(-50%);
-        backface-visibility: hidden;
+        position: absolute;
+        top: 1.5rem;
+        transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
     }
 }

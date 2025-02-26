@@ -1,18 +1,48 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
+
 import { Link } from 'react-router-dom';
 import '../styles/components/Navigation.css'
 
 const Navigation: React.FC = () => {
+    const [currentPage, setCurrentPage] = useState<string>('home');
+    const [nextPage, setNextPage] = useState<string>('home');
+
+    const changeNextPage = (newPage: string) => {
+        setNextPage(newPage);
+    }
+
+    const [indicatorStyle, setIndicatorStyle] = useState({});
+
+    const updateIndicatorPosition = () => {
+        setTimeout(() => {
+            const currentRect = document.getElementById(currentPage);
+            if(!currentRect) { return;}
+            const nextRect = document.getElementById(nextPage);
+            if(!nextRect) { return;}
+            const newWidth = "" + nextRect.clientWidth *1.5;
+            setIndicatorStyle({
+                width: `${newWidth}px`,
+                left: `${(-0.25)*nextRect.clientWidth}px`,
+                transform: `translateX(${nextRect.offsetLeft}px)`
+            });
+            setCurrentPage(nextPage);
+        }, 0);
+    };
+    useEffect(() => {
+        updateIndicatorPosition();
+    }, [nextPage]);
+
+
     return (
         <div className="Navigation">
             <nav>
-                <div className="oval-selector"></div>
+                <div className="oval-indicator" style={indicatorStyle}></div>
                 <ul className="page-links">
-                    <li><Link to="/" className="nav-link">Home</Link></li>
-                    <li><Link to="/experience" className="nav-link">Experience</Link></li>
-                    <li><Link to="/portfolio" className="nav-link">Portfolio</Link></li>
-                    <li><Link to="/game" className="nav-link">Minigames</Link></li>
-                    <li><Link to="/contact" className="nav-link">Contact</Link></li>
+                    <li id="home"><Link to="/" className="nav-link" onClick={() => changeNextPage('home')}>Home</Link></li>
+                    <li id="experience"><Link to="/experience" className="nav-link" onClick={() => changeNextPage('experience')}>Experience</Link></li>
+                    <li id="portfolio"><Link to="/portfolio" className="nav-link" onClick={() => changeNextPage('portfolio')}>Portfolio</Link></li>
+                    <li id="minigames"><Link to="/game" className="nav-link" onClick={() => changeNextPage('minigames')}>Minigames</Link></li>
+                    <li id="contact"><Link to="/contact" className="nav-link" onClick={() => changeNextPage('contact')}>Contact</Link></li>
                 </ul>
             </nav>
         </div>
