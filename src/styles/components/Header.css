@@ -1,4 +1,6 @@
 .Header {
+    position: relative;
+    z-index: 100;
     ul {
         display: flex;
         flex-direction: row;

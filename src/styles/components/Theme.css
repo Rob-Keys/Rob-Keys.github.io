@@ -23,9 +23,11 @@
     #themeContainer {
         display: flex;
         flex-direction: column;
-        margin-top: 3px;
         position: absolute;
-        overflow: visible;
+        background-color: white;
+        border-radius: 1rem;
+        padding: 0 0 0.7rem 1rem;
+        margin: 1rem 0 0 0.5rem;
     }
 
     /* Individual theme buttons */
@@ -34,12 +36,10 @@
         border-radius: 40px;
         cursor: pointer;
         transition: transform 0.2s;
-        background: lightgray;
-        position: relative;
     }
 
     .theme-btn:hover {
-        transform: translateX(5px);
+        transform: scale(150%);
     }
     .theme-btn {
         cursor: pointer;

@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import '../styles/Theme.css'
+import '../styles/components/Theme.css'
+import Footballpfp from '../assets/themes/footballpfp.png'
+import Nature from '../assets/themes/nature.jpg'
+import Pink from '../assets/themes/pink.jpg'
+import Sludge from '../assets/themes/sludge.png'
 
 const Theme: React.FC = () => {
     // State to store the current theme
@@ -30,7 +34,7 @@ const Theme: React.FC = () => {
         setMenuVisible(prev => !prev);
     };
 
-    return (
+    return(
         <div className="Theme">
             <div id="theme-controls">
                 <button id="themeToggle" onClick={toggleMenu}>
@@ -38,13 +42,13 @@ const Theme: React.FC = () => {
                 </button>
                 {isMenuVisible &&
                     <div id="themeContainer">
-                        <img className="theme-btn" src="/src/images/themes/footballpfp.png" alt="Rob Keys Face"
+                        <img className="theme-btn" src={Footballpfp} alt="Rob Keys Face"
                              onClick={() => changeTheme('sunset')}/>
-                        <img className="theme-btn" src="/src/images/themes/nature.jpg"
+                        <img className="theme-btn" src={Nature}
                              alt="Cartoon trees and flowers in a meadow" onClick={() => changeTheme('forest')}/>
-                        <img className="theme-btn" src="/src/images/themes/sludge.png"
+                        <img className="theme-btn" src={Sludge}
                              alt="Black sludge leaking down the box" onClick={() => changeTheme('space')}/>
-                        <img className="theme-btn" src="/src/images/themes/pink.jpg"
+                        <img className="theme-btn" src={Pink}
                              alt="White princess tiara on a solid pink background"
                              onClick={() => changeTheme('sunny')}/>
                     </div>

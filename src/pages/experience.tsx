@@ -1,4 +1,5 @@
 import '../styles/App.css'
+import '../styles/pages/Experience.css'
 
 function ExperiencePage() {
     return (

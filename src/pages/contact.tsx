@@ -1,4 +1,5 @@
 import '../styles/App.css'
+import '../styles/pages/Contact.css'
 
 function ContactPage() {
     return (
@@ -12,7 +13,7 @@ function ContactPage() {
                     <h3>Work contact info</h3>
                     <ul>
                         <li><a href="mailto:rob_keys@outlook.com">rob_keys@outlook.com</a></li>
-                        <li><a href="../images/files/Rob_Keys_Resume.pdf" target="_blank">Resume</a></li>
+                        <li><a href="../assets/files/Rob_Keys_Resume.pdf" target="_blank">Resume</a></li>
                     </ul>
                     <h3>Stay in Touch</h3>
                     <ul>

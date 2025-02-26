@@ -1,6 +1,7 @@
 import Navigation from './navigation.tsx'
 import Theme from './theme.tsx'
-import '../styles/Header.css'
+import '../styles/components/Header.css'
+import Logo from '../assets/little_icon.png'
 
 function Header(){
     return (
@@ -13,7 +14,7 @@ function Header(){
                     <Navigation/>
                 </li>
                 <li>
-                    <img id="Logo" src="/src/images/little_icon.png" alt="Personal Logo"/>
+                    <img id="Logo" src={Logo} alt="Personal Logo"/>
                 </li>
             </ul>
         </div>
