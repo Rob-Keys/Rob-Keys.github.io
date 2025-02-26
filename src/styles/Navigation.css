@@ -1,0 +1,54 @@
+.Navigation {
+    nav {
+        position: relative;
+        display: flex;
+        justify-content: center;
+    }
+
+    .page-links {
+        list-style: none;
+        padding: 1vw 0 0 0;
+        display: flex;
+        gap: 7vw;
+        flex: 0 1 auto;
+        font-family: Delius, serif;
+    }
+
+    .page-links a {
+        text-decoration: none;
+        display: block; /*Makes entire link area clickable */
+        padding: 1.9vh 0;
+    }
+
+    .page-links a:hover {
+        text-decoration: underline;
+        transform: scale(1.05);
+    }
+    .page-links li {
+        flex: 1;
+        text-align: center;
+    }
+
+    .nav-link {
+        text-decoration: none;
+        color: var(--active-font-color);
+        position: relative;
+        z-index: 1;
+        transition: color 0.3s ease;
+    }
+
+    .oval-selector {
+        position: absolute;
+        background: var(--active-accent1);
+        height: 30px;
+        border-radius: 50px;
+        transition:
+                width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        will-change: width, left;
+        z-index: 0;
+        top: 61%;
+        transform: translateY(-50%);
+        backface-visibility: hidden;
+    }
+}

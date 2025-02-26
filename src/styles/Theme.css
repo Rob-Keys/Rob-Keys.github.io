@@ -1,0 +1,52 @@
+.Theme{
+    /* container */
+    #theme-controls {
+        display: inline-block;
+        position: relative;
+        margin: 1rem 0 0 2rem;
+    }
+
+    /* Toggle button */
+    #themeToggle {
+        transform: scale(1.05);
+        background: none;
+        color: var(--active-font-color);
+        border: none;
+        cursor: pointer;
+    }
+    #themeToggle:hover {
+        transform: scale(1.1);
+        text-decoration: underline;
+    }
+
+    /* Theme buttons container */
+    #themeContainer {
+        display: flex;
+        flex-direction: column;
+        margin-top: 3px;
+        position: absolute;
+        overflow: visible;
+    }
+
+    /* Individual theme buttons */
+    .theme-btn {
+        border: none;
+        border-radius: 40px;
+        cursor: pointer;
+        transition: transform 0.2s;
+        background: lightgray;
+        position: relative;
+    }
+
+    .theme-btn:hover {
+        transform: translateX(5px);
+    }
+    .theme-btn {
+        cursor: pointer;
+        width: 1.75vw;
+        height: auto;
+        border-color: black;
+        border-style: solid;
+        border-width: 0.15vw;
+    }
+}

@@ -1,0 +1,90 @@
+@charset "utf-8";
+@import url("https://fonts.googleapis.com/css2?family=Delius&family=Pacifico&display=swap");
+
+@layer base,layout, components, theme;
+/* Optimize animations */
+@layer base {
+  * {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+  }
+}
+
+:root{
+  --active-main: #536E3E;
+  --active-secondary: #71B270;
+  --active-accent1: #2C7734;
+  --active-accent2: #5B8959;
+  --active-accent3: #2E5E2E;
+  --active-font-color: white;
+}
+[data-theme="sunset"] {
+  --active-main: #ff6b6b;
+  --active-secondary: #ffd93d;
+  --active-accent1: #ff9a8b;
+  --active-accent2: #ffb347;
+  --active-accent3: #ff4757;
+  --active-font-color: black;
+}
+[data-theme="space"] {
+  --active-main: #0f0c29;
+  --active-secondary: #24243e;
+  --active-accent1: #302b63;
+  --active-accent2: #16162e;
+  --active-accent3: #473b7b;
+  --active-font-color: white;
+}
+[data-theme="sunny"] {
+  --active-main: #FFD700;
+  --active-secondary: #AD8C21;
+  --active-accent1: #E5A823;
+  --active-accent2: #B8743A;
+  --active-accent3: #F7E1A0;
+  --active-font-color: black;
+}
+[data-theme="ocean"] {
+  --active-main: #00d2ff;
+  --active-secondary: #3a7bd5;
+  --active-accent1: #48b1bf;
+  --active-accent2: #06beb6;
+  --active-accent3: #2c3e50;
+  --active-font-color: black;
+}
+[data-theme="forest"] {
+  --active-main: #536E3E;
+  --active-secondary: #71B270;
+  --active-accent1: #2C7734;
+  --active-accent2: #5B8959;
+  --active-accent3: #2E5E2E;
+  --active-font-color: white;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: scroll;
+}
+html {
+  view-transition-name: none; /* Disable default flush */
+  transition: opacity 0.3s ease;
+  scrollbar-width: none;
+}
+
+body {
+  background-color: lightgray;
+  font-family: Delius, serif;
+  color: var(--active-font-color);
+}
+
+.Gradient {
+  background: linear-gradient(135deg, var(--active-main),var(--active-secondary),var(--active-accent1),var(--active-accent2),var(--active-accent3),var(--active-main),var(--active-secondary),var(--active-accent1),var(--active-accent2),var(--active-accent3));
+  background-size: 400% 400%;
+  animation: flowingGradient 12s linear infinite;
+  font-family: Delius, serif;
+}
+
+@keyframes flowingGradient {
+  0% { background-position: 74% 74%; }
+  100% { background-position: 0% 0%; }
+}

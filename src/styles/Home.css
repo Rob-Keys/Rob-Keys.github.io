@@ -1,0 +1,17 @@
+.HomePage{
+    h1 {
+        text-align: center;
+        font-size: 10vh;
+        font-family: Pacifico, serif;
+    }
+    h2 {
+        text-align: center;
+        aos-data:"fade-up"
+    }
+
+    #AboutMe {
+        text-align: center;
+        font-size: 1.5vw;
+        margin-bottom: 10vh;
+    }
+}
