@@ -23,6 +23,7 @@ const Navigation: React.FC = () => {
             setIndicatorStyle({
                 width: `${newWidth}px`,
                 left: `${(-0.25)*nextRect.clientWidth}px`,
+                top: `${0.75*nextRect.clientHeight}px`,
                 transform: `translateX(${nextRect.offsetLeft}px)`
             });
             setCurrentPage(nextPage);
@@ -31,6 +32,12 @@ const Navigation: React.FC = () => {
     useEffect(() => {
         updateIndicatorPosition();
     }, [nextPage]);
+    useEffect(() => {
+        const handleResize = () => updateIndicatorPosition();
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
 
     return (

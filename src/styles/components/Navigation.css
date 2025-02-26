@@ -7,7 +7,7 @@
 
     .page-links {
         list-style: none;
-        padding: 1vw 0 0 0;
+        padding: 20px 0 0 0;
         display: flex;
         gap: 7vw;
         flex: 0 1 auto;
@@ -17,7 +17,7 @@
     .page-links a {
         text-decoration: none;
         display: block; /*Makes entire link area clickable */
-        padding: 1.9vh 0;
+        padding:  0;
     }
 
     .page-links a:hover {
@@ -44,7 +44,6 @@
         will-change: width, left;
         z-index: 0;
         position: absolute;
-        top: 1.5rem;
         transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
     }
 }
