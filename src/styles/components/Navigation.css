@@ -39,11 +39,23 @@
 
     .oval-indicator {
         background: var(--active-accent1);
-        height: 2rem;
+        height: 4rem;
         border-radius: 50px;
         will-change: width, left;
         z-index: 0;
         position: absolute;
         transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+        opacity: 0;
+    }
+
+    .oval-indicator.visible {
+        opacity: 1;
+        transition: transform 0.3s ease-in-out, width 0.3s ease-in-out, opacity 0.3s ease-in;
+    }
+
+    @media (max-width: 991px) {
+        .page-links {
+            display: none;
+        }
     }
 }

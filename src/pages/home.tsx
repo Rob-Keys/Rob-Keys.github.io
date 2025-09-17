@@ -1,10 +1,12 @@
 import '../styles/App.css'
 import '../styles/pages/Home.css'
+import Theme from '../components/theme.tsx'
 
 function HomePage() {
     return (
         <div className="HomePage">
                 <h1>Welcome!</h1>
+                <Theme/>
                 <p id="AboutMe">
                     I am a second-year Computer Science student at the University of Virginia, on track to graduate in three
                     years. In addition to my academic pursuits, I play football for the University of Virginia as a

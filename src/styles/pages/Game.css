@@ -1,4 +1,6 @@
 .GamePage {
+    padding: 1rem;
+
     .controls {
         display: flex;
         justify-content: center;

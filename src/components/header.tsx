@@ -1,20 +1,18 @@
 import Navigation from './navigation.tsx'
-import Theme from './theme.tsx'
+import Hamburger from './hamburger.tsx';
 import '../styles/components/Header.css'
-import Logo from '../assets/little_icon.png'
 
 function Header(){
     return (
         <div className="Header">
             <ul>
                 <li>
-                    <Theme/>
                 </li>
                 <li>
                     <Navigation/>
                 </li>
                 <li>
-                    <img id="Logo" src={Logo} alt="Personal Logo"/>
+                    <Hamburger/>
                 </li>
             </ul>
         </div>

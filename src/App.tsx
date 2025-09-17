@@ -1,10 +1,10 @@
 import { Routes, Route } from 'react-router-dom';
+import Header from './components/header';
 import Home from './pages/home.tsx'
 import Experience from './pages/experience.tsx';
 import Portfolio from './pages/portfolio.tsx'
 import Game from './pages/game.tsx';
 import Contact from './pages/contact.tsx';
-import Header from './components/header';
 import Footer from './components/footer';
 import './styles/App.css'
 

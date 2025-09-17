@@ -6,7 +6,6 @@ import Pink from '../assets/themes/pink.jpg'
 import Sludge from '../assets/themes/sludge.png'
 
 const Theme: React.FC = () => {
-    // State to store the current theme
     const [theme, setTheme] = useState<string>('light');
     const [isMenuVisible, setMenuVisible] = useState<boolean>(false);
 
@@ -29,20 +28,32 @@ const Theme: React.FC = () => {
         localStorage.setItem('theme', newTheme);
     };
 
+    const [animate, setAnimate] = useState(false);
+
     // Toggle the theme menu visibility
-    const toggleMenu = () => {
+    const toggleMenu: React.FC = () => {
         setMenuVisible(prev => !prev);
+
+        useEffect(() => {
+            // Schedules the callback to set 'animate' to true after the current render cycle.
+            const timer = setTimeout(() => setAnimate(true), 0);
+            // Cleanup: if the component unmounts before the timeout, cancel the timer.
+            return () => clearTimeout(timer);
+        }, []);
+
+        return null;
     };
 
     return(
         <div className="Theme">
             <div id="theme-controls">
+                <div id="oval-background"></div>
                 <button id="themeToggle" onClick={toggleMenu}>
-                    {isMenuVisible ? 'Themes ▲' : 'Themes ▼'}
+                    <p>{isMenuVisible ? 'Themes ▲' : 'Themes ▼'}</p>
                 </button>
                 {isMenuVisible &&
                     <div id="themeContainer">
-                        <img className="theme-btn" src={Footballpfp} alt="Rob Keys Face"
+                        <img className={`theme-btn ${animate ? 'animate' : ''}`} src={Footballpfp} alt="Rob Keys Face"
                              onClick={() => changeTheme('sunset')}/>
                         <img className="theme-btn" src={Nature}
                              alt="Cartoon trees and flowers in a meadow" onClick={() => changeTheme('forest')}/>
