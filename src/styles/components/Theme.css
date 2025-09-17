@@ -1,0 +1,69 @@
+.Theme{
+    /* container */
+    #theme-controls {
+        display: inline-block;
+        position: relative;
+        margin: 20px 0 0 40px;
+        font-family: Delius, serif;
+        border: none;
+    }
+
+    /* Toggle button */
+    #themeToggle {
+        font-family: Delius, serif;
+        background: none;
+        color: var(--active-font-color);
+        padding: 7px;
+        border-radius: 50px;
+        border: none;
+        cursor: pointer;
+    }
+    #themeToggle:hover {
+        text-decoration: underline;
+    }
+
+    /* Theme buttons container */
+    #themeContainer {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        background-color: var(--active-accent1);
+        border-radius: 1rem;
+        padding: 0 0 0.7rem 1rem;
+        margin: 0.5rem 0 0 0.5rem;
+    }
+
+    /* Individual theme buttons */
+    .theme-btn {
+        border-radius: 40px;
+        cursor: pointer;
+        width: 2rem;
+        height: auto;
+        border-color: black;
+        border-style: solid;
+        border-width: 0.2rem;
+        margin: 0.5rem 1rem 0 0;
+        will-change: top, width, height;
+    }
+
+    .theme-btn.animate {
+        transition: transform 0.3s ease-in-out;
+        transform: translateX(-50px);
+    }
+
+    .theme-btn:hover {
+        transition: transform 0.2s ease-in-out;
+        transform: scale(125%);
+    }
+    #oval-background {
+        background: var(--active-accent1);
+        height: 2rem;
+        border-radius: 50px;
+        z-index: 0;
+        position: absolute;
+        width: 5.5rem;
+        left: -0.3rem;
+    }
+    @media (max-width: 991px) {
+    }
+}
