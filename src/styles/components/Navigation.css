@@ -57,5 +57,8 @@
         .page-links {
             display: none;
         }
+        .oval-indicator {
+            display: none;
+        }
     }
 }

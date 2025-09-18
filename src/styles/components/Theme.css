@@ -46,11 +46,6 @@
         will-change: top, width, height;
     }
 
-    .theme-btn.animate {
-        transition: transform 0.3s ease-in-out;
-        transform: translateX(-50px);
-    }
-
     .theme-btn:hover {
         transition: transform 0.2s ease-in-out;
         transform: scale(125%);

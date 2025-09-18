@@ -28,19 +28,9 @@ const Theme: React.FC = () => {
         localStorage.setItem('theme', newTheme);
     };
 
-    const [animate, setAnimate] = useState(false);
-
     // Toggle the theme menu visibility
     const toggleMenu: React.FC = () => {
         setMenuVisible(prev => !prev);
-
-        useEffect(() => {
-            // Schedules the callback to set 'animate' to true after the current render cycle.
-            const timer = setTimeout(() => setAnimate(true), 0);
-            // Cleanup: if the component unmounts before the timeout, cancel the timer.
-            return () => clearTimeout(timer);
-        }, []);
-
         return null;
     };
 
@@ -53,7 +43,7 @@ const Theme: React.FC = () => {
                 </button>
                 {isMenuVisible &&
                     <div id="themeContainer">
-                        <img className={`theme-btn ${animate ? 'animate' : ''}`} src={Footballpfp} alt="Rob Keys Face"
+                        <img className={`theme-btn`} src={Footballpfp} alt="Rob Keys Face"
                              onClick={() => changeTheme('sunset')}/>
                         <img className="theme-btn" src={Nature}
                              alt="Cartoon trees and flowers in a meadow" onClick={() => changeTheme('forest')}/>

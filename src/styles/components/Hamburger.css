@@ -3,7 +3,7 @@
         display: none;
         rotate: 90deg;
     }
-    @media only screen and (max-width: 800px) {
+    @media only screen and (max-width: 991px) {
         .hamburger {
             display: block;
             margin: 1rem 2rem 0 0;
