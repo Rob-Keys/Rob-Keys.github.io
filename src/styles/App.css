@@ -80,7 +80,7 @@ body {
 .Gradient {
   background: linear-gradient(135deg, var(--active-main),var(--active-secondary),var(--active-accent1),var(--active-accent2),var(--active-accent3),var(--active-main),var(--active-secondary),var(--active-accent1),var(--active-accent2),var(--active-accent3));
   background-size: 400% 400%;
-  animation: flowingGradient 12s linear infinite;
+  animation: flowingGradient 24s linear infinite;
   font-family: Delius, serif;
 }
 
