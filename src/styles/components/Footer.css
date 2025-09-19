@@ -5,4 +5,7 @@
     margin: 0;
     padding: 1rem 0 1rem 1rem;
     font-family: "Times New Roman", sans-serif;
+    p {
+        margin: 0;
+    }
 }

@@ -45,24 +45,43 @@ const Navigation: React.FC = () => {
     }
 
     const refreshIndicatorPosition = () => {
-        const nextPageBoundingRect = document.getElementById(targetPage);
-        if (!nextPageBoundingRect || nextPageBoundingRect.clientWidth === 0) {
-            return;
-        }
+        // Wait for fonts and layout to be fully ready before determining indicator position
+        const updatePosition = () => {
+            const nextPageBoundingRect = document.getElementById(targetPage);
+            if (!nextPageBoundingRect || nextPageBoundingRect.clientWidth === 0) {
+                return;
+            }
 
-        setIsVisible(false);
-        updateIndicatorPosition();
+            setIsVisible(false);
+            updateIndicatorPosition();
 
-        const ovalIndicator = document.querySelector('.oval-indicator') as HTMLElement;
-        if (ovalIndicator) {
-            const handleTransitionEnd = () => {
-                setIsVisible(true);
-                ovalIndicator.removeEventListener('transitionend', handleTransitionEnd);
-            };
-            ovalIndicator.addEventListener('transitionend', handleTransitionEnd);
+            const ovalIndicator = document.querySelector('.oval-indicator') as HTMLElement;
+            if (ovalIndicator) {
+                const handleTransitionEnd = () => {
+                    setIsVisible(true);
+                    ovalIndicator.removeEventListener('transitionend', handleTransitionEnd);
+                };
+                ovalIndicator.addEventListener('transitionend', handleTransitionEnd);
+            } else {
+                // Fallback in case element isn't found
+                setTimeout(() => setIsVisible(true), 500);
+            }
+        };
+
+        // Use multiple strategies to ensure accurate positioning
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(updatePosition);
+                });
+            });
         } else {
-            // Fallback in case element isn't found
-            setTimeout(() => setIsVisible(true), 500);
+            // Fallback for browsers without font loading API
+            setTimeout(() => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(updatePosition);
+                });
+            }, 50);
         }
     }
 

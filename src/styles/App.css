@@ -62,10 +62,12 @@
 html, body {
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
-  overflow-y: scroll;
+}
+.element::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
 }
 html {
+  overflow: auto;
   view-transition-name: none; /* Disable default flush */
   transition: opacity 0.3s ease;
   scrollbar-width: none;
@@ -120,4 +122,39 @@ p {
 	p {
 		font-size: 2rem;
 	}
+}
+
+/* PageTrack layout and animations */
+:root {
+  --page-duration: 520ms;
+  --page-ease: cubic-bezier(.22,.9,.31,1);
+}
+
+.page-track-viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.page-track {
+  display: flex;
+  flex-direction: row;
+  width: auto; /* flexible, items will define width */
+  transition: transform var(--page-duration) var(--page-ease);
+}
+
+.page-track.animating {
+  will-change: transform;
+}
+
+.page-track-item {
+  flex: 0 0 100vw; /* each page fills the viewport width */
+  min-width: 100vw;
+  box-sizing: border-box;
+  padding: 0 2rem;
+}
+
+/* When content inside a page moves, prefer transform-based animations */
+@media (prefers-reduced-motion: reduce) {
+  .page-track { transition: none !important; }
 }
