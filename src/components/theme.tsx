@@ -7,7 +7,6 @@ import Sludge from '../assets/themes/sludge.png'
 
 const Theme: React.FC = () => {
     const [theme, setTheme] = useState<string>('light');
-    const [isMenuVisible, setMenuVisible] = useState<boolean>(false);
 
     // On component mount, load the saved theme from localStorage
     useEffect(() => {
@@ -28,32 +27,14 @@ const Theme: React.FC = () => {
         localStorage.setItem('theme', newTheme);
     };
 
-    // Toggle the theme menu visibility
-    const toggleMenu: React.FC = () => {
-        setMenuVisible(prev => !prev);
-        return null;
-    };
-
     return(
         <div className="Theme">
-            <div id="theme-controls">
-                <div id="oval-background"></div>
-                <button id="themeToggle" onClick={toggleMenu}>
-                    <p>{isMenuVisible ? 'Themes ▲' : 'Themes ▼'}</p>
-                </button>
-                {isMenuVisible &&
-                    <div id="themeContainer">
-                        <img className={`theme-btn`} src={Footballpfp} alt="Rob Keys Face"
-                             onClick={() => changeTheme('sunset')}/>
-                        <img className="theme-btn" src={Nature}
-                             alt="Cartoon trees and flowers in a meadow" onClick={() => changeTheme('forest')}/>
-                        <img className="theme-btn" src={Sludge}
-                             alt="Black sludge leaking down the box" onClick={() => changeTheme('space')}/>
-                        <img className="theme-btn" src={Pink}
-                             alt="White princess tiara on a solid pink background"
-                             onClick={() => changeTheme('sunny')}/>
-                    </div>
-                }
+            <p> Select Theme: </p>
+            <div className="theme-btn-container">
+                <img className={`theme-btn`} src={Footballpfp} alt="Rob Keys Face" onClick={() => changeTheme('sunset')}/>
+                <img className="theme-btn" src={Nature} alt="Cartoon trees and flowers in a meadow" onClick={() => changeTheme('forest')}/>
+                <img className="theme-btn" src={Sludge} alt="Black sludge leaking down the box" onClick={() => changeTheme('space')}/>
+                <img className="theme-btn" src={Pink} alt="White princess tiara on a solid pink background" onClick={() => changeTheme('sunny')}/>
             </div>
         </div>
     );
