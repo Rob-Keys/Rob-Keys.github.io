@@ -1,5 +1,6 @@
 import '../styles/App.css'
 import '../styles/pages/Experience.css'
+import Footer from '../components/footer';
 
 function ExperiencePage() {
     return (
@@ -23,6 +24,7 @@ function ExperiencePage() {
                     skills and knowledge I have gained will be valuable in a professional setting and will enable me to
                     contribute effectively to any team.</p>
             </div>
+            <Footer />
         </div>
     );
 }

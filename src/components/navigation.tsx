@@ -1,7 +1,6 @@
 import React, {useEffect, useState} from 'react';
 
 import { Link, useLocation } from 'react-router-dom';
-import '../styles/components/Navigation.css'
 
 const Navigation: React.FC = () => {
     const location = useLocation();
@@ -34,7 +33,7 @@ const Navigation: React.FC = () => {
         setIndicatorStyle({
             width: `${nextPageBoundingRect.clientWidth * 1.5}px`,
             left: `${(-0.25) * nextPageBoundingRect.clientWidth}px`,
-            top: `${0.42 * nextPageBoundingRect.clientHeight}px`,
+            top: `${0.36 * nextPageBoundingRect.clientHeight}px`,
             transform: `translateX(${nextPageBoundingRect.offsetLeft}px)`
         });        
     };
@@ -107,13 +106,13 @@ const Navigation: React.FC = () => {
                     className={`oval-indicator ${isVisible ? 'visible' : ''}`}
                     style={indicatorStyle}
                 ></div>
-                <ul className="page-links">
-                    <li id="home"><Link to="/" className="nav-link" onClick={() => navigateToPage('home')}><p>Home</p></Link></li>
-                    <li id="experience"><Link to="/experience" className="nav-link" onClick={() => navigateToPage('experience')}><p>Experience</p></Link></li>
-                    <li id="portfolio"><Link to="/portfolio" className="nav-link" onClick={() => navigateToPage('portfolio')}><p>Portfolio</p></Link></li>
-                    <li id="minigames"><Link to="/game" className="nav-link" onClick={() => navigateToPage('minigames')}><p>Minigames</p></Link></li>
-                    <li id="contact"><Link to="/contact" className="nav-link" onClick={() => navigateToPage('contact')}><p>Contact</p></Link></li>
-                </ul>
+                <div className="page-links">
+                    <div id="home" className="page-link"><Link to="/" className="nav-link" onClick={() => navigateToPage('home')}><p>Home</p></Link></div>
+                    <div id="experience" className="page-link"><Link to="/experience" className="nav-link" onClick={() => navigateToPage('experience')}><p>Experience</p></Link></div>
+                    <div id="portfolio" className="page-link"><Link to="/portfolio" className="nav-link" onClick={() => navigateToPage('portfolio')}><p>Portfolio</p></Link></div>
+                    <div id="minigames" className="page-link"><Link to="/game" className="nav-link" onClick={() => navigateToPage('minigames')}><p>Minigames</p></Link></div>
+                    <div id="contact" className="page-link"><Link to="/contact" className="nav-link" onClick={() => navigateToPage('contact')}><p>Contact</p></Link></div>
+                </div>
             </nav>
         </div>
     );

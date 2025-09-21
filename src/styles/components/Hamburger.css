@@ -1,48 +1,39 @@
 .Logo_Hamburger {
+    /* Mobile hamburger toggle and positioned mobile menu only.
+       Desktop navigation rules live in Navigation.css. */
     .hamburger {
         display: none;
         rotate: 90deg;
+        cursor: pointer;
     }
+
     @media only screen and (max-width: 991px) {
         .hamburger {
             display: block;
             margin: 1rem 2rem 0 0;
         }
-    }
-    .page-links {
-        z-index: 10;
-        position: absolute;
-        list-style: none;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        font-family: Delius, serif;
-        right: 1.7rem;
-        top: 1rem;
+
+        /* Mobile menu: absolute, column layout and spacing. */
+        .mobile-menu .page-links {
+            z-index: 10;
+            position: absolute;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            font-family: Delius, serif;
+            right: 1.7rem;
+            top: 1rem;
+            background: transparent;
+        }
+
+        /* Align mobile menu links visually */
+        .mobile-menu .page-links .nav-link {
+            padding: 0.4rem 0.8rem;
+        }
     }
 
-    .page-links a {
-        text-decoration: none;
-        display: block; /*Makes entire link area clickable */
-        padding:  0;
-    }
-
-    .page-links a:hover {
-        text-decoration: underline;
-        transform: scale(1.05);
-    }
-    .page-links li {
-        flex: 1;
-        text-align: center;
-    }
-
-    .nav-link {
-        text-decoration: none;
-        color: var(--active-font-color);
-        position: relative;
-        z-index: 1;
-        transition: color 0.3s ease;
-    }
+    /* Visual oval backgrounds used by the mobile menu positioning. */
     .oval-background {
         background: var(--active-accent1);
         height: 2rem;
@@ -50,29 +41,10 @@
         z-index: -1;
         position: absolute;
     }
-    #oval-home {
-        width: 4.5rem;
-        right: 1.2rem;
-        top: 0.8rem;
-    }
-    #oval-experience {
-        width: 4.5rem;
-        right: 1.2rem;
-        top: 3.0rem;
-    }
-    #oval-portfolio {
-        width: 4.5rem;
-        right: 1.2rem;
-        top: 5.2rem;
-    }
-    #oval-minigames {
-        width: 4.5rem;
-        right: 1.2rem;
-        top: 7.4rem;
-    }
-    #oval-contact {
-        width: 4.5rem;
-        right: 1.2rem;
-        top: 9.6rem;
-    }
+
+    #oval-home { width: 4.5rem; right: 1.2rem; top: 0.8rem; }
+    #oval-experience { width: 4.5rem; right: 1.2rem; top: 3.0rem; }
+    #oval-portfolio { width: 4.5rem; right: 1.2rem; top: 5.2rem; }
+    #oval-minigames { width: 4.5rem; right: 1.2rem; top: 7.4rem; }
+    #oval-contact { width: 4.5rem; right: 1.2rem; top: 9.6rem; }
 }

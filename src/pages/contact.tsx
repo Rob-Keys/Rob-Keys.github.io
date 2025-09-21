@@ -1,5 +1,6 @@
 import '../styles/App.css'
 import '../styles/pages/Contact.css'
+import Footer from '../components/footer';
 
 function ContactPage() {
     return (
@@ -22,6 +23,7 @@ function ContactPage() {
                         <li><a href="https://virginiasports.com/player/rob-keys/" target="_blank"> My Player Page</a></li>
                     </ul>
                 </div>
+            <Footer />
             </div>
     );
 }

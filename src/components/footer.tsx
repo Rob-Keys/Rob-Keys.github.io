@@ -3,7 +3,9 @@ import '../styles/components/Footer.css'
 function Footer() {
     return (
         <div className="Footer">
-            <p>©2025 Rob Keys. ALL RIGHTS RESERVED</p>
+            <div className="Footer-inner">
+                <p>©2025 Rob Keys. ALL RIGHTS RESERVED</p>
+            </div>
         </div>
     );
 }

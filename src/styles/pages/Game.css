@@ -1,33 +1,182 @@
 .GamePage {
-    padding: 1rem;
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
 
-    .controls {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-bottom: 2.5vh;
-    }
-
-    #cellSize {
-        width: 4.2vw;
-        margin-right: 0.7vw;
-        padding: 0.35vw;
-    }
-
-    .canvas-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: fit-content;
-        margin: 1vh;
-    }
-
-    #gameCanvas {
-        border: 1px solid #000;
-        background: #fff;
-    }
-
-    .gameText {
+    .Title {
         text-align: center;
+        margin-bottom: 3rem;
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--active-font-color);
+            margin: 0;
+        }
+    }
+
+    .content {
+        max-width: 900px;
+        margin: 0 auto;
+
+        .gameText {
+            text-align: center;
+            margin-bottom: 2rem;
+
+            h2 {
+                font-size: 1.8rem;
+                font-weight: 600;
+                color: var(--active-font-color);
+                margin-bottom: 1rem;
+            }
+
+            p {
+                color: var(--active-font-color);
+                line-height: 1.6;
+                font-size: 1.1rem;
+                opacity: 0.9;
+                margin: 0 auto;
+                max-width: 600px;
+            }
+        }
+
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 2rem 0;
+            padding: 2rem;
+            
+            /* use shared card styles for the container visual chrome */
+            &.card {
+                background: rgba(var(--active-container-rgb, 255, 255, 255), 0.08);
+                border: 1px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
+                border-radius: 1rem;
+            }
+
+            #gameCanvas {
+                border: 2px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.3);
+                border-radius: 0.5rem;
+                background: var(--active-container);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            }
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin: 2rem 0;
+                padding: 1.5rem;
+                /* use card visuals */
+                &.card {
+                    background: rgba(var(--active-container-rgb, 255, 255, 255), 0.08);
+                    border: 1px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
+                    border-radius: 1rem;
+                }
+            flex-wrap: wrap;
+
+            label {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: var(--active-font-color);
+                font-weight: 500;
+
+                input[type="number"] {
+                    width: 80px;
+                    padding: 0.5rem;
+                    border: 1px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.3);
+                    border-radius: 0.375rem;
+                    background: var(--active-container);
+                    color: var(--active-font-color);
+                    font-size: 1rem;
+                    transition: all 0.3s ease;
+
+                    &:focus {
+                        outline: none;
+                        border-color: var(--active-accent1);
+                        box-shadow: 0 0 0 2px rgba(var(--active-accent1-rgb, 108, 183, 116), 0.2);
+                    }
+                }
+            }
+
+            button {
+                padding: 0.6rem 1.2rem;
+                border: 1px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.3);
+                border-radius: 0.5rem;
+                background: rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
+                color: var(--active-font-color);
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 0.95rem;
+
+                &:hover {
+                    background: rgba(var(--active-accent1-rgb, 108, 183, 116), 0.2);
+                    border-color: var(--active-accent1);
+                    transform: translateY(-2px);
+                }
+
+                &:active {
+                    transform: translateY(0);
+                }
+            }
+        }
+    }
+
+    @media (max-width: 768px) {
+        padding: 1rem;
+
+        .Title h1 {
+            font-size: 2rem;
+        }
+
+        .content {
+            .gameText {
+                margin-bottom: 1.5rem;
+
+                h2 {
+                    font-size: 1.5rem;
+                }
+
+                p {
+                    font-size: 1rem;
+                }
+            }
+
+            .canvas-container {
+                padding: 1rem;
+                margin: 1.5rem 0;
+
+                #gameCanvas {
+                    max-width: 100%;
+                    height: auto;
+                }
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 0.8rem;
+                padding: 1rem;
+
+                label {
+                    flex-direction: column;
+                    text-align: center;
+                    gap: 0.3rem;
+
+                    input[type="number"] {
+                        width: 100px;
+                    }
+                }
+
+                button {
+                    width: 100%;
+                    max-width: 200px;
+                    padding: 0.8rem;
+                }
+            }
+        }
     }
 }

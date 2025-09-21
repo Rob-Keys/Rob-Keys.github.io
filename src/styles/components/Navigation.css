@@ -3,15 +3,22 @@
         position: relative;
         display: flex;
         justify-content: center;
+        width: 100%;
     }
 
+    /* Desktop links container (now uses .page-link children instead of li) */
     .page-links {
-        list-style: none;
-        padding: 20px 0 0 0;
         display: flex;
         gap: 7vw;
+        align-items: center;
+        padding: 20px 0 0 0;
         flex: 0 1 auto;
         font-family: Rockwell, serif;
+    }
+
+    .page-links .page-link {
+        flex: 0 0 auto;
+        text-align: center;
     }
 
     .page-links a {
@@ -23,10 +30,6 @@
     .page-links a:hover {
         text-decoration: underline;
         transform: scale(1.05);
-    }
-    .page-links li {
-        flex: 1;
-        text-align: center;
     }
 
     .nav-link {
@@ -54,6 +57,7 @@
     }
 
     @media (max-width: 991px) {
+        /* Hide desktop links on mobile; hamburger will show mobile menu */
         .page-links {
             display: none;
         }

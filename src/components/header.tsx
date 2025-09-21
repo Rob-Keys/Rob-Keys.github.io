@@ -1,21 +1,16 @@
-import Navigation from './navigation.tsx'
-import Hamburger from './hamburger.tsx';
+import Navigation from './navigation'
+import Hamburger from './hamburger'
 import '../styles/components/Header.css'
 
 function Header(){
     return (
-        <div className="Header">
-            <ul>
-                <li>
-                </li>
-                <li>
-                    <Navigation/>
-                </li>
-                <li>
-                    <Hamburger/>
-                </li>
-            </ul>
-        </div>
+        <header className="Header">
+            {/* Centered navigation for desktop; hamburger for mobile */}
+            <div className="header-inner">
+                <Navigation />
+                <Hamburger />
+            </div>
+        </header>
     );
 }
 

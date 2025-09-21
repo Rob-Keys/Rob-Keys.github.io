@@ -29,7 +29,7 @@ const Theme: React.FC = () => {
 
     return(
         <div className="Theme">
-            <p> Select Theme: </p>
+            <p className="theme-label">Theme:</p>
             <div className="theme-btn-container">
                 <img className={`theme-btn`} src={Footballpfp} alt="Rob Keys Face" onClick={() => changeTheme('sunset')}/>
                 <img className="theme-btn" src={Nature} alt="Cartoon trees and flowers in a meadow" onClick={() => changeTheme('forest')}/>

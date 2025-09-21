@@ -1,4 +1,94 @@
 .ContactPage {
     position: relative;
-    z-index: 1;padding: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    .Title {
+        text-align: center;
+        margin-bottom: 3rem;
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--active-font-color);
+            margin: 0;
+        }
+    }
+
+    .content {
+        max-width: 800px;
+        margin: 0 auto;
+
+        h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--active-font-color);
+            margin: 2rem 0 1.5rem 0;
+            border-bottom: 2px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.2);
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            font-weight: 500;
+            color: var(--active-font-color);
+            margin: 1.5rem 0 1rem 0;
+            opacity: 0.9;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 1rem 0;
+
+            li {
+                margin: 0.8rem 0;
+                transition: all 0.3s ease;
+
+                &:hover {
+                    transform: translateY(-2px);
+                }
+
+                a {
+                    display: block;
+                    padding: 1rem 1.5rem;
+                    color: var(--active-font-color);
+                    text-decoration: none;
+                    font-weight: 500;
+                    transition: color 0.3s ease;
+
+                    &:hover {
+                        color: var(--active-accent1);
+                    }
+                }
+            }
+        }
+    }
+
+    @media (max-width: 768px) {
+        padding: 1rem;
+
+        .Title h1 {
+            font-size: 2rem;
+        }
+
+        .content {
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            h3 {
+                font-size: 1.2rem;
+            }
+
+            ul li {
+                margin: 0.6rem 0;
+
+                a {
+                    padding: 0.8rem 1rem;
+                    font-size: 0.95rem;
+                }
+            }
+        }
+    }
 }

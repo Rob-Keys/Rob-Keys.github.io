@@ -7,15 +7,7 @@
   }
 }
 
-:root{
-  --active-main: #93AE7E;
-  --active-secondary: #B1F2B0;
-  --active-accent1: #6CB774;
-  --active-accent2: #9BC999;
-  --active-accent3: #6E9E6E;
-  --active-font-color: white;
-}
-[data-theme="sunset"] {
+:root{ /* Sunset */
   --active-main: #ff6b6b;
   --active-secondary: #ffd93d;
   --active-accent1: #ff9a8b;
@@ -48,12 +40,13 @@
   --active-font-color: #000050;
 }
 [data-theme="forest"] {
-  --active-main: #93AE7E;
-  --active-secondary: #B1F2B0;
-  --active-accent1: #6CB774;
-  --active-accent2: #9BC999;
-  --active-accent3: #6E9E6E;
-  --active-font-color: #003000;
+  --active-main: #435E2E;
+  --active-secondary: #61A260;
+  --active-accent1: #1C6724;
+  --active-accent2: #4B7949;
+  --active-accent3: #1E4E1E;
+  --active-container: #61A260;
+  --active-font-color: #CCFFCC;
 }
 
 .Gradient {
@@ -68,36 +61,66 @@
 }
 
 .Theme{
-    p{
-        margin: 0;
+    .theme-label{
+        margin: 0 0 0.8rem 0;
         text-align: center;
+        font-size: 0.9rem;
+        color: var(--active-font-color);
+        opacity: 0.7;
+        font-weight: 500;
     }
-    
+
     .theme-btn-container{
         display: flex;
-        flex-direction: row;
-        background-color: var(--active-accent1);
+        flex-direction: column;
+        background: rgba(var(--active-accent1-rgb, 108, 183, 116), 0.12);
+        border: 1px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
         border-radius: 1rem;
-        padding: 0 0 0.7rem 1rem;
-        margin: 0 auto 5rem auto;
+        padding: 0.8rem;
+        margin: 0;
         width: fit-content;
+        backdrop-filter: blur(5px);
     }
     
     /* Individual theme buttons */
     .theme-btn {
-        border-radius: 40px;
+        border-radius: 50%;
         cursor: pointer;
-        width: 2rem;
-        height: auto;
-        border-color: black;
-        border-style: solid;
-        border-width: 0.2rem;
-        margin: 0.5rem 1rem 0 0;
-        will-change: top, width, height;
+        width: 2.2rem;
+        height: 2.2rem;
+        object-fit: cover;
+        border: 2px solid rgba(var(--active-font-color-rgb, 0, 0, 0), 0.2);
+        margin: 0 0 0.8rem 0;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        will-change: transform, border-color, box-shadow;
+    }
+
+    .theme-btn:last-child {
+        margin-bottom: 0;
     }
 
     .theme-btn:hover {
-        transition: transform 0.2s ease-in-out;
-        transform: scale(125%);
+        transform: scale(1.1);
+        border-color: rgba(var(--active-font-color-rgb, 0, 0, 0), 0.4);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Mobile responsive styles */
+    @media (max-width: 768px) {
+        .theme-btn-container{
+            flex-direction: row;
+            padding: 0.8rem 1rem;
+            margin: 0.8rem auto 3rem auto;
+        }
+
+        .theme-btn {
+            margin: 0 0.8rem 0 0;
+        }
+
+        .theme-btn:last-child {
+            margin-right: 0;
+            margin-bottom: 0;
+        }
     }
 }

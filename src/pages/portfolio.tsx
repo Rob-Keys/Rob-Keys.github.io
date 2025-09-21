@@ -1,5 +1,6 @@
 import '../styles/App.css'
 import '../styles/pages/Portfolio.css'
+import Footer from '../components/footer';
 
 function PortfolioPage(){
     return (
@@ -15,6 +16,7 @@ function PortfolioPage(){
                     <h3>The project I am working on right now</h3>
                     <p> This website!</p>
                 </div>
+            <Footer />
             </div>
     );
 }

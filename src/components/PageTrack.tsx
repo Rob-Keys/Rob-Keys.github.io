@@ -23,6 +23,7 @@ interface PageTrackProps {
 const PageTrack: React.FC<PageTrackProps> = ({ children }) => {
   const location = useLocation();
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const [currentIndex, setCurrentIndex] = useState(() => pageOrder.indexOf(getPageKeyFromPath(location.pathname)));
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -38,8 +39,36 @@ const PageTrack: React.FC<PageTrackProps> = ({ children }) => {
     return () => clearTimeout(handle);
   }, [location.pathname]);
 
+  // Update viewport height to match the active page so the outer container
+  // (Gradient) isn't forced to the height of the tallest page in the track.
+  useEffect(() => {
+    const updateViewportHeight = () => {
+      if (!viewportRef.current || !trackRef.current) return;
+      const active = trackRef.current.querySelectorAll('.page-track-item')[currentIndex] as HTMLElement | undefined;
+      if (!active) return;
+      const h = active.offsetHeight;
+      viewportRef.current.style.height = `${h}px`;
+    }
+
+    // Initial set
+    updateViewportHeight();
+
+    // Observe size changes inside the active page
+    const ro = new ResizeObserver(() => updateViewportHeight());
+    // observe all page-track-items; the callback will pick the active one
+    trackRef.current?.querySelectorAll('.page-track-item').forEach(el => ro.observe(el as Element));
+
+    // update on window resize too
+    window.addEventListener('resize', updateViewportHeight);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateViewportHeight);
+    }
+  }, [currentIndex]);
+
   return (
-    <div className="page-track-viewport">
+  <div ref={viewportRef} className="page-track-viewport">
       <div
         ref={trackRef}
         className={`page-track ${isAnimating ? 'animating' : ''}`}

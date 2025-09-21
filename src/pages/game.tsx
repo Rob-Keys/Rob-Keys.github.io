@@ -1,5 +1,6 @@
 import '../styles/App.css'
 import "../styles/pages/Game.css"
+import Footer from '../components/footer';
 
 function GamePage() {
     return (
@@ -25,6 +26,7 @@ function GamePage() {
                     </div>
                     <script src="/src/js/gameoflife.js" defer></script>
                 </div>
+            <Footer />
             </div>
     );
 }

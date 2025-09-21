@@ -4,7 +4,6 @@ import Experience from './pages/experience.tsx';
 import Portfolio from './pages/portfolio.tsx'
 import Game from './pages/game.tsx';
 import Contact from './pages/contact.tsx';
-import Footer from './components/footer';
 import PageTrack from './components/PageTrack';
 import './styles/App.css'
 
@@ -25,8 +24,6 @@ function App() {
         <Game />
         <Contact />
       </PageTrack>
-
-      <Footer />
     </div>
   )
 }

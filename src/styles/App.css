@@ -21,36 +21,41 @@ body {
 }
 
 h1 {
-	font-size: 6rem;
+	font-size: 5rem;
 }
 h2 {
 	font-size: 3rem;
 }
 h3 {
-	font-size: 2rem;
+	font-size: 2.5rem;
 }
 h4 {
-	font-size: 1.5rem;
-}
-p {
 	font-size: 2rem;
 }
+p {
+	font-size: 1.5rem;
+}
 @media (max-width: 991px) {
-	h1 {
-		font-size: 5rem;
-	}
 	h2 {
 		font-size: 4rem;
 	}
 	h3 {
 		font-size: 3rem;
 	}
-	h4 {
-		font-size: 2rem;
-	}
 	p {
 		font-size: 2rem;
 	}
+}
+
+/* Reusable card utility used by multiple pages (keeps visuals consistent) */
+.card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
+  border-radius: 1rem;
+  padding: 1.2rem;
+}
+.card:hover{
+  background: rgba(255,255,255,0.1) !important;
 }
 
 /* PageTrack layout and animations */
@@ -63,12 +68,13 @@ p {
   position: relative;
   width: 100%;
   overflow: hidden;
+  transition: height 280ms ease; /* animate when viewport height changes to active page height */
 }
 
 .page-track {
   display: flex;
   flex-direction: row;
-  width: auto; /* flexible, items will define width */
+  align-items: flex-start; /* prevent children from stretching to the tallest page (fix page height inheritance) */
   transition: transform var(--page-duration) var(--page-ease);
 }
 
@@ -77,7 +83,6 @@ p {
 }
 
 .page-track-item {
-  flex: 0 0 100vw; /* each page fills the viewport width */
   min-width: 100vw;
   box-sizing: border-box;
   padding: 0 2rem;
