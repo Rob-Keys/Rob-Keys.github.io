@@ -6,12 +6,7 @@ import { useState } from 'react'
 import { useFadeInOnScroll } from '../App'
 
 function HomePage() {
-    const [expandedDriveItem, setExpandedDriveItem] = useState<number | null>(0)
     const [expandedBringItem, setExpandedBringItem] = useState<number | null>(0)
-
-    const toggleDriveItem = (index: number) => {
-        setExpandedDriveItem(expandedDriveItem === index ? null : index)
-    }
 
     const toggleBringItem = (index: number) => {
         setExpandedBringItem(expandedBringItem === index ? null : index)
