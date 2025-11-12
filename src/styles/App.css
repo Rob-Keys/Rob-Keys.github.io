@@ -32,27 +32,31 @@ h3 {
 h4 {
 	font-size: 2rem;
 }
-p {
+h5 {
 	font-size: 1.5rem;
 }
+p {
+	font-size: 1rem;
+}
 @media (max-width: 991px) {
+  h1 {
+    font-size: 5rem
+  }
 	h2 {
 		font-size: 4rem;
 	}
 	h3 {
 		font-size: 3rem;
 	}
+  h4 {
+    font-size: 2.5rem;
+  }
+  h5 {
+    font-size: 2rem;
+  }
 	p {
-		font-size: 2rem;
+		font-size: 1.5rem;
 	}
-}
-
-/* Reusable card utility used by multiple pages (keeps visuals consistent) */
-.card {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
-  border-radius: 1rem;
-  padding: 1.2rem;
 }
 
 /* PageTrack layout and animations */
@@ -90,9 +94,49 @@ p {
   .page-track { transition: none !important; }
 }
 
+/* End pagetrack */
+/* Begin reusable designs */
+
 .bubble-container {
   color: var(--active-font-color);
   background: var(--active-container);
   border-radius: 50px;
   box-shadow: 0 12px 20px rgba(0, 0, 0, 0.2);
+}
+.dark{
+  color: var(--active-container);
+  background: var(--active-font-color);
+}
+
+/* Responsive design for modern feel */
+.fade-in-up {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 1s ease, transform 1s ease;
+}
+.fade-in-right {
+  opacity: 0;
+  transform: translateX(-30px);
+  transition: opacity 1s ease, transform 1s ease;
+}
+.fade-in-left {
+  opacity: 0;
+  transform: translateX(30px);
+  transition: opacity 1s ease, transform 1s ease;
+}
+
+.fade-in-up.fade-visible, .fade-in-right.fade-visible, .fade-in-left.fade-visible {
+  opacity: 1;
+  transform: translateY(0) translateX(0);
+}
+@media (max-width: 991px) {
+	.fade-in-right, .fade-in-left {
+		opacity: 0;
+  		transform: translateY(30px);
+  		transition: opacity 1s ease, transform 1s ease;
+	}
+	.fade-in-right.fade-visible, .fade-in-left.fade-visible {
+  		opacity: 1;
+  		transform: translateY(0);
+	}
 }

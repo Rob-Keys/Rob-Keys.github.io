@@ -6,6 +6,37 @@ import Game from './pages/game.tsx';
 import Contact from './pages/contact.tsx';
 import PageTrack from './components/PageTrack';
 import './styles/App.css'
+import { useEffect } from 'react';
+
+export function useFadeInOnScroll() {
+  useEffect(() => {
+    const handleLoad = () => {
+      const elements = document.querySelectorAll('.fade-in-up, .fade-in-right, .fade-in-left');
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('fade-visible');
+          }
+        });
+      }, { threshold: 0.2 });
+
+      elements.forEach(el => observer.observe(el));
+    };
+
+    // If already loaded, run immediately
+    if (document.readyState === 'complete') {
+      handleLoad();
+    } else {
+      // Otherwise wait for load
+      window.addEventListener('load', handleLoad);
+    }
+
+    return () => {
+      window.removeEventListener('load', handleLoad);
+    };
+  }, []);
+}
 
 function App() {
   // Render all pages side-by-side inside PageTrack. The PageTrack will read the location
