@@ -5,9 +5,10 @@ import Footer from '../components/footer';
 function ExperiencePage() {
     return (
         <div className="ExperiencePage">
-            <div className="content">
+            <div className="content bubble-container">
                 <h1>Coursework</h1>
                 <h3>A summary of the coursework I've taken at the University of Virginia</h3>
+
                 <p>I am currently pursuing a degree in Computer Science at the University of Virginia. Throughout my
                     academic journey, I have taken a variety of courses that have equipped me with a strong foundation
                     in both theoretical and practical aspects of computer science and mathematics. Some of the key

@@ -5,10 +5,7 @@ import Footer from '../components/footer';
 function GamePage() {
     return (
         <div className="GamePage">
-                <div className="Title">
-                    <h1>Game of Life</h1>
-                </div>
-                <div className="content">
+                <div className="content bubble-container">
                     <div className="gameText">
                         <h2>Game of Life</h2>
                         <p>A simple implementation of Conways Game Of Life. Cell's are alive (black) or dead (white), a cell

@@ -102,7 +102,7 @@ const Header: React.FC = () => {
                 <div className="Navigation">
                     <nav>
                         <div
-                            className={`oval-indicator ${isVisible ? 'visible' : ''}`}
+                            className={`oval-indicator bubble-container ${isVisible ? 'visible' : ''}`}
                             style={indicatorStyle}
                         ></div>
                         <div className="page-links">

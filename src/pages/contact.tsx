@@ -5,11 +5,7 @@ import Footer from '../components/footer';
 function ContactPage() {
     return (
         <div className="ContactPage">
-
-                <div className="Title">
-                    <h1>Contact Information</h1>
-                </div>
-                <div className="content">
+                <div className="content bubble-container">
                     <h2>Contact info</h2>
                     <h3>Work contact info</h3>
                     <ul>

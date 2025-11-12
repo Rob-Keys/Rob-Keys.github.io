@@ -31,10 +31,10 @@ const Theme: React.FC = () => {
         <div className="Theme">
             <p className="theme-label">Theme:</p>
             <div className="theme-btn-container">
-                <img className={`theme-btn`} src={Footballpfp} alt="Rob Keys Face" onClick={() => changeTheme('sunset')}/>
-                <img className="theme-btn" src={Nature} alt="Cartoon trees and flowers in a meadow" onClick={() => changeTheme('forest')}/>
-                <img className="theme-btn" src={Sludge} alt="Black sludge leaking down the box" onClick={() => changeTheme('space')}/>
-                <img className="theme-btn" src={Pink} alt="White princess tiara on a solid pink background" onClick={() => changeTheme('sunny')}/>
+                <img className={`theme-btn`} src={Footballpfp} alt="Rob Keys Face" onClick={() => changeTheme('mint')}/>
+                <img className="theme-btn" src={Nature} alt="Cartoon trees and flowers in a meadow" onClick={() => changeTheme('spearmint')}/>
+                <img className="theme-btn" src={Sludge} alt="Black sludge leaking down the box" onClick={() => changeTheme('ocean')}/>
+                <img className="theme-btn" src={Pink} alt="White princess tiara on a solid pink background" onClick={() => changeTheme('space')}/>
             </div>
         </div>
     );

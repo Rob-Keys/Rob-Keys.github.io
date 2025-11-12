@@ -19,6 +19,8 @@
 
         .hero-text {
             text-align: center;
+            padding: 3rem 5rem;
+            width: 50%;
         }
 
         .Theme {
@@ -68,11 +70,8 @@
 
             &:hover {
                 transform: translateY(-4px);
-                background: rgba(var(--active-secondary-rgb, 177, 242, 176), 0.05);
-                border-color: rgba(var(--active-accent1-rgb, 108, 183, 116), 0.2);
                 box-shadow: 0 8px 20px rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
                 text-decoration: none;
-                color: inherit;
 
                 .card-action {
                     opacity: 1;
@@ -88,18 +87,15 @@
             h3 {
                 font-size: 1.4rem;
                 font-weight: 600;
-                color: var(--active-font-color);
                 margin-bottom: 1rem;
             }
 
             p {
-                color: var(--active-font-color);
                 line-height: 1.5;
                 opacity: 0.9;
                 margin-bottom: 1.5rem;
 
                 strong {
-                    color: var(--active-font-color);
                     font-weight: 600;
                     opacity: 1;
                 }
@@ -112,15 +108,14 @@
                 transform: translateX(-50%);
                 font-size: 0.9rem;
                 font-weight: 600;
-                color: var(--active-accent1);
                 opacity: 0;
                 transition: all 0.3s ease;
-                background: rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
                 padding: 0.5rem 1rem;
                 border-radius: 20px;
-                border: 1px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.3);
                 backdrop-filter: blur(5px);
                 white-space: nowrap;
+                color: var(--active-container);
+                background: var(--active-font-color);
             }
         }
     }
@@ -129,6 +124,12 @@
     .about-section {
         margin: 4rem 0;
         padding: 2rem 0;
+
+        .motives, .skills {
+            padding: 1rem 1rem 0 1rem;
+            background: var(--active-container);
+            border-radius: 50px;
+        }
 
         h2 {
             text-align: center;

@@ -54,14 +54,11 @@ p {
   border-radius: 1rem;
   padding: 1.2rem;
 }
-.card:hover{
-  background: rgba(255,255,255,0.1) !important;
-}
 
 /* PageTrack layout and animations */
 :root {
-  --page-duration: 520ms;
-  --page-ease: cubic-bezier(.22,.9,.31,1);
+  --page-duration: 1000ms;
+  --page-ease: cubic-bezier(.3,.01,.15,1);
 }
 
 .page-track-viewport {
@@ -91,4 +88,11 @@ p {
 /* When content inside a page moves, prefer transform-based animations */
 @media (prefers-reduced-motion: reduce) {
   .page-track { transition: none !important; }
+}
+
+.bubble-container {
+  color: var(--active-font-color);
+  background: var(--active-container);
+  border-radius: 50px;
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.2);
 }
