@@ -67,6 +67,28 @@ const PageTrack: React.FC<PageTrackProps> = ({ children }) => {
     }
   }, [currentIndex]);
 
+  useEffect(() => {
+    const elements = document.querySelectorAll('.fade-in-up, .fade-in-right, .fade-in-left');
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          // Only animate if element is on the currently active page
+          const parentPage = entry.target.closest('.page-track-item');
+          const pageIndex = parentPage?.getAttribute('data-index');
+          
+          if (pageIndex && parseInt(pageIndex) === currentIndex) {
+            entry.target.classList.add('fade-visible');
+          }
+        }
+      });
+    }, { threshold: 0.2 });
+
+    elements.forEach(el => observer.observe(el));
+    
+    return () => observer.disconnect();
+  }, [currentIndex]); // Re-run when page changes
+
   return (
   <div ref={viewportRef} className="page-track-viewport">
       <div

@@ -33,7 +33,7 @@ const Header: React.FC = () => {
         setIndicatorStyle({
             width: `${nextPageBoundingRect.clientWidth * 1.5}px`,
             left: `${(-0.25) * nextPageBoundingRect.clientWidth}px`,
-            top: `${0.36 * nextPageBoundingRect.clientHeight}px`,
+            top: `${0.25 * nextPageBoundingRect.clientHeight}px`,
             transform: `translateX(${nextPageBoundingRect.offsetLeft}px)`
         });        
     };

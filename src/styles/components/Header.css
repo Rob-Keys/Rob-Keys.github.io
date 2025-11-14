@@ -116,10 +116,4 @@
             padding: 0.4rem 0.8rem;
         }
     }
-
-    #oval-home { width: 4.5rem; right: 1.2rem; top: 0.8rem; }
-    #oval-experience { width: 4.5rem; right: 1.2rem; top: 3.0rem; }
-    #oval-portfolio { width: 4.5rem; right: 1.2rem; top: 5.2rem; }
-    #oval-minigames { width: 4.5rem; right: 1.2rem; top: 7.4rem; }
-    #oval-contact { width: 4.5rem; right: 1.2rem; top: 9.6rem; }
 }

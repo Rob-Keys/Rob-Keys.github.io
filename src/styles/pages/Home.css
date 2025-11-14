@@ -35,30 +35,61 @@
 
         .quick {
             text-decoration: none;
+            transition: opacity 1.5s ease, transform 1.5s ease, height 1s ease; /* smooth container expansion */
+            
             h3 {
                 padding: 0 2rem;
                 margin: 2rem 0 1rem 0;
             }
-            .card-action{
+            
+            .resume-button {
+                display: flex;
+                justify-content: space-around;
+                opacity: 0;
+                max-height: 0;
+                transform: translateY(-10px);
+                transition: opacity 0.5s ease, max-height 0.5s ease, transform 0.5s ease;
+                overflow: hidden;
+            }
+
+            .resume-button.visible {
+                opacity: 1;
+                max-height: 500px;
+                transform: translateY(0);
+            }
+            
+            .card-action {
                 margin: 0 auto 0.5rem auto;
-                width: 40%;
+                width: 30%;
                 padding: 1rem;
+                text-align: center;
+            }
+        }
+        .quick:hover {
+            .resume-button {
+                max-height: 200;
             }
         }
 
-        .Theme{
-            .theme-label{
-                padding: 1rem 1rem 0 2rem;
+        .Theme {
+            display: flex;
+            flex-direction: column;
+            height: 100%; /* Fill the grid cell */
+            h3{
+                padding: 0.5rem 0 0 0;
+            }
+            
+            .theme-label {
                 margin: 1.5rem 0 0.5rem 0;
                 text-align: center;
             }
 
-            .theme-btn-container{
+            .theme-btn-container {
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
                 gap: 1rem;
-                margin: 0 0 0.5rem 0;
-                padding: 0.5rem;
+                flex: 1; /* Expand to fill remaining space */
+                align-content: stretch; /* Stretch grid items vertically */
             }
 
             .theme-pair {
@@ -67,32 +98,42 @@
                 align-items: center;
                 justify-content: center;
                 gap: 0.5rem;
-                margin: 0 auto;
-                width: 100%;
                 cursor: pointer;
                 transition: transform 0.3s ease;
+            }          
+            .theme-pair:hover {
+                transform: scale(1.05);
             }
-            .theme-pair:hover{
-                transform: scale(1.1);
+            #uva {
+                margin: 1rem 0 0 1rem;
+            }
+            #mint {
+                margin: 1rem 1rem 0 0;
+            }
+            #spearmint {
+                margin: 0 0 1rem 1rem;
+            }
+            #ocean {
+                margin: 0 1rem 1rem 0;
             }
 
-            /* Individual theme buttons */
             .theme-btn {
                 border-radius: 50%;
-                width: 30%;
-                height: auto;
+                width: 50px;
+                height: 50px;
+                flex-shrink: 0;
                 object-fit: cover;
                 border: 2px solid rgba(var(--active-font-color-rgb, 0, 0, 0), 0.2);
-                margin: auto 0 auto 0;
             }
         }
         .skills{
             h3{
-                padding: 2rem 0 0 2rem;
+                margin: 2rem 0 1rem 2rem;
             }
             p {
-                padding: 0 0 0 2rem;
+                margin: 0 0 0 2rem;
             }
+            padding-bottom: 0.5rem;
         }
     }
 
@@ -101,7 +142,7 @@
         margin: 2rem 0;
         padding: 1rem 0;
 
-        h2 {
+        h3 {
             text-align: center;
             margin-bottom: 3rem;
         }
@@ -114,7 +155,7 @@
 
             .expandable-bar {
                 overflow: hidden;
-                transition: all 0.3s ease;
+                transition: opacity 1.5s ease, transform 1.5s ease, height 1s ease; /* smooth container expansion */
 
                 &:hover {
                     background: rgba(var(--active-secondary-rgb, 177, 242, 176), 0.05);
@@ -147,7 +188,7 @@
 
                     .expand-arrow {
                         font-weight: bold;
-                        color: var(--active-accent1);
+                        color: var(--active-font-color);
                         margin-left: 1rem;
                         transition: transform 0.2s ease;
                     }
@@ -161,7 +202,6 @@
 
                     p {
                         color: var(--active-font-color);
-                        line-height: 1.6;
                         opacity: 0.9;
                         margin: 0;
                         padding: 0 2rem 1.5rem 4.5rem;
@@ -170,7 +210,7 @@
 
                 &.expanded {
                     .bar-content {
-                        max-height: 200px;
+                        max-height: 1000px;
                         padding-top: 0.5rem;
                     }
 
@@ -193,14 +233,33 @@
             display: flex;
             flex-direction: column;
             .intro {
-                padding: 1rem;
+                padding: 2rem 1rem 1.5rem 1rem;
+            }
+            .quick {
+                padding: 1rem 0.5rem;
+            }
+            .skills {
+                h3 {
+                    margin: 2rem 0 1rem 1rem;
+                }
+                p {
+                    margin: 0 1rem 1rem 1rem;
+                }
+                padding-bottom: 1rem;
             }
             .Theme {
                 .theme-btn-container{
                     display: flex;
                     flex-direction: column;
+                    margin-bottom: 1rem;
+                }
+                #uva, #mint, #spearmint, #ocean {
+                    margin: 0 1rem;
                 }
             }
+        }
+        .expandable-bars {
+            overflow: visible;
         }
     }
 }
