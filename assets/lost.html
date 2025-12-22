@@ -1,8 +1,283 @@
 <!DOCTYPE html>
-<html>
-  <head>
-  </head>
-  <body>
-    <h1>Test</h1>
-  </body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You for Finding My Item!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .language-selector {
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .lang-btn {
+            background: #f0f0f0;
+            border: 2px solid transparent;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .lang-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .lang-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .profile-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin: 20px auto;
+            border: 5px solid #667eea;
+            object-fit: cover;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+            line-height: 1.4;
+        }
+
+        .message {
+            color: #666;
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .contact-info {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .contact-title {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .contact-item {
+            margin: 12px 0;
+            font-size: 16px;
+        }
+
+        .contact-item a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .contact-item a:hover {
+            text-decoration: underline;
+        }
+
+        .icon {
+            margin-right: 8px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .message {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="language-selector" id="languageSelector"></div>
+
+        <div class="profile-image">👤</div>
+
+        <h1 id="title">Thank You So Much!</h1>
+
+        <p class="message" id="message">
+            I am incredibly grateful that you found my item. Your kindness means the world to me.
+            Please contact me using the information below so we can arrange its return.
+        </p>
+
+        <div class="contact-info">
+            <div class="contact-title" id="contactTitle">Contact Information</div>
+            <div class="contact-item">
+                <span class="icon">📧</span>
+                <a href="mailto:rob_keys@outlook.com">rob_keys@outlook.com</a>
+            </div>
+            <div class="contact-item">
+                <span class="icon">📱</span>
+                <a href="tel:+17033458437">703-345-8437</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            en: {
+                title: "Thank You So Much!",
+                message: "I am incredibly grateful that you found my item. Your kindness means the world to me. Please contact me using the information below so we can arrange its return.",
+                contactTitle: "Contact Information"
+            },
+            es: {
+                title: "¡Muchas Gracias!",
+                message: "Estoy increíblemente agradecido de que hayas encontrado mi artículo. Tu amabilidad significa mucho para mí. Por favor contáctame usando la información a continuación para que podamos organizar su devolución.",
+                contactTitle: "Información de Contacto"
+            },
+            fr: {
+                title: "Merci Beaucoup!",
+                message: "Je suis incroyablement reconnaissant que vous ayez trouvé mon objet. Votre gentillesse compte énormément pour moi. Veuillez me contacter en utilisant les informations ci-dessous afin que nous puissions organiser son retour.",
+                contactTitle: "Coordonnées"
+            },
+            de: {
+                title: "Vielen Dank!",
+                message: "Ich bin unglaublich dankbar, dass Sie meinen Gegenstand gefunden haben. Ihre Freundlichkeit bedeutet mir sehr viel. Bitte kontaktieren Sie mich über die unten stehenden Informationen, damit wir die Rückgabe arrangieren können.",
+                contactTitle: "Kontaktinformationen"
+            },
+            zh: {
+                title: "非常感谢！",
+                message: "我非常感激您找到了我的物品。您的善意对我意义重大。请使用以下信息与我联系，以便我们安排归还事宜。",
+                contactTitle: "联系方式"
+            },
+            ja: {
+                title: "本当にありがとうございます！",
+                message: "私の物を見つけていただき、心から感謝しています。あなたの優しさは私にとって非常に大切です。返却の手配ができるよう、以下の情報でご連絡ください。",
+                contactTitle: "連絡先"
+            },
+            ar: {
+                title: "!شكراً جزيلاً",
+                message: "أنا ممتن للغاية لأنك وجدت غرضي. لطفك يعني لي الكثير. يرجى الاتصال بي باستخدام المعلومات أدناه حتى نتمكن من ترتيب إعادته.",
+                contactTitle: "معلومات الاتصال"
+            },
+            ru: {
+                title: "Огромное Спасибо!",
+                message: "Я невероятно благодарен, что вы нашли мою вещь. Ваша доброта много значит для меня. Пожалуйста, свяжитесь со мной, используя информацию ниже, чтобы мы могли договориться о возврате.",
+                contactTitle: "Контактная Информация"
+            },
+            pt: {
+                title: "Muito Obrigado!",
+                message: "Estou incrivelmente grato por você ter encontrado meu item. Sua gentileza significa muito para mim. Por favor, entre em contato comigo usando as informações abaixo para que possamos organizar sua devolução.",
+                contactTitle: "Informações de Contato"
+            },
+            it: {
+                title: "Grazie Mille!",
+                message: "Sono incredibilmente grato che tu abbia trovato il mio oggetto. La tua gentilezza significa molto per me. Per favore contattami usando le informazioni qui sotto così possiamo organizzare la restituzione.",
+                contactTitle: "Informazioni di Contatto"
+            },
+            ko: {
+                title: "정말 감사합니다!",
+                message: "제 물건을 찾아주셔서 정말 감사합니다. 당신의 친절이 저에게 큰 의미가 있습니다. 아래 정보로 연락주시면 반환을 준비하겠습니다.",
+                contactTitle: "연락처 정보"
+            },
+            hi: {
+                title: "बहुत धन्यवाद!",
+                message: "मैं अविश्वसनीय रूप से आभारी हूं कि आपने मेरी वस्तु पाई। आपकी दयालुता मेरे लिए बहुत मायने रखती है। कृपया नीचे दी गई जानकारी का उपयोग करके मुझसे संपर्क करें ताकि हम इसकी वापसी की व्यवस्था कर सकें।",
+                contactTitle: "संपर्क जानकारी"
+            }
+        };
+
+        const languages = [
+            { code: 'en', name: 'English' },
+            { code: 'es', name: 'Español' },
+            { code: 'fr', name: 'Français' },
+            { code: 'de', name: 'Deutsch' },
+            { code: 'zh', name: '中文' },
+            { code: 'ja', name: '日本語' },
+            { code: 'ar', name: 'العربية' },
+            { code: 'ru', name: 'Русский' },
+            { code: 'pt', name: 'Português' },
+            { code: 'it', name: 'Italiano' },
+            { code: 'ko', name: '한국어' },
+            { code: 'hi', name: 'हिन्दी' }
+        ];
+
+        let currentLang = 'en';
+
+        function createLanguageButtons() {
+            const selector = document.getElementById('languageSelector');
+            languages.forEach(lang => {
+                const btn = document.createElement('button');
+                btn.className = 'lang-btn';
+                btn.textContent = lang.name;
+                btn.onclick = () => changeLanguage(lang.code);
+                if (lang.code === currentLang) {
+                    btn.classList.add('active');
+                }
+                selector.appendChild(btn);
+            });
+        }
+
+        function changeLanguage(langCode) {
+            currentLang = langCode;
+            const t = translations[langCode];
+
+            document.getElementById('title').textContent = t.title;
+            document.getElementById('message').textContent = t.message;
+            document.getElementById('contactTitle').textContent = t.contactTitle;
+
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Set RTL for Arabic
+            if (langCode === 'ar') {
+                document.body.style.direction = 'rtl';
+            } else {
+                document.body.style.direction = 'ltr';
+            }
+        }
+
+        createLanguageButtons();
+    </script>
+</body>
 </html>
