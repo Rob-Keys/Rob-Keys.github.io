@@ -7,46 +7,50 @@
   }
 }
 
-:root{ /* Sunset */
-  --active-main: #ff6b6b;
-  --active-secondary: #ffd93d;
-  --active-accent1: #ff9a8b;
-  --active-accent2: #ffb347;
-  --active-accent3: #ff4757;
-  --active-font-color: black;
+:root{ /* UVA default */
+  --active-main: #232D4B;
+  --active-secondary: #E57200;
+  --active-accent1: #C8CBD2;
+  --active-accent2: #F9DCBF;
+  --active-accent3: #434D6B;
+  --active-container: #E8EBF2;
+  --active-font-color: #030D2B;
 }
-[data-theme="space"] {
-  --active-main: #0f0c29;
-  --active-secondary: #24243e;
-  --active-accent1: #302b63;
-  --active-accent2: #16162e;
-  --active-accent3: #473b7b;
-  --active-font-color: #A9C;
+[data-theme="mint"] {
+  --active-main: #EEEEEE;
+  --active-secondary: #CCCCFF;
+  --active-accent1: #BBBBFF;
+  --active-accent2: #AAAAFF;
+  --active-accent3: #9999FF;
+  --active-container: #DDDDFF;
+  --active-font-color: #000044;
 }
-[data-theme="sunny"] {
-  --active-main: #FFD700;
-  --active-secondary: #AD8C21;
-  --active-accent1: #E5A823;
-  --active-accent2: #B8743A;
-  --active-accent3: #F7E1A0;
-  --active-font-color: #402000;
+[data-theme="spearmint"] {
+  --active-main: #EEEEEE;
+  --active-secondary: #CCFFCC;
+  --active-accent1: #BBFFBB;
+  --active-accent2: #AAFFAA;
+  --active-accent3: #99FF99;
+  --active-container: #FFFFFF;
+  --active-font-color: #116611;
+}
+[data-theme="uva"] {
+  --active-main: #232D4B;
+  --active-secondary: #E57200;
+  --active-accent1: #C8CBD2;
+  --active-accent2: #F9DCBF;
+  --active-accent3: #434D6B;
+  --active-container: #E8EBF2;
+  --active-font-color: #030D2B;
 }
 [data-theme="ocean"] {
-  --active-main: #00d2ff;
-  --active-secondary: #3a7bd5;
-  --active-accent1: #48b1bf;
-  --active-accent2: #06beb6;
-  --active-accent3: #2c3e50;
-  --active-font-color: #000050;
-}
-[data-theme="forest"] {
-  --active-main: #435E2E;
-  --active-secondary: #61A260;
-  --active-accent1: #1C6724;
-  --active-accent2: #4B7949;
-  --active-accent3: #1E4E1E;
-  --active-container: #61A260;
-  --active-font-color: #CCFFCC;
+  --active-main: #002266;
+  --active-secondary: #001144;
+  --active-accent1: #002244;
+  --active-accent2: #111144;
+  --active-accent3: #000033;
+  --active-container: #000000;
+  --active-font-color: #CCCCFF;
 }
 
 .Gradient {
@@ -58,176 +62,4 @@
 @keyframes flowingGradient {
   0% { background-position: 74% 74%; }
   100% { background-position: 0% 0%; }
-}
-
-.Theme{
-    .theme-label{
-        margin: 0 0 0.8rem 0;
-        text-align: center;
-        font-size: 0.9rem;
-        color: var(--active-font-color);
-        opacity: 0.7;
-        font-weight: 500;
-    }
-
-    .theme-btn-container{
-        display: flex;
-        flex-direction: column;
-        background: rgba(var(--active-accent1-rgb, 108, 183, 116), 0.12);
-        border: 1px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
-        border-radius: 1rem;
-        padding: 0.8rem;
-        margin: 0;
-        width: fit-content;
-        backdrop-filter: blur(5px);
-    }
-    
-    /* Individual theme buttons */
-    .theme-btn {
-        border-radius: 50%;
-        cursor: pointer;
-        width: 2.2rem;
-        height: 2.2rem;
-        object-fit: cover;
-        border: 2px solid rgba(var(--active-font-color-rgb, 0, 0, 0), 0.2);
-        margin: 0 0 0.8rem 0;
-        transition: all 0.2s ease;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        will-change: transform, border-color, box-shadow;
-    }
-
-    .theme-btn:last-child {
-        margin-bottom: 0;
-    }
-
-    .theme-btn:hover {
-        transform: scale(1.1);
-        border-color: rgba(var(--active-font-color-rgb, 0, 0, 0), 0.4);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    /* Mobile responsive styles */
-    @media (max-width: 768px) {
-    /* make the Theme container a centered column so the label sits directly above the buttons
-       using a more specific selector to override other page-level rules */
-    .HomePage .Theme {
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      justify-content: center !important;
-      width: 100%;
-    }
-
-    .theme-label{
-      padding: 0 !important;
-      margin-bottom: 0.6rem;
-      text-align: center;
-      width: 100%;
-    }
-
-    .HomePage .Theme .theme-btn-container{
-      flex-direction: row !important;
-      padding: 0.8rem 1rem;
-      margin: 0 auto;
-      width: auto;
-      justify-content: center !important;
-      align-items: center !important;
-      gap: 0.8rem !important;
-      flex-wrap: nowrap !important;
-    }
-
-    .theme-btn {
-      /* use gap on the container instead of per-button bottom margins */
-      margin: 0 !important;
-      flex: 0 0 auto;
-      display: inline-block;
-    }
-
-    .theme-btn:last-child {
-      margin-right: 0;
-      margin-bottom: 0;
-    }
-    /* Extra-specific overrides to ensure stacking on mobile (fixes side-by-side issues) */
-    :where(.HomePage) > .Theme,
-    .HomePage > .Theme,
-    .HomePage .Theme {
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      justify-content: center !important;
-      width: 100% !important;
-    }
-
-    .HomePage .Theme > .theme-label {
-      display: block !important;
-      width: 100% !important;
-      text-align: center !important;
-      margin-bottom: 0.6rem !important;
-    }
-
-    .HomePage .Theme > .theme-btn-container {
-      display: flex !important;
-      flex-direction: row !important;
-      justify-content: center !important;
-      width: auto !important;
-      margin: 0 auto !important;
-    }
-
-    /* Extra enforcement: ensure the container is inline-flex and buttons are inline elements */
-    .HomePage .Theme .theme-btn-container {
-      display: inline-flex !important;
-      flex-direction: row !important;
-      flex-wrap: nowrap !important;
-      align-items: center !important;
-      justify-content: center !important;
-      gap: 0.8rem !important;
-    }
-
-    .HomePage .Theme .theme-btn-container .theme-btn {
-      display: inline-block !important;
-      margin: 0 !important;
-      width: 2.2rem !important;
-      height: 2.2rem !important;
-      flex: 0 0 auto !important;
-    }
-    }
-}
-
-/* Top-level mobile overrides to ensure correct stacking and horizontal buttons
-   placed outside of the nested .Theme block so selectors match the DOM */
-@media (max-width: 768px) {
-  .HomePage .Theme {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 100% !important;
-    padding: 0 1rem !important;
-    box-sizing: border-box !important;
-  }
-
-  .HomePage .Theme > .theme-label {
-    display: block !important;
-    width: 100% !important;
-    text-align: center !important;
-    margin-bottom: 0.6rem !important;
-  }
-
-  .HomePage .Theme .theme-btn-container {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 0.8rem !important;
-    flex-wrap: nowrap !important;
-    padding: 0.6rem 0.8rem !important;
-    width: auto !important;
-    margin: 0 auto !important;
-  }
-
-  .HomePage .Theme .theme-btn {
-    margin: 0 !important;
-    display: inline-block !important;
-    flex: 0 0 auto !important;
-  }
 }

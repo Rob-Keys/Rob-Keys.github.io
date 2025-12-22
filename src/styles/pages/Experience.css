@@ -1,107 +1,23 @@
-.ExperiencePage {
+.ExperiencePage{
     position: relative;
-    margin: 0 auto;
+    max-width: 1200px;
+    margin: 0rem auto;
+    padding: 2rem 0 0 0;
 
-    .content {
-        margin: 0 auto;
-
-        h1 {
-            text-align: center;
-            font-size: 2.5rem;
-            font-weight: 600;
-            color: var(--active-font-color);
-            margin-bottom: 1rem;
-        }
-
-        h3 {
-            text-align: center;
-            font-size: 1.2rem;
-            font-weight: 400;
-            color: var(--active-font-color);
-            opacity: 0.8;
-            margin-bottom: 3rem;
-            font-style: italic;
-        }
-
-        p {
-            color: var(--active-font-color);
-            line-height: 1.7;
-            font-size: 1.1rem;
-            margin: 2rem 0;
-            opacity: 0.9;
-        }
-
-        ul {
-            padding: 2rem;
-            margin: 2rem 0;
-            list-style: none;
-
-            /* use shared card visuals */
-            &.card {
-                background: rgba(var(--active-container-rgb, 255, 255, 255), 0.08);
-                border: 1px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
-                border-radius: 1rem;
-            }
-
-            li {
-                margin: 1rem 0;
-                padding: 0.8rem 1.2rem;
-                background: rgba(var(--active-secondary-rgb, 177, 242, 176), 0.05);
-                border: 1px solid rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
-                border-radius: 0.5rem;
-                color: var(--active-font-color);
-                font-weight: 500;
-                transition: all 0.3s ease;
-                position: relative;
-                padding-left: 3rem;
-
-                &:before {
-                    content: "▸";
-                    position: absolute;
-                    left: 1rem;
-                    color: var(--active-accent1);
-                    font-weight: bold;
-                }
-
-                &:hover {
-                    background: rgba(var(--active-accent1-rgb, 108, 183, 116), 0.1);
-                    transform: translateX(8px);
-                }
+    .dual-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5rem;
+        margin-bottom: 2rem;
+        .bubble-container {
+            padding: 0 0 1rem 2rem;
+            p {
+                padding-bottom: 1rem;
             }
         }
     }
 
-    @media (max-width: 768px) {
-        padding: 1rem;
-
-        .content {
-            h1 {
-                font-size: 2rem;
-            }
-
-            h3 {
-                font-size: 1.1rem;
-                margin-bottom: 2rem;
-            }
-
-            p {
-                font-size: 1rem;
-                margin: 1.5rem 0;
-            }
-
-            ul {
-                padding: 1.5rem;
-
-                li {
-                    padding: 0.6rem 1rem;
-                    padding-left: 2.5rem;
-                    font-size: 0.95rem;
-
-                    &:before {
-                        left: 0.8rem;
-                    }
-                }
-            }
-        }
+    .bubble-container {
+        padding: 2rem;
     }
 }

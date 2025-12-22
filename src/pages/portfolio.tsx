@@ -5,16 +5,27 @@ import Footer from '../components/footer';
 function PortfolioPage(){
     return (
         <div className="PortfolioPage">
-                <div className="Title">
-                    <h1>Projects</h1>
-                </div>
                 <div className="content">
-                    <h2>Personal Projects</h2>
-                    <h3>The personal projects I have already developed</h3>
-                    <p>This Website, Eggs by the dozen computer vision AI, SIG AI club, Statistics project in R</p>
-                    <h2>Current Project</h2>
-                    <h3>The project I am working on right now</h3>
-                    <p> This website!</p>
+                    <div className='bubble-container'>
+                        <h3>Previous Projects</h3>
+                        <ul>
+                            <li>703bakehouse.com</li>
+                            <li>Eggs By The Dozen</li>
+                            <li>Statistics R project</li>
+                        </ul>
+                    </div>
+                    <div className='bubble-container'>
+                        <h3>Current Projects</h3>
+                        <ul>
+                            This website!
+                        </ul>
+                    </div>
+                    <div className='bubble-container'>
+                        <h3>Future Project Ideas</h3>
+                        <ul>
+                            Dont have any yet
+                        </ul>
+                    </div>
                 </div>
             <Footer />
             </div>

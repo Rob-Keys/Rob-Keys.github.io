@@ -56,7 +56,6 @@
     }
 
     .oval-indicator {
-        background: var(--active-accent1);
         height: 4rem;
         border-radius: 50px;
         will-change: width, left;
@@ -64,6 +63,7 @@
         position: absolute;
         transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
         opacity: 0;
+        box-shadow: none;
     }
 
     .oval-indicator.visible {
@@ -116,19 +116,4 @@
             padding: 0.4rem 0.8rem;
         }
     }
-
-    /* Visual oval backgrounds used by the mobile menu positioning. */
-    .oval-background {
-        background: var(--active-accent1);
-        height: 2rem;
-        border-radius: 50px;
-        z-index: -1;
-        position: absolute;
-    }
-
-    #oval-home { width: 4.5rem; right: 1.2rem; top: 0.8rem; }
-    #oval-experience { width: 4.5rem; right: 1.2rem; top: 3.0rem; }
-    #oval-portfolio { width: 4.5rem; right: 1.2rem; top: 5.2rem; }
-    #oval-minigames { width: 4.5rem; right: 1.2rem; top: 7.4rem; }
-    #oval-contact { width: 4.5rem; right: 1.2rem; top: 9.6rem; }
 }

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import '../styles/components/Theme.css'
-import Footballpfp from '../assets/themes/footballpfp.png'
-import Nature from '../assets/themes/nature.jpg'
-import Pink from '../assets/themes/pink.jpg'
-import Sludge from '../assets/themes/sludge.png'
+import UVA from '../../public/assets/themes/v_sabre.avif'
+import Leaf from '../../public/assets/themes/leaf.avif'
+import Mint from '../../public/assets/themes/blue_mint.avif'
+import Ocean from '../../public/assets/themes/water.avif'
 
 const Theme: React.FC = () => {
     const [theme, setTheme] = useState<string>('light');
@@ -28,13 +28,25 @@ const Theme: React.FC = () => {
     };
 
     return(
-        <div className="Theme">
-            <p className="theme-label">Theme:</p>
+        <div className="Theme bubble-container fade-in-left">
+            <h3 className="theme-label">Website theme:</h3>
             <div className="theme-btn-container">
-                <img className={`theme-btn`} src={Footballpfp} alt="Rob Keys Face" onClick={() => changeTheme('sunset')}/>
-                <img className="theme-btn" src={Nature} alt="Cartoon trees and flowers in a meadow" onClick={() => changeTheme('forest')}/>
-                <img className="theme-btn" src={Sludge} alt="Black sludge leaking down the box" onClick={() => changeTheme('space')}/>
-                <img className="theme-btn" src={Pink} alt="White princess tiara on a solid pink background" onClick={() => changeTheme('sunny')}/>
+                <div className="theme-pair bubble-container" id="uva" onClick={() => changeTheme('uva')}>
+                    <img className="theme-btn" src={UVA} alt="The UVA V sabre logo"/>
+                    <h4>UVA</h4>
+                </div>
+                <div className="theme-pair bubble-container" id="mint" onClick={() => changeTheme('mint')}>
+                    <img className={`theme-btn`} src={Mint} alt="A clipart blue swirly mouth minth"/>
+                    <h4>Mint</h4>
+                </div>
+                <div className="theme-pair bubble-container" id="spearmint" onClick={() => changeTheme('spearmint')}>
+                    <img className="theme-btn" src={Leaf} alt="A clipart green leaf"/>
+                    <h4>Spearmint</h4>
+                </div>
+                <div className="theme-pair bubble-container" id="ocean" onClick={() => changeTheme('ocean')}>
+                    <img className="theme-btn" src={Ocean} alt="Dark and choppy ocean waters"/>
+                    <h4>Ocean</h4>
+                </div>
             </div>
         </div>
     );

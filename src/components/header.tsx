@@ -33,7 +33,7 @@ const Header: React.FC = () => {
         setIndicatorStyle({
             width: `${nextPageBoundingRect.clientWidth * 1.5}px`,
             left: `${(-0.25) * nextPageBoundingRect.clientWidth}px`,
-            top: `${0.36 * nextPageBoundingRect.clientHeight}px`,
+            top: `${0.25 * nextPageBoundingRect.clientHeight}px`,
             transform: `translateX(${nextPageBoundingRect.offsetLeft}px)`
         });        
     };
@@ -102,7 +102,7 @@ const Header: React.FC = () => {
                 <div className="Navigation">
                     <nav>
                         <div
-                            className={`oval-indicator ${isVisible ? 'visible' : ''}`}
+                            className={`oval-indicator bubble-container ${isVisible ? 'visible' : ''}`}
                             style={indicatorStyle}
                         ></div>
                         <div className="page-links">
