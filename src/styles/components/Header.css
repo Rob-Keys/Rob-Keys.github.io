@@ -71,7 +71,7 @@
         transition: transform 0.3s ease-in-out, width 0.3s ease-in-out, opacity 0.3s ease-in;
     }
 
-    @media (max-width: 991px) {
+    @media (max-width: 768px) {
         /* Hide desktop links on mobile; hamburger will show mobile menu */
         .page-links {
             display: none;
@@ -91,7 +91,7 @@
         cursor: pointer;
     }
 
-    @media only screen and (max-width: 991px) {
+    @media only screen and (max-width: 768px) {
         .hamburger {
             display: block;
             margin: 1rem 2rem 0 0;

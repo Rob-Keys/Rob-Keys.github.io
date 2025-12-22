@@ -1,6 +1,5 @@
 .GamePage {
     position: relative;
-    max-width: 1200px;
     margin: 0 auto;
 
     .Title {
@@ -16,7 +15,6 @@
     }
 
     .content {
-        max-width: 900px;
         margin: 0 auto;
 
         .gameText {
@@ -36,7 +34,6 @@
                 font-size: 1.1rem;
                 opacity: 0.9;
                 margin: 0 auto;
-                max-width: 600px;
             }
         }
 
@@ -173,7 +170,6 @@
 
                 button {
                     width: 100%;
-                    max-width: 200px;
                     padding: 0.8rem;
                 }
             }

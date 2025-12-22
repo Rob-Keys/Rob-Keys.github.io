@@ -18,7 +18,7 @@ function GamePage() {
                         <canvas id="gameCanvas"></canvas>
                     </div>
                     <div className="controls">
-                        <label htmlFor="cellSize"><input type="number" id="cellSize" value="10" min="5" max="50"/></label>
+                        <label htmlFor="cellSize"><input type="number" id="cellSize" defaultValue="10" min="5" max="50"/></label>
                         <button id="applySize">Apply Size</button>
                         <button id="startButton">Start</button>
                         <button id="stopButton">Stop</button>

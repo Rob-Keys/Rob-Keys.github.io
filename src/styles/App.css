@@ -35,7 +35,7 @@ h4 {
 p {
 	font-size: 1.5rem;
 }
-@media (max-width: 991px) {
+@media (max-width: 768px) {
 	h2 {
 		font-size: 4rem;
 	}
@@ -85,7 +85,7 @@ p {
 .page-track-item {
   min-width: 100vw;
   box-sizing: border-box;
-  padding: 0 2rem;
+  padding: 0;
 }
 
 /* When content inside a page moves, prefer transform-based animations */

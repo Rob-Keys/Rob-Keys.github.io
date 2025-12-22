@@ -17,15 +17,12 @@ function HomePage() {
     }
     return (
         <div className="HomePage">
-            <div className="hero-section">
-                <div className="hero-content">
-                    <Theme />
-                    <div className="hero-text">
-                        <h1 className="hero-title">Rob Keys</h1>
-                        <p className="hero-subtitle">Engineer • Software Developer • Scholar-Athlete</p>
-                    </div>
-                </div>
+            <div className="hero">
+                <h1 className="hero-title">Rob Keys</h1>
+                <p className="hero-subtitle">Engineer • Software Developer • Scholar-Athlete</p>
             </div>
+
+            <Theme />
 
             <div className="highlights-grid">
                 <a href="/resume" className="highlight-card card" target="_blank" rel="noopener noreferrer">

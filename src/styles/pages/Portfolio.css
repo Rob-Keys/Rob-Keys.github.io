@@ -1,6 +1,5 @@
 .PortfolioPage {
     position: relative;
-    max-width: 1200px;
     margin: 0 auto;
 
     .Title {
@@ -16,7 +15,6 @@
     }
 
     .content {
-        max-width: 900px;
         margin: 0 auto;
 
         h2 {

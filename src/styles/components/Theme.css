@@ -108,19 +108,126 @@
 
     /* Mobile responsive styles */
     @media (max-width: 768px) {
-        .theme-btn-container{
-            flex-direction: row;
-            padding: 0.8rem 1rem;
-            margin: 0.8rem auto 3rem auto;
-        }
-
-        .theme-btn {
-            margin: 0 0.8rem 0 0;
-        }
-
-        .theme-btn:last-child {
-            margin-right: 0;
-            margin-bottom: 0;
-        }
+    /* make the Theme container a centered column so the label sits directly above the buttons
+       using a more specific selector to override other page-level rules */
+    .HomePage .Theme {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 100%;
     }
+
+    .theme-label{
+      padding: 0 !important;
+      margin-bottom: 0.6rem;
+      text-align: center;
+      width: 100%;
+    }
+
+    .HomePage .Theme .theme-btn-container{
+      flex-direction: row !important;
+      padding: 0.8rem 1rem;
+      margin: 0 auto;
+      width: auto;
+      justify-content: center !important;
+      align-items: center !important;
+      gap: 0.8rem !important;
+      flex-wrap: nowrap !important;
+    }
+
+    .theme-btn {
+      /* use gap on the container instead of per-button bottom margins */
+      margin: 0 !important;
+      flex: 0 0 auto;
+      display: inline-block;
+    }
+
+    .theme-btn:last-child {
+      margin-right: 0;
+      margin-bottom: 0;
+    }
+    /* Extra-specific overrides to ensure stacking on mobile (fixes side-by-side issues) */
+    :where(.HomePage) > .Theme,
+    .HomePage > .Theme,
+    .HomePage .Theme {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 100% !important;
+    }
+
+    .HomePage .Theme > .theme-label {
+      display: block !important;
+      width: 100% !important;
+      text-align: center !important;
+      margin-bottom: 0.6rem !important;
+    }
+
+    .HomePage .Theme > .theme-btn-container {
+      display: flex !important;
+      flex-direction: row !important;
+      justify-content: center !important;
+      width: auto !important;
+      margin: 0 auto !important;
+    }
+
+    /* Extra enforcement: ensure the container is inline-flex and buttons are inline elements */
+    .HomePage .Theme .theme-btn-container {
+      display: inline-flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0.8rem !important;
+    }
+
+    .HomePage .Theme .theme-btn-container .theme-btn {
+      display: inline-block !important;
+      margin: 0 !important;
+      width: 2.2rem !important;
+      height: 2.2rem !important;
+      flex: 0 0 auto !important;
+    }
+    }
+}
+
+/* Top-level mobile overrides to ensure correct stacking and horizontal buttons
+   placed outside of the nested .Theme block so selectors match the DOM */
+@media (max-width: 768px) {
+  .HomePage .Theme {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    padding: 0 1rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .HomePage .Theme > .theme-label {
+    display: block !important;
+    width: 100% !important;
+    text-align: center !important;
+    margin-bottom: 0.6rem !important;
+  }
+
+  .HomePage .Theme .theme-btn-container {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.8rem !important;
+    flex-wrap: nowrap !important;
+    padding: 0.6rem 0.8rem !important;
+    width: auto !important;
+    margin: 0 auto !important;
+  }
+
+  .HomePage .Theme .theme-btn {
+    margin: 0 !important;
+    display: inline-block !important;
+    flex: 0 0 auto !important;
+  }
 }
