@@ -10,6 +10,7 @@ function PortfolioPage(){
                         <h3>Previous Projects</h3>
                         <ul>
                             <li>703bakehouse.com</li>
+                            <li>Tidbyt Slot Machine Clock</li>
                             <li>Eggs By The Dozen</li>
                             <li>Statistics R project</li>
                         </ul>
