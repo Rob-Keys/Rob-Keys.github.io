@@ -4,16 +4,63 @@ Three.js interactive desk portfolio. Info displayed via textures/materials on 3D
 
 ## Dev Server
 
-No build step. Serve with any static HTTP server:
+No build step. Serve with any static HTTP server. Use `npx http-server` with an absolute path — `python3 -m http.server` fails in environments where the shell's working directory is unavailable (e.g. Claude Code preview server):
 ```
-python -m http.server 8000
-npx http-server -p 8000
+npx http-server /Users/robkeys/Documents/code/Personal/rob_website/3D-personal-site -p 8000 --cors
 ```
 Open `http://localhost:8000`. Must use a server (ES6 modules require it).
 
+### Claude Code preview server
+
+Use `.claude/launch.json` at the repo root with `npx` and an absolute path argument:
+```json
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "3D Personal Site",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "/Users/robkeys/Documents/code/Personal/rob_website/3D-personal-site", "-p", "8000", "--cors"],
+      "port": 8000
+    }
+  ]
+}
+```
+Do not use `python3 -m http.server` or `bash -c "cd ... &&"` — both fail because pyenv's shell init calls `getcwd` before the `cd` runs.
+
+## Visual Verification
+
+After making changes, use the in-app browser tools to see the result:
+
+```
+preview_start { name: "3D Personal Site" }   // starts the server
+navigate { url: "http://localhost:8000" }     // reload after edits
+computer { action: "screenshot" }             // capture what's visible
+```
+
+Wait ~2 seconds after load before screenshotting — Three.js needs time to initialize. See `.claude/skills/verify/SKILL.md` for the full verification workflow (invokable via `/verify`).
+
+## Quality Checks
+
+Run before committing to catch type and lint errors:
+```
+npm run check        # tsc --noEmit && eslint js/
+npm run typecheck    # tsc --noEmit only
+npm run lint         # eslint js/ only
+```
+
+**Type checking** uses `// @ts-check` + JSDoc annotations throughout `js/`. `@types/three@0.128.0` provides core Three.js types; CDN add-ons (OrbitControls, EffectComposer, etc.) are declared in `types/three-addons.d.ts`.
+
+**Key conventions:**
+- All `canvas.getContext('2d')` calls must be followed by an `if (!ctx) throw` guard
+- Config constants in `config.js` are frozen (`Object.freeze`) — mutations throw at runtime
+- Use `assert(condition, message)` from `js/systems/utils.js` for factory invariants
+- New factory class fields that hold nullable Three.js objects must have JSDoc `@type` annotations
+- Unused callback params must use `_` prefix (e.g. `forEach((item, _index) => ...)`)
+
 ## Dependencies
 
-All loaded via CDN in `index.html` (no package.json):
+All loaded via CDN in `index.html` (no build step for the served files):
 - Three.js r128
 - GSAP 3.12.2
 - Three.js addons: OrbitControls, RGBELoader, RectAreaLightUniformsLib, EffectComposer, UnrealBloomPass, OutlinePass

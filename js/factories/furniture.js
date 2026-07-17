@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Desk and Furniture creation
  * Handles desk, shelves, walls, and room structure
@@ -42,10 +43,13 @@ export class FurnitureFactory {
         // Create placeholder textures
         this._placeholders = {};
         for (const [type, config] of Object.entries(TEXTURE_CONFIG)) {
+            const [dr, dg, db] = config.placeholder.diffuse;
+            const [nr, ng, nb] = config.placeholder.normal;
+            const [rr, rg, rb] = config.placeholder.roughness;
             this._placeholders[type] = {
-                diffuse: createSolidTexture(...config.placeholder.diffuse),
-                normal: createSolidTexture(...config.placeholder.normal),
-                roughness: createSolidTexture(...config.placeholder.roughness)
+                diffuse: createSolidTexture(dr, dg, db),
+                normal: createSolidTexture(nr, ng, nb),
+                roughness: createSolidTexture(rr, rg, rb)
             };
         }
     }
@@ -101,6 +105,13 @@ export class FurnitureFactory {
         }, 0));
     }
 
+    /**
+     * @param {string} type
+     * @param {number} roughness
+     * @param {number} metalness
+     * @param {boolean} [useRoughnessMap]
+     * @param {number | null} [color]
+     */
     _createTexturedMaterial(type, roughness, metalness, useRoughnessMap = false, color = null) {
         const state = this._textureState[type];
         const textures = state.loaded ? state.textures : this._placeholders[type];
@@ -114,7 +125,11 @@ export class FurnitureFactory {
         };
         if (color !== null) matProps.color = color;
 
-        const material = new THREE.MeshStandardMaterial(matProps);
+        const material = new THREE.MeshPhysicalMaterial({
+            ...matProps,
+            clearcoat: 0.4,
+            clearcoatRoughness: 0.3
+        });
 
         if (!state.loaded) {
             material.userData.useRoughnessMap = useRoughnessMap;
@@ -153,15 +168,20 @@ export class FurnitureFactory {
         edge.castShadow = true;
         group.add(edge);
 
-        // Legs
+        // Legs — merged into a single draw call
         const legGeometry = new THREE.BoxGeometry(0.1, 1.25, 0.1);
         const legMaterial = this._createTexturedMaterial('wood', 0.85, 0.02);
-        legOffsets.forEach(offset => {
-            const leg = new THREE.Mesh(legGeometry, legMaterial);
-            leg.position.set(offset.x, offset.y, offset.z);
-            leg.castShadow = true;
-            group.add(leg);
+        const legGeometries = legOffsets.map(offset => {
+            const g = legGeometry.clone();
+            g.translate(offset.x, offset.y, offset.z);
+            return g;
         });
+        const mergedLegs = new THREE.Mesh(
+            THREE.BufferGeometryUtils.mergeBufferGeometries(legGeometries),
+            legMaterial
+        );
+        mergedLegs.castShadow = true;
+        group.add(mergedLegs);
 
         applyOrigin(group, this.origins.desk, true); // Static object
         return group;
@@ -170,9 +190,20 @@ export class FurnitureFactory {
     createWall() {
         const group = new THREE.Group();
 
+        // Warm medium-gray tint keeps the bright plaster texture from blowing out.
+        // clearcoat=0: plaster has no clear-coat specular; the default 0.4 catches every
+        // light source and makes the wall appear blown-out white.
+        // envMapIntensity=0.04: outdoor HDRI values are 3-8x above 1.0; even at 0.04
+        // the HDRI still contributes meaningful fill without dominating a matte interior wall.
+        const wallMat = this._createTexturedMaterial('wall', 0.95, 0.0, false, 0xf0e9d8);
+        wallMat.clearcoat = 0.0;
+        wallMat.clearcoatRoughness = 1.0;
+        wallMat.envMapIntensity = 0.04;
+        wallMat.needsUpdate = true;
+
         const wall = new THREE.Mesh(
             new THREE.BoxGeometry(50, 8, 0.3),
-            this._createTexturedMaterial('wall', 1.0, 0.0, false, 0xffffff)
+            wallMat
         );
         wall.position.set(0, 3.5, -3.5);
         wall.receiveShadow = true;
@@ -188,6 +219,62 @@ export class FurnitureFactory {
         group.add(baseboard);
 
         applyOrigin(group, this.origins.wall, true); // Static object
+        return group;
+    }
+
+    createCeiling() {
+        // Ceilings are traditionally white or near-white with very low metalness.
+        // The low envMapIntensity ensures the HDRI doesn't overbrighten it.
+        const ceilingMat = new THREE.MeshStandardMaterial({
+            color: 0xe8e4de,
+            roughness: 0.98,
+            metalness: 0.0,
+            envMapIntensity: 0.05
+        });
+        const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(50, 22), ceilingMat);
+        ceiling.rotation.x = Math.PI / 2;
+        ceiling.position.set(0, 7.5, -1.5);
+        ceiling.receiveShadow = true;
+        ceiling.matrixAutoUpdate = false;
+        ceiling.updateMatrixWorld(true);
+        return ceiling;
+    }
+
+    createSideWalls() {
+        const group = new THREE.Group();
+        const wallMat = new THREE.MeshStandardMaterial({
+            color: 0xf0e9d8,
+            roughness: 0.95,
+            metalness: 0.0,
+            envMapIntensity: 0.10
+        });
+        const baseboardMat = new THREE.MeshStandardMaterial({ color: 0x5c4a3d, roughness: 0.7, metalness: 0.0 });
+
+        // Left wall (window side — source of the directional light)
+        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 9, 22), wallMat);
+        leftWall.position.set(-8, 3.5, -1.5);
+        leftWall.receiveShadow = true;
+        leftWall.castShadow = true;
+        group.add(leftWall);
+
+        const leftBaseboard = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.5, 22), baseboardMat);
+        leftBaseboard.position.set(-7.85, -0.25, -1.5);
+        group.add(leftBaseboard);
+
+        // Right wall
+        const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 9, 22), wallMat);
+        rightWall.position.set(8, 3.5, -1.5);
+        rightWall.receiveShadow = true;
+        rightWall.castShadow = true;
+        group.add(rightWall);
+
+        const rightBaseboard = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.5, 22), baseboardMat);
+        rightBaseboard.position.set(7.85, -0.25, -1.5);
+        group.add(rightBaseboard);
+
+        group.updateMatrixWorld(true);
+        group.matrixAutoUpdate = false;
+        group.traverse(child => { child.matrixAutoUpdate = false; });
         return group;
     }
 
@@ -209,33 +296,47 @@ export class FurnitureFactory {
         frontTrim.castShadow = true;
         group.add(frontTrim);
 
-        // Side brackets with decorative details
+        // Brackets and screws — merged into single draw calls per material
+        const bracketGeometries = [];
         const screwGeometry = new THREE.CylinderGeometry(0.008, 0.008, 0.03, 8);
-        [-1.8, 1.8].forEach(x => {
-            const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35, 0.65), bracketMaterial);
-            bracket.position.set(x, -0.22, 0);
-            bracket.castShadow = true;
-            group.add(bracket);
+        const screwGeometries = [];
+        const scrollGeometry = new THREE.TorusGeometry(0.08, 0.02, 8, 16);
+        const sideBracketGeometry = new THREE.BoxGeometry(0.12, 0.35, 0.65);
 
-            const scroll = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.02, 8, 16), bracketMaterial);
-            scroll.position.set(x, -0.35, 0);
-            scroll.castShadow = true;
-            group.add(scroll);
+        [-1.8, 1.8].forEach(x => {
+            const bg = sideBracketGeometry.clone();
+            bg.translate(x, -0.22, 0);
+            bracketGeometries.push(bg);
+
+            const sg = scrollGeometry.clone();
+            sg.translate(x, -0.35, 0);
+            bracketGeometries.push(sg);
 
             [-0.04, 0.04].forEach(dx => {
-                const screw = new THREE.Mesh(screwGeometry, screwMaterial);
-                screw.position.set(x + dx, -0.08, 0.3);
-                screw.rotation.x = Math.PI / 2;
-                screw.castShadow = true;
-                group.add(screw);
+                const scg = screwGeometry.clone();
+                scg.rotateX(Math.PI / 2);
+                scg.translate(x + dx, -0.08, 0.3);
+                screwGeometries.push(scg);
             });
         });
 
-        // Center bracket
-        const centerBracket = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.65), bracketMaterial);
-        centerBracket.position.set(0, -0.15, 0);
-        centerBracket.castShadow = true;
-        group.add(centerBracket);
+        const centerBracketGeo = new THREE.BoxGeometry(0.08, 0.25, 0.65);
+        centerBracketGeo.translate(0, -0.15, 0);
+        bracketGeometries.push(centerBracketGeo);
+
+        const mergedBrackets = new THREE.Mesh(
+            THREE.BufferGeometryUtils.mergeBufferGeometries(bracketGeometries),
+            bracketMaterial
+        );
+        mergedBrackets.castShadow = true;
+        group.add(mergedBrackets);
+
+        const mergedScrews = new THREE.Mesh(
+            THREE.BufferGeometryUtils.mergeBufferGeometries(screwGeometries),
+            screwMaterial
+        );
+        mergedScrews.castShadow = true;
+        group.add(mergedScrews);
 
         applyOrigin(group, this.origins.wallShelf, true); // Static object
         return group;

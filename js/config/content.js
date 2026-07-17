@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Content data for portfolio
  * Contains all text content displayed in the 3D portfolio

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Technology objects creation
  * Handles monitor, keyboard, mouse, laptop, and other tech items
@@ -44,6 +45,7 @@ export class TechnologyFactory {
         canvas.width = 1024;
         canvas.height = 512;
         const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Failed to get 2D context for laptop canvas');
 
         // Draw white background
         ctx.fillStyle = '#f5f5f5';
@@ -158,6 +160,7 @@ export class TechnologyFactory {
         screen.castShadow = false;
         screen.receiveShadow = false; // Disable receiving shadows to prevent acne/artifacts
         screen.userData = { isScreen: true };
+        screen.layers.enable(1); // Add to bloom layer
         group.add(screen);
 
         // Dynamic screen glare overlay - responds to actual light positions
@@ -205,10 +208,12 @@ export class TechnologyFactory {
 
         // Screen bezel (realistic thickness)
         const bezelGeometry = new THREE.BoxGeometry(3.4, 1.6, 0.12);
-        const bezelMaterial = new THREE.MeshStandardMaterial({
+        const bezelMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x1a1a1a,
             roughness: 0.3,
-            metalness: 0.8,
+            metalness: 0.0,
+            clearcoat: 0.8,
+            clearcoatRoughness: 0.1
         });
         const bezel = new THREE.Mesh(bezelGeometry, bezelMaterial);
         bezel.position.set(offsets.bezel.x, offsets.bezel.y, offsets.bezel.z);
@@ -240,22 +245,28 @@ export class TechnologyFactory {
         });
         const led = new THREE.Mesh(ledGeometry, ledMaterial);
         led.position.set(offsets.led.x, offsets.led.y, offsets.led.z);
+        led.layers.enable(1); // Add to bloom layer
         group.add(led);
 
-        // Control buttons (positioned relative to LED)
+        // Control buttons — merged into a single draw call
         const buttonGeometry = new THREE.BoxGeometry(0.08, 0.03, 0.02);
         const buttonMaterial = new THREE.MeshStandardMaterial({
             color: 0x2a2a2a,
             roughness: 0.2,
             metalness: 0.8
         });
-
+        const buttonGeometries = [];
         for (let i = 0; i < 3; i++) {
-            const button = new THREE.Mesh(buttonGeometry, buttonMaterial);
-            button.position.set(offsets.led.x - 0.15, offsets.led.y + 0.1 + (i * 0.05), offsets.led.z);
-            button.castShadow = true;
-            group.add(button);
+            const bg = buttonGeometry.clone();
+            bg.translate(offsets.led.x - 0.15, offsets.led.y + 0.1 + (i * 0.05), offsets.led.z);
+            buttonGeometries.push(bg);
         }
+        const mergedButtons = new THREE.Mesh(
+            THREE.BufferGeometryUtils.mergeBufferGeometries(buttonGeometries),
+            buttonMaterial
+        );
+        mergedButtons.castShadow = true;
+        group.add(mergedButtons);
 
         // Monitor arm with articulated joints
         const armGeometry = new THREE.CylinderGeometry(0.06, 0.08, 2, 16);
@@ -270,25 +281,24 @@ export class TechnologyFactory {
         arm.receiveShadow = true;
         group.add(arm);
 
-        // Joint spheres
+        // Joint spheres — merged into a single draw call
         const jointGeometry = new THREE.SphereGeometry(0.08, 16, 16);
         const jointMaterial = new THREE.MeshStandardMaterial({
             color: 0x3a3a3a,
             roughness: 0.2,
             metalness: 0.8
         });
-
-        const upperJoint = new THREE.Mesh(jointGeometry, jointMaterial);
-        upperJoint.position.set(offsets.upperJoint.x, offsets.upperJoint.y, offsets.upperJoint.z);
-        upperJoint.castShadow = true;
-        upperJoint.receiveShadow = true;
-        group.add(upperJoint);
-
-        const lowerJoint = new THREE.Mesh(jointGeometry, jointMaterial);
-        lowerJoint.position.set(offsets.lowerJoint.x, offsets.lowerJoint.y, offsets.lowerJoint.z);
-        lowerJoint.castShadow = true;
-        lowerJoint.receiveShadow = true;
-        group.add(lowerJoint);
+        const upperJointGeo = jointGeometry.clone();
+        upperJointGeo.translate(offsets.upperJoint.x, offsets.upperJoint.y, offsets.upperJoint.z);
+        const lowerJointGeo = jointGeometry.clone();
+        lowerJointGeo.translate(offsets.lowerJoint.x, offsets.lowerJoint.y, offsets.lowerJoint.z);
+        const mergedJoints = new THREE.Mesh(
+            THREE.BufferGeometryUtils.mergeBufferGeometries([upperJointGeo, lowerJointGeo]),
+            jointMaterial
+        );
+        mergedJoints.castShadow = true;
+        mergedJoints.receiveShadow = true;
+        group.add(mergedJoints);
 
         // V-shaped base with rubber feet
         const baseGeometry = new THREE.CylinderGeometry(0.25, 0.35, 0.12, 24);
@@ -316,31 +326,34 @@ export class TechnologyFactory {
         basePlate.receiveShadow = true;
         group.add(basePlate);
 
-        // Rubber feet (positioned relative to basePlate)
+        // Rubber feet — merged into a single draw call
         const footGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.02, 16);
         const footMaterial = new THREE.MeshStandardMaterial({
             color: 0x2a2a2a,
             roughness: 0.9,
             metalness: 0.0
         });
-
         const footOffsets = [
             { x: -0.15, y: 0, z: -0.1 },
             { x:  0.15, y: 0, z: -0.1 },
             { x: -0.15, y: 0, z:  0.1 },
             { x:  0.15, y: 0, z:  0.1 }
         ];
-
-        footOffsets.forEach(footOff => {
-            const foot = new THREE.Mesh(footGeometry, footMaterial);
-            foot.position.set(
+        const footGeometries = footOffsets.map(footOff => {
+            const fg = footGeometry.clone();
+            fg.translate(
                 offsets.basePlate.x + footOff.x,
                 offsets.basePlate.y + footOff.y,
                 offsets.basePlate.z + footOff.z
             );
-            foot.castShadow = true;
-            group.add(foot);
+            return fg;
         });
+        const mergedFeet = new THREE.Mesh(
+            THREE.BufferGeometryUtils.mergeBufferGeometries(footGeometries),
+            footMaterial
+        );
+        mergedFeet.castShadow = true;
+        group.add(mergedFeet);
 
         // Logo (subtle brand indicator)
         const logoGeometry = new THREE.BoxGeometry(0.1, 0.01, 0.05);
@@ -522,6 +535,7 @@ export class TechnologyFactory {
         });
         const led = new THREE.Mesh(ledGeometry, ledMaterial);
         led.position.set(offsets.leds.x - 0.86, offsets.leds.y, offsets.leds.z);
+        led.layers.enable(1); // Add to bloom layer
         group.add(led);
 
         // USB-C port
@@ -593,10 +607,12 @@ export class TechnologyFactory {
         const group = new THREE.Group();
         const origin = this.origins.laptop;
 
-        const metalMaterial = new THREE.MeshStandardMaterial({
+        const metalMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x2a2a2a,
             roughness: 0.4,
-            metalness: 0.8
+            metalness: 0.8,
+            clearcoat: 0.5,
+            clearcoatRoughness: 0.2
         });
 
         // Base (bottom half with keyboard)
@@ -607,41 +623,40 @@ export class TechnologyFactory {
         base.receiveShadow = true;
         group.add(base);
 
-        // Keyboard keys on the base - matte plastic
+        // Keyboard keys — merged into a single draw call via geometry merge
         const keyMaterial = new THREE.MeshStandardMaterial({
             color: 0x1a1a1a,
             roughness: 0.9,
             metalness: 0.0
         });
 
-        // Create a grid of keys that fills the base
         const keySize = 0.08;
         const keyGap = 0.09;
         const keysStartX = -0.58;
         const keysStartZ = -0.32;
 
+        const laptopKeyGeometries = [];
+        const laptopKeyGeometry = new THREE.BoxGeometry(keySize, 0.02, keySize);
+
         for (let row = 0; row < 5; row++) {
             for (let col = 0; col < 14; col++) {
-                const keyGeometry = new THREE.BoxGeometry(keySize, 0.02, keySize);
-                const key = new THREE.Mesh(keyGeometry, keyMaterial);
-                key.position.set(
-                    keysStartX + col * keyGap,
-                    0.06,
-                    keysStartZ + row * keyGap
-                );
-                key.castShadow = true;
-                key.receiveShadow = true;
-                group.add(key);
+                const kg = laptopKeyGeometry.clone();
+                kg.translate(keysStartX + col * keyGap, 0.06, keysStartZ + row * keyGap);
+                laptopKeyGeometries.push(kg);
             }
         }
 
-        // Spacebar
-        const spaceGeometry = new THREE.BoxGeometry(0.5, 0.02, keySize);
-        const spacebar = new THREE.Mesh(spaceGeometry, keyMaterial);
-        spacebar.position.set(0, 0.06, keysStartZ + 5 * keyGap);
-        spacebar.castShadow = true;
-        spacebar.receiveShadow = true;
-        group.add(spacebar);
+        const spaceGeo = new THREE.BoxGeometry(0.5, 0.02, keySize);
+        spaceGeo.translate(0, 0.06, keysStartZ + 5 * keyGap);
+        laptopKeyGeometries.push(spaceGeo);
+
+        const mergedLaptopKeys = new THREE.Mesh(
+            THREE.BufferGeometryUtils.mergeBufferGeometries(laptopKeyGeometries),
+            keyMaterial
+        );
+        mergedLaptopKeys.castShadow = true;
+        mergedLaptopKeys.receiveShadow = true;
+        group.add(mergedLaptopKeys);
 
         // Screen lid (hinged at the back)
         const screenLid = new THREE.Group();
@@ -658,6 +673,7 @@ export class TechnologyFactory {
         canvas.width = 1024;
         canvas.height = 768;
         const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Failed to get 2D context for keyboard canvas');
 
         // Fill with simple color initially
         ctx.fillStyle = '#667eea';
@@ -744,6 +760,7 @@ export class TechnologyFactory {
         });
         const screen = new THREE.Mesh(screenGeometry, screenMaterial);
         screen.position.set(0, 0.45, 0.025);
+        screen.layers.enable(1); // Add to bloom layer
         screenLid.add(screen);
 
         // Dynamic glare overlay for laptop screen
@@ -818,7 +835,8 @@ export class TechnologyFactory {
         canvas.width = 512;
         canvas.height = 256;
         const ctx = canvas.getContext('2d');
-        
+        if (!ctx) throw new Error('Failed to get 2D context for clock canvas');
+
         const texture = new THREE.CanvasTexture(canvas);
         if (texture.colorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace;
         else if (THREE.sRGBEncoding !== undefined) texture.encoding = THREE.sRGBEncoding;

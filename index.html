@@ -18,8 +18,14 @@
 <body>
     <div id="canvas-container">
         <div id="loading">
-            <div class="spinner"></div>
-            <p>Loading your interactive desk...</p>
+            <div class="loading-content">
+                <p class="loading-eyebrow">Portfolio of</p>
+                <h1 class="loading-title" aria-label="Rob Keys">
+                    <span>R</span><span>o</span><span>b</span><span class="loading-space">&nbsp;</span><span>K</span><span>e</span><span>y</span><span>s</span>
+                </h1>
+                <div class="loading-track"><div class="loading-shimmer"></div></div>
+                <p class="loading-status">Setting up the desk</p>
+            </div>
         </div>
     </div>
 
@@ -67,10 +73,15 @@
     <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/OutlinePass.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/math/SimplexNoise.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/SSAOShader.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/SSAOPass.js"></script>
+    <!-- BufferGeometryUtils for merging static geometry -->
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
     <!-- GSAP for smooth animations -->
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <!-- Modular application code - loads after dependencies -->
-    <script type="module" defer src="js/core/main.js"></script>
+    <script type="module" defer src="js/core/main.js?v=2"></script>
 </body>
 </html>

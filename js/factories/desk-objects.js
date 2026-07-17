@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Desk objects creation
  * Handles coffee mugs, desk lamps, notebooks, and other items that sit on the desk
@@ -44,6 +45,7 @@ export class DeskObjectFactory {
         canvas.width = 512;
         canvas.height = 700; // Approx aspect ratio of 0.54/0.74
         const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Failed to get 2D context for notebook canvas');
 
         // Paper background
         ctx.fillStyle = '#f8f4e8';
@@ -113,48 +115,52 @@ export class DeskObjectFactory {
         if (pageTexture.colorSpace !== undefined) pageTexture.colorSpace = THREE.SRGBColorSpace;
         else if (THREE.sRGBEncoding !== undefined) pageTexture.encoding = THREE.sRGBEncoding;
 
-        for (let i = 0; i < 8; i++) {
-            const pageGeometry = new THREE.BoxGeometry(0.81, 0.006, 1.11);
-            let pageMaterial;
-
-            if (i === 7) {
-                // Top page with text
-                const plainMat = new THREE.MeshStandardMaterial({
-                    color: 0xf8f4e8,
-                    roughness: 0.95,
-                    metalness: 0.0
-                });
-                const textMat = new THREE.MeshStandardMaterial({
-                    map: pageTexture,
-                    roughness: 0.95,
-                    metalness: 0.0,
-                    color: 0xffffff
-                });
-                
-                // +x, -x, +y (top), -y, +z, -z
-                pageMaterial = [
-                    plainMat, plainMat,
-                    textMat, plainMat,
-                    plainMat, plainMat
-                ];
-            } else {
-                pageMaterial = new THREE.MeshStandardMaterial({
-                    color: 0xf8f4e8,
-                    roughness: 0.95,
-                    metalness: 0.0
-                });
-            }
-
-            const page = new THREE.Mesh(pageGeometry, pageMaterial);
-            page.position.set(
+        // Bottom 7 pages — merged into a single draw call (identical material)
+        const plainPageMaterial = new THREE.MeshStandardMaterial({
+            color: 0xf8f4e8,
+            roughness: 0.95,
+            metalness: 0.0
+        });
+        const pageBaseGeometry = new THREE.BoxGeometry(0.81, 0.006, 1.11);
+        const bottomPageGeometries = [];
+        for (let i = 0; i < 7; i++) {
+            const pg = pageBaseGeometry.clone();
+            pg.translate(
                 offsets.cover.x + 0.015,
                 offsets.cover.y + 0.025 + (i * 0.006),
                 offsets.cover.z
             );
-            page.castShadow = true;
-            page.receiveShadow = true;
-            group.add(page);
+            bottomPageGeometries.push(pg);
         }
+        const mergedPages = new THREE.Mesh(
+            THREE.BufferGeometryUtils.mergeBufferGeometries(bottomPageGeometries),
+            plainPageMaterial
+        );
+        mergedPages.castShadow = true;
+        mergedPages.receiveShadow = true;
+        group.add(mergedPages);
+
+        // Top page with text texture
+        const topPageGeometry = new THREE.BoxGeometry(0.81, 0.006, 1.11);
+        const textMat = new THREE.MeshStandardMaterial({
+            map: pageTexture,
+            roughness: 0.95,
+            metalness: 0.0,
+            color: 0xffffff
+        });
+        const topPage = new THREE.Mesh(topPageGeometry, [
+            plainPageMaterial, plainPageMaterial,
+            textMat, plainPageMaterial,
+            plainPageMaterial, plainPageMaterial
+        ]);
+        topPage.position.set(
+            offsets.cover.x + 0.015,
+            offsets.cover.y + 0.025 + (7 * 0.006),
+            offsets.cover.z
+        );
+        topPage.castShadow = true;
+        topPage.receiveShadow = true;
+        group.add(topPage);
 
         const bindingGeometry = new THREE.BoxGeometry(0.06, 0.08, 1.17);
         const bindingMaterial = new THREE.MeshStandardMaterial({
@@ -238,7 +244,13 @@ export class DeskObjectFactory {
         coffee.position.set(offsets.cup.x, coffeeLevel, offsets.cup.z);
         group.add(coffee);
 
-        // Corrugated texture lines on sleeve
+        // Corrugated texture lines on sleeve — merged into a single draw call
+        const lineMaterial = new THREE.MeshStandardMaterial({
+            color: 0x6B4F0A,
+            roughness: 0.95,
+            metalness: 0.0
+        });
+        const lineGeometries = [];
         for (let i = 0; i < 12; i++) {
             const lineGeometry = new THREE.CylinderGeometry(
                 sleeveTopRadius + 0.002,
@@ -248,17 +260,16 @@ export class DeskObjectFactory {
                 1,
                 true
             );
-            const lineMaterial = new THREE.MeshStandardMaterial({
-                color: 0x6B4F0A,
-                roughness: 0.95,
-                metalness: 0.0
-            });
-            const line = new THREE.Mesh(lineGeometry, lineMaterial);
             const lineY = offsets.sleeve.y - sleeveHeight / 2 + (i + 0.5) * (sleeveHeight / 12);
-            line.position.set(offsets.sleeve.x, lineY, offsets.sleeve.z);
-            line.castShadow = true;
-            group.add(line);
+            lineGeometry.translate(offsets.sleeve.x, lineY, offsets.sleeve.z);
+            lineGeometries.push(lineGeometry);
         }
+        const mergedLines = new THREE.Mesh(
+            THREE.BufferGeometryUtils.mergeBufferGeometries(lineGeometries),
+            lineMaterial
+        );
+        mergedLines.castShadow = true;
+        group.add(mergedLines);
 
         // Steam wisps rising from coffee surface
         const createSteamWisp = () => {
@@ -447,6 +458,7 @@ export class DeskObjectFactory {
         const bulb = new THREE.Mesh(bulbGeometry, bulbMaterial);
         bulb.position.set(0, bulbY, 0);
         bulb.castShadow = true;
+        bulb.layers.enable(1); // Add to bloom layer
         headGroup.add(bulb);
 
         // Inner glow sphere for volumetric light effect
@@ -459,6 +471,7 @@ export class DeskObjectFactory {
         });
         const glow = new THREE.Mesh(glowGeometry, glowMaterial);
         glow.position.set(0, bulbY, 0);
+        glow.layers.enable(1); // Add to bloom layer
         headGroup.add(glow);
 
         // Position head at end of neck, shade opening faces forward and down toward desk

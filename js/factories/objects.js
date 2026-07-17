@@ -1,6 +1,7 @@
+// @ts-check
 /**
- * Main Object Factory - Orchestrates all object creation
- * Imports and coordinates all modular object factories
+ * Main Object Factory — orchestrates all object creation.
+ * Imports and coordinates all modular object factories.
  */
 
 import { FurnitureFactory } from './furniture.js';
@@ -44,6 +45,8 @@ export class ObjectFactory {
         const objects = [
             // Furniture (non-interactive)
             { obj: furniture.createWall(), interactive: false },
+            // { obj: furniture.createCeiling(), interactive: false },
+            // { obj: furniture.createSideWalls(), interactive: false },
             { obj: furniture.createDesk(), interactive: false },
             { obj: furniture.createWallShelf(), interactive: false },
             // Wall objects

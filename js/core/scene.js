@@ -1,21 +1,28 @@
+// @ts-check
 /**
- * Scene setup and initialization
- * Handles Three.js scene, camera, renderer, and lighting setup
+ * Scene setup and initialization.
+ * Handles Three.js scene, camera, renderer, and lighting setup.
  */
 
 import { PORTFOLIO_CONFIG, LIGHTING_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 import { LightingSystem } from '../systems/lighting.js';
 
+const BLOOM_LAYER = 1;
+
 export class SceneManager {
     constructor() {
-        this.scene = null;
-        this.camera = null;
-        this.renderer = null;
-        this.controls = null;
-        this.composer = null; // Post-processing composer
-        this.lightingSystem = null; // Unified lighting management
-
-        // Use centralized origins from config
+        /** @type {THREE.Scene | null} */ this.scene = null;
+        /** @type {THREE.PerspectiveCamera | null} */ this.camera = null;
+        /** @type {THREE.WebGLRenderer | null} */ this.renderer = null;
+        /** @type {import('three').OrbitControls | null} */ this.controls = null;
+        /** @type {import('three').EffectComposer | null} */ this.composer = null;
+        /** @type {import('three').EffectComposer | null} */ this.bloomComposer = null;
+        /** @type {import('../systems/lighting.js').LightingSystem | null} */ this.lightingSystem = null;
+        /** @type {import('three').OutlinePass | null} */ this.outlinePass = null;
+        /** @type {import('three').SSAOPass | null} */ this.ssaoPass = null;
+        /** @type {import('three').UnrealBloomPass | null} */ this.bloomPass = null;
+        /** @type {THREE.MeshBasicMaterial | null} */ this.darkMaterial = null;
+        /** @type {unknown} */ this.lights = null;
         this.origins = OBJECT_ORIGINS.scene;
     }
 
@@ -94,7 +101,10 @@ export class SceneManager {
 
         // ACESFilmic tone mapping for cinematic look
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.0; // Increased from 0.8 for physically correct lights
+        // 0.88: ceiling spot decay changed from 1.5→2 (physically correct inverse-square),
+        // and intensities were raised to compensate; exposure bumped slightly to balance
+        // the net scene brightness after all lighting changes.
+        this.renderer.toneMappingExposure = 0.84;
 
         // Enable physically correct light units
         if (this.renderer.physicallyCorrectLights !== undefined) {
@@ -107,14 +117,18 @@ export class SceneManager {
             this.renderer.outputEncoding = THREE.sRGBEncoding;
         }
 
-        document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+        const container = document.getElementById('canvas-container');
+        if (!container) throw new Error('canvas-container element not found');
+        container.appendChild(this.renderer.domElement);
     }
 
     /**
      * Create orbit controls for camera manipulation
      */
     createControls() {
-        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        const camera = /** @type {THREE.PerspectiveCamera} */ (this.camera);
+        const renderer = /** @type {THREE.WebGLRenderer} */ (this.renderer);
+        this.controls = new THREE.OrbitControls(camera, renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = PORTFOLIO_CONFIG.controls.dampingFactor;
         this.controls.minDistance = PORTFOLIO_CONFIG.controls.minDistance;
@@ -132,50 +146,94 @@ export class SceneManager {
      * Set up post-processing effects (bloom for emissive surfaces)
      */
     setupPostProcessing() {
-        // Check if post-processing classes are available
         if (!THREE.EffectComposer || !THREE.RenderPass || !THREE.UnrealBloomPass) {
             console.warn('Post-processing not available, using standard rendering');
             return;
         }
+        // Narrow nullable fields — setupPostProcessing is called from init() after create* methods
+        const renderer = /** @type {THREE.WebGLRenderer} */ (this.renderer);
+        const scene = /** @type {THREE.Scene} */ (this.scene);
+        const camera = /** @type {THREE.PerspectiveCamera} */ (this.camera);
 
-        // Create effect composer
-        this.composer = new THREE.EffectComposer(this.renderer);
+        // Shared dark material for material swapping during bloom pass
+        this.darkMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
-        // Add render pass
-        const renderPass = new THREE.RenderPass(this.scene, this.camera);
-        this.composer.addPass(renderPass);
+        // Bloom composer — renders ONLY emissive objects (screens, LEDs, lamp bulb) so
+        // that bloom is confined to genuine light sources. Everything else is swapped to
+        // black in render(), so only bright emissives survive the threshold. Its output
+        // is composited additively over the full scene by the combine pass below — the
+        // result never goes straight to screen.
+        this.bloomComposer = new THREE.EffectComposer(renderer);
+        this.bloomComposer.renderToScreen = false;
+        const bloomRenderPass = new THREE.RenderPass(scene, camera);
+        this.bloomComposer.addPass(bloomRenderPass);
 
-        // Add bloom pass for glowing emissive surfaces (screens, lamp)
-        // Refined settings for more subtle, realistic glow
         const bloomPass = new THREE.UnrealBloomPass(
             new THREE.Vector2(window.innerWidth, window.innerHeight),
-            0.3,   // Bloom strength
-            0.5,   // Radius (increased from 0.4 for softer glow)
-            0.8    // Threshold (increased from 0.7 - only brightest objects bloom)
+            0.62,  // Strength — a soft, physically-plausible glow around emissive sources
+            0.60,  // Radius — wide, gentle falloff like real lens/atmospheric scatter
+            0.0    // Threshold 0: the emissive-only pass is already black everywhere else
         );
-        this.composer.addPass(bloomPass);
-
-        // Store bloom pass for potential adjustments
+        this.bloomComposer.addPass(bloomPass);
         this.bloomPass = bloomPass;
 
-        // Add outline pass for hint glow on interactive objects.
-        //
-        // The stock OutlinePass overlay shader multiplies edge output by
-        // maskColor.r, which is 0 for non-selected pixels.  With
-        // AdditiveBlending this means nothing is added to unselected areas,
-        // but the intermediate scene re-renders (depth, mask) still run and
-        // can subtly shift the image, causing perceived dimming.
-        //
-        // Fix: replace overlayMaterial with a version that drops the
-        // maskColor.r factor entirely.  The replacement MUST keep every
-        // uniform the render() method writes to, otherwise the assignment
-        // throws and the overlay never composites (leaving only the dimming
-        // side-effects).
+        // Final composer — full scene, then additively composite the emissive-only bloom.
+        this.composer = new THREE.EffectComposer(renderer);
+        const renderPass = new THREE.RenderPass(scene, camera);
+        this.composer.addPass(renderPass);
+
+        // SSAO — darkens crevices and contact points (object bases, corners) that the
+        // real-time shadow maps alone don't catch, since those only account for one
+        // directional occluder rather than ambient occlusion from all directions.
+        if (THREE.SSAOPass) {
+            const ssaoPass = new THREE.SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
+            ssaoPass.kernelRadius = 0.5;
+            ssaoPass.minDistance = 0.001;
+            ssaoPass.maxDistance = 0.1;
+            this.composer.addPass(ssaoPass);
+            this.ssaoPass = ssaoPass;
+        }
+
+        // Combine pass: base scene color + isolated bloom texture (additive).
+        // This is the compositing step that the previous full-scene bloom was missing —
+        // it restricts glow to actual light sources instead of washing out lit diffuse
+        // surfaces (keyboard, album art, notebook, desktop).
+        const combinePass = new THREE.ShaderPass(
+            new THREE.ShaderMaterial({
+                uniforms: {
+                    baseTexture: { value: null },
+                    bloomTexture: { value: this.bloomComposer.renderTarget2.texture }
+                },
+                vertexShader: [
+                    'varying vec2 vUv;',
+                    'void main() {',
+                    '    vUv = uv;',
+                    '    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+                    '}'
+                ].join('\n'),
+                fragmentShader: [
+                    'uniform sampler2D baseTexture;',
+                    'uniform sampler2D bloomTexture;',
+                    'varying vec2 vUv;',
+                    'void main() {',
+                    '    vec4 base = texture2D(baseTexture, vUv);',
+                    '    vec4 bloom = texture2D(bloomTexture, vUv);',
+                    '    gl_FragColor = base + bloom;',
+                    '}'
+                ].join('\n'),
+                defines: {}
+            }),
+            'baseTexture'
+        );
+        combinePass.needsSwap = true;
+        this.composer.addPass(combinePass);
+
+        // Add outline pass for hint glow on interactive objects (to final composer)
         if (THREE.OutlinePass) {
             const outlinePass = new THREE.OutlinePass(
                 new THREE.Vector2(window.innerWidth, window.innerHeight),
-                this.scene,
-                this.camera
+                scene,
+                camera
             );
             outlinePass.visibleEdgeColor.set(0xff3333);
             outlinePass.hiddenEdgeColor.set(0xff3333);
@@ -185,8 +243,7 @@ export class SceneManager {
             outlinePass.pulsePeriod = 3.0;
             outlinePass.enabled = false;
 
-            // Replace the overlay material.  All uniforms the render() method
-            // writes to must be present or the assignment will throw.
+            // Replace overlay material to avoid dimming
             outlinePass.overlayMaterial = new THREE.ShaderMaterial({
                 uniforms: {
                     'maskTexture': { value: null },
@@ -239,7 +296,7 @@ export class SceneManager {
      * @param {THREE.Light} light - The light to add
      */
     addEmissiveLight(light) {
-        this.lightingSystem.addEmissiveLight(light);
+        if (this.lightingSystem) this.lightingSystem.addEmissiveLight(light);
     }
 
     /**
@@ -253,11 +310,22 @@ export class SceneManager {
             floor: { x: 0, y: 0, z: 0 }
         };
 
+        const textureLoader = new THREE.TextureLoader();
+        const floorNormal = textureLoader.load('assets/textures/floor_nor.webp');
+        const floorRoughness = textureLoader.load('assets/textures/floor_rough.webp');
+
+        for (const tex of [floorNormal, floorRoughness]) {
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(8, 8);
+        }
+
         const floorGeometry = new THREE.PlaneGeometry(50, 50);
         const floorMaterial = new THREE.MeshStandardMaterial({
             color: 0x7F8076,
             roughness: 0.85,
             metalness: 0.1,
+            normalMap: floorNormal,
+            roughnessMap: floorRoughness,
             envMapIntensity: LIGHTING_CONFIG.environment.floor
         });
 
@@ -275,20 +343,28 @@ export class SceneManager {
         floor.updateMatrixWorld(true);
         floor.matrixAutoUpdate = false;
 
-        this.scene.add(floor);
+        if (this.scene) this.scene.add(floor);
     }
 
     /**
      * Handle window resize events
      */
     onWindowResize() {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        const camera = /** @type {THREE.PerspectiveCamera} */ (this.camera);
+        const renderer = /** @type {THREE.WebGLRenderer} */ (this.renderer);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
 
-        // Update composer size if available
+        // Update composer sizes if available
+        if (this.bloomComposer) {
+            this.bloomComposer.setSize(window.innerWidth, window.innerHeight);
+        }
         if (this.composer) {
             this.composer.setSize(window.innerWidth, window.innerHeight);
+        }
+        if (this.ssaoPass) {
+            this.ssaoPass.setSize(window.innerWidth, window.innerHeight);
         }
         if (this.outlinePass) {
             this.outlinePass.setSize(window.innerWidth, window.innerHeight);
@@ -296,16 +372,52 @@ export class SceneManager {
     }
 
     /**
-     * Render the scene with post-processing if available
+     * Render the scene with selective bloom via two-pass rendering.
+     * Called every frame after init() — all fields are guaranteed non-null.
      */
     render() {
-        this.controls.update();
+        // Fields are assigned by init() before animate() starts; narrow for type checker
+        const controls = /** @type {import('three').OrbitControls} */ (this.controls);
+        const scene = /** @type {THREE.Scene} */ (this.scene);
+        const renderer = /** @type {THREE.WebGLRenderer} */ (this.renderer);
+        const camera = /** @type {THREE.PerspectiveCamera} */ (this.camera);
 
-        // Use composer for post-processing effects, fallback to standard render
-        if (this.composer) {
+        controls.update();
+
+        if (this.composer && this.bloomComposer) {
+            // Pass 1: Render bloom-only by blacking out everything that isn't an emissive
+            // light source. Non-bloom meshes are swapped to a flat-black material, and the
+            // background/fog are removed so the pass sees pure black around the emitters —
+            // this keeps the isolated glow clean and prevents fog from tinting it.
+            const savedBackground = scene.background;
+            const savedFog = scene.fog;
+            scene.background = null;
+            scene.fog = null;
+            scene.traverse(obj => {
+                // Bitmask check: layer N has bit N set. layers.test() takes a Layers object, not a number.
+                if (obj.isMesh && !(obj.layers.mask & (1 << BLOOM_LAYER))) {
+                    obj._savedMaterial = obj.material;
+                    obj.material = /** @type {THREE.MeshBasicMaterial} */ (this.darkMaterial);
+                }
+            });
+            this.bloomComposer.render();
+
+            // Restore materials, background, and fog for Pass 2
+            scene.traverse(obj => {
+                if (obj._savedMaterial) {
+                    obj.material = obj._savedMaterial;
+                    delete obj._savedMaterial;
+                }
+            });
+            scene.background = savedBackground;
+            scene.fog = savedFog;
+
+            // Pass 2: Render normal scene, then the combine pass adds the isolated bloom on top
+            this.composer.render();
+        } else if (this.composer) {
             this.composer.render();
         } else {
-            this.renderer.render(this.scene, this.camera);
+            renderer.render(scene, camera);
         }
     }
 }

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Wall-mounted objects creation
  * Handles diploma, and other wall-mounted items
@@ -55,6 +56,7 @@ export class WallObjectFactory {
         canvas.width = 512;
         canvas.height = 384;
         const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Failed to get 2D context for diploma canvas');
 
         // Fill with simple color initially
         ctx.fillStyle = '#f5f0e1';
@@ -193,6 +195,26 @@ export class WallObjectFactory {
         cert.position.set(offsets.cert.x, offsets.cert.y, offsets.cert.z);
         group.add(cert);
 
+        // Glass pane over the diploma. r128 predates Three.js's transmission/refraction
+        // shader chunk (transmission is a no-op on this revision — confirmed via
+        // THREE.ShaderChunk.transmission_pars_fragment being undefined), so real
+        // transmission glass isn't available here; alpha-blended + clearcoat is the
+        // period-correct glass technique for this renderer.
+        const glassGeometry = new THREE.PlaneGeometry(1.16, 0.86);
+        const glassMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            roughness: 0.05,
+            metalness: 0.0,
+            transparent: true,
+            opacity: 0.1,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.05,
+            depthWrite: false
+        });
+        const glass = new THREE.Mesh(glassGeometry, glassMaterial);
+        glass.position.set(offsets.cert.x, offsets.cert.y, offsets.cert.z + 0.008);
+        group.add(glass);
+
         // Picture Light (Art Light)
         const lightGroup = new THREE.Group();
         const brassMaterial = new THREE.MeshStandardMaterial({
@@ -201,34 +223,31 @@ export class WallObjectFactory {
             metalness: 0.8
         });
 
-        // Mounting bracket on wall
-        const mount = new THREE.Mesh(
-            new THREE.BoxGeometry(0.15, 0.08, 0.04),
-            brassMaterial
-        );
-        mount.position.set(0, 0, -0.02);
-        mount.castShadow = true;
-        lightGroup.add(mount);
+        // Picture light parts — merged into a single draw call
+        const mountGeo = new THREE.BoxGeometry(0.15, 0.08, 0.04);
+        mountGeo.translate(0, 0, -0.02);
 
-        // Curved arms extending out
         const armGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.25);
+        /** @type {THREE.BufferGeometry[]} */
+        const brassGeometries = [mountGeo];
         [-0.15, 0.15].forEach(x => {
-            const arm = new THREE.Mesh(armGeometry, brassMaterial);
-            arm.position.set(x, 0.05, 0.1);
-            arm.rotation.x = Math.PI / 2;
-            arm.castShadow = true;
-            lightGroup.add(arm);
+            const ag = armGeometry.clone();
+            ag.rotateX(Math.PI / 2);
+            ag.translate(x, 0.05, 0.1);
+            brassGeometries.push(ag);
         });
 
-        // Light housing (cylinder)
-        const housing = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.03, 0.03, 0.8, 16),
+        const housingGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 16);
+        housingGeo.rotateZ(Math.PI / 2);
+        housingGeo.translate(0, 0.05, 0.22);
+        brassGeometries.push(housingGeo);
+
+        const mergedBrass = new THREE.Mesh(
+            THREE.BufferGeometryUtils.mergeBufferGeometries(brassGeometries),
             brassMaterial
         );
-        housing.rotation.z = Math.PI / 2;
-        housing.position.set(0, 0.05, 0.22);
-        housing.castShadow = true;
-        lightGroup.add(housing);
+        mergedBrass.castShadow = true;
+        lightGroup.add(mergedBrass);
 
         // Position light group above the frame
         lightGroup.position.set(0, 0.55, 0);
@@ -293,7 +312,7 @@ export class WallObjectFactory {
         ];
 
         // Create each album cover
-        albumImages.forEach((album, index) => {
+        albumImages.forEach((album, _index) => {
             const coverTexture = textureLoader.load(album.path);
             coverTexture.colorSpace = THREE.SRGBColorSpace;
             

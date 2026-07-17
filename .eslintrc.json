@@ -1,0 +1,26 @@
+{
+  "env": {
+    "browser": true,
+    "es2020": true
+  },
+  "globals": {
+    "THREE": "readonly",
+    "gsap": "readonly"
+  },
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-undef": "error",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-shadow": "error",
+    "eqeqeq": ["error", "always"],
+    "no-fallthrough": "error",
+    "consistent-return": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-implicit-coercion": "error",
+    "no-throw-literal": "error"
+  }
+}

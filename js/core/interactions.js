@@ -1,6 +1,7 @@
+// @ts-check
 /**
- * Interaction handling
- * Manages user interactions, raycasting, camera zoom, and UI panels
+ * Interaction handling.
+ * Manages user interactions, raycasting, camera zoom, and UI panels.
  */
 
 import { PORTFOLIO_CONFIG, ZOOM_CONFIG } from '../config/config.js';
@@ -31,7 +32,7 @@ export class InteractionManager {
         this.outlinePass = null;
         this.hintActive = false;
         this.hintTimer = null;
-        this.HINT_DELAY = 5000;
+        this.HINT_DELAY = 999999; // Temporarily extended for lighting calibration
 
         // Monitor renderer for canvas content
         this.monitorRenderer = new MonitorRenderer();
@@ -111,6 +112,7 @@ export class InteractionManager {
             const intersects = this.raycaster.intersectObjects(this.interactiveObjects, true);
 
             if (intersects.length > 0) {
+                /** @type {THREE.Object3D | null} */
                 let object = intersects[0].object;
                 while (object && !this.interactiveObjects.includes(object)) {
                     object = object.parent;
@@ -122,8 +124,6 @@ export class InteractionManager {
                 }
             } else {
                 document.body.style.cursor = 'default';
-                
-                // Hide hover light
                 this.hideHoverLight();
             }
         }
@@ -182,6 +182,7 @@ export class InteractionManager {
 
         if (intersects.length > 0) {
             // Find root object
+            /** @type {THREE.Object3D | null} */
             let clickedObject = intersects[0].object;
             while (clickedObject && !this.interactiveObjects.includes(clickedObject)) {
                 clickedObject = clickedObject.parent;
@@ -243,7 +244,7 @@ export class InteractionManager {
 
         // Get zoom config for this object type, falling back to default
         const zoomSettings = ZOOM_CONFIG[objectName] || ZOOM_CONFIG.default;
-        let zoomDistance = zoomSettings.distance;
+        const zoomDistance = zoomSettings.distance;
         const yOffset = zoomSettings.yOffset;
         const targetYOffset = zoomSettings.targetYOffset || 0;
 
@@ -338,6 +339,7 @@ export class InteractionManager {
             const intersects = this.raycaster.intersectObjects(this.interactiveObjects, true);
 
             if (intersects.length > 0) {
+                /** @type {THREE.Object3D | null} */
                 let object = intersects[0].object;
                 while (object && !this.interactiveObjects.includes(object)) {
                     object = object.parent;

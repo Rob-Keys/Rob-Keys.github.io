@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You for Finding My Item!</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: Rockwell, 'Rockwell Nova', Georgia, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            color: #030D2B;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 24px;
+            padding: 48px 40px;
+            width: 90vw;
+            height: 90vh;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .profile-img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            position: absolute;
+            top: 24px;
+            left: 24px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 14px;
+            line-height: 1.3;
+        }
+
+        .message {
+            font-size: 1rem;
+            line-height: 1.7;
+            color: #555;
+            margin-bottom: 28px;
+        }
+
+        .contact-buttons {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            gap: 2vh;
+            margin-bottom: 28px;
+        }
+
+        .contact-btn {
+            display: block;
+            padding: 14px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            width: 400px;
+        }
+
+        .btn-email { background: #232D4B; color: #E8EBF2; }
+        .btn-phone { background: #E57200; color: #fff; }
+
+        .lang-track {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 24px;
+            border-radius: 0 0 24px 24px;
+        }
+
+        .lang-btn {
+            font-family: inherit;
+            font-size: 0.72rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background: transparent;
+            color: #555;
+            cursor: pointer;
+        }
+
+        .lang-btn.active { background: #232D4B; color: #fff; border-color: #232D4B; }
+
+        @media (max-width: 480px) {
+            .card { padding: 32px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img src="assets/images/ProfilePic.jpg" alt="Rob Keys" class="profile-img" />
+        <h1 id="title">Thank you for finding my lost bag!</h1>
+        <p class="message" id="message">
+            I am incredibly grateful that you found my item, and were kind enough to return it.
+            Please contact me below so we can arrange its return. I'll cover any shipping costs.
+        </p>
+        <div class="contact-buttons">
+            <a href="mailto:rob_keys@outlook.com" class="contact-btn btn-email">rob_keys@outlook.com</a>
+            <a href="tel:+17033458437" class="contact-btn btn-phone">703-345-8437</a>
+        </div>
+        <div class="lang-track" id="languageSelector"></div>
+    </div>
+
+    <script>
+        const translations = {
+            en: { title: "Thank you for finding my lost bag!", message: "I am incredibly grateful that you found my item, and were kind enough to return it. Please contact me below so we can arrange its return. I'll cover any shipping costs." },
+            es: { title: "¿Encontraste algo que perdí?", message: "Estoy increíblemente agradecido de que hayas encontrado mi artículo y hayas sido tan amable de devolverlo. Por favor contáctame a continuación. (Cubriré cualquier costo de envío)" },
+            fr: { title: "Vous avez trouvé quelque chose que j'ai perdu?", message: "Je suis incroyablement reconnaissant que vous ayez trouvé mon objet. Veuillez me contacter ci-dessous. (Je couvrirai tous les frais d'expédition)" },
+            de: { title: "Etwas gefunden, das ich verloren habe?", message: "Ich bin unglaublich dankbar, dass Sie meinen Gegenstand gefunden haben. Bitte kontaktieren Sie mich unten. (Ich übernehme alle Versandkosten)" },
+            zh: { title: "找到我丢失的东西了吗？", message: "我非常感激您找到了我的物品。请使用下方联系方式与我联系。（我将支付所有运费）" },
+            ja: { title: "私が失くした物を見つけましたか？", message: "私の物を見つけていただきありがとうございます。下記よりご連絡ください。（送料は私が負担します）" },
+            ar: { title: "وجدت شيئاً فقدته؟", message: "أنا ممتن للغاية لأنك وجدت غرضي. يرجى الاتصال بي أدناه. (سأغطي أي تكاليف شحن)" },
+            ru: { title: "Нашли что-то, что я потерял?", message: "Я невероятно благодарен, что вы нашли мою вещь. Пожалуйста, свяжитесь со мной ниже. (Я покрою все расходы на доставку)" },
+            pt: { title: "Encontrou algo que perdi?", message: "Estou incrivelmente grato por você ter encontrado meu item. Por favor, entre em contato abaixo. (Eu cobrirei quaisquer custos de envio)" },
+            it: { title: "Hai trovato qualcosa che ho perso?", message: "Sono incredibilmente grato che tu abbia trovato il mio oggetto. Per favore contattami qui sotto. (Coprirò tutte le spese di spedizione)" },
+            ko: { title: "제가 잃어버린 물건을 찾으셨나요?", message: "제 물건을 찾아주셔서 정말 감사합니다. 아래로 연락주세요. (배송비는 제가 부담하겠습니다)" },
+            hi: { title: "मेरी खोई हुई चीज़ मिली?", message: "मैं आभारी हूं कि आपने मेरी वस्तु पाई। कृपया नीचे दी गई जानकारी से संपर्क करें। (मैं शिपिंग लागत को कवर करूंगा)" }
+        };
+
+        const languages = [
+            { code: 'en', name: 'English' }, { code: 'es', name: 'Español' },
+            { code: 'fr', name: 'Français' }, { code: 'de', name: 'Deutsch' },
+            { code: 'zh', name: '中文' }, { code: 'ja', name: '日本語' },
+            { code: 'ar', name: 'العربية' }, { code: 'ru', name: 'Русский' },
+            { code: 'pt', name: 'Português' }, { code: 'it', name: 'Italiano' },
+            { code: 'ko', name: '한국어' }, { code: 'hi', name: 'हिन्दी' }
+        ];
+
+        let currentLang = 'en';
+
+        const selector = document.getElementById('languageSelector');
+        languages.forEach(lang => {
+            const btn = document.createElement('button');
+            btn.className = 'lang-btn' + (lang.code === currentLang ? ' active' : '');
+            btn.textContent = lang.name;
+            btn.onclick = () => {
+                currentLang = lang.code;
+                const t = translations[lang.code];
+                document.getElementById('title').textContent = t.title;
+                document.getElementById('message').textContent = t.message;
+                document.querySelectorAll('.lang-btn').forEach((b, i) => {
+                    b.classList.toggle('active', languages[i].code === lang.code);
+                });
+                document.body.style.direction = lang.code === 'ar' ? 'rtl' : 'ltr';
+            };
+            selector.appendChild(btn);
+        });
+    </script>
+</body>
+</html>

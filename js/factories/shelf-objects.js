@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Shelf objects creation
  * Handles books, plants, and other items that sit on shelves
@@ -315,7 +316,7 @@ export class ShelfObjectFactory {
         ];
 
         // === CREATE VINES AND LEAVES ===
-        vineConfigs.forEach((config, vineIndex) => {
+        vineConfigs.forEach((config, _vineIndex) => {
             // Use CatmullRomCurve3 for smooth organic curves through multiple points
             const curve = new THREE.CatmullRomCurve3(config.points, false, 'catmullrom', 0.5);
 

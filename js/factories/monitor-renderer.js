@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Monitor canvas rendering
  * Handles creation and updating of the scrollable monitor content
@@ -23,6 +24,7 @@ export class MonitorRenderer {
         canvas.width = 1024;
         canvas.height = 512;
         const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Failed to get 2D context for monitor canvas');
 
         // Draw white background
         ctx.fillStyle = '#f5f5f5';
