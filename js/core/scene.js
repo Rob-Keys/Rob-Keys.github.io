@@ -22,6 +22,7 @@ export class SceneManager {
         /** @type {import('three').SSAOPass | null} */ this.ssaoPass = null;
         /** @type {import('three').UnrealBloomPass | null} */ this.bloomPass = null;
         /** @type {unknown} */ this.lights = null;
+        /** @type {Promise<void> | null} */ this.postFXReady = null;
         this.origins = OBJECT_ORIGINS.scene;
 
         // Shared across every loader that feeds a visible material (env map, floor,
@@ -51,12 +52,41 @@ export class SceneManager {
         // Expose lights reference for backward compatibility
         this.lights = this.lightingSystem.lights;
 
-        this.setupPostProcessing();
         this.createFloor();
+
+        // Bloom/SSAO/outline aren't needed for the first frame: render() already
+        // falls back to a plain renderer.render() while composer/bloomComposer are
+        // null, so loading this bundle async keeps it off the critical path.
+        this.postFXReady = this.loadPostProcessing();
 
         window.addEventListener('resize', () => this.onWindowResize());
 
         return { scene: this.scene, camera: this.camera, renderer: this.renderer, controls: this.controls };
+    }
+
+    /**
+     * Fetches the post-processing bundle (Pass/EffectComposer/UnrealBloomPass/
+     * SSAOPass/OutlinePass) and runs setupPostProcessing() once it's parsed. Kept as
+     * a separate lazy-loaded script (rather than bundled with vendor-core.js) so the
+     * initial scene can paint before it arrives. BufferGeometryUtils stays in
+     * vendor-core.js since the object factories call it synchronously while building
+     * the scene, well before this bundle would otherwise be ready.
+     * @returns {Promise<void>}
+     */
+    loadPostProcessing() {
+        return new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = 'js/vendor/vendor-postfx.js';
+            script.onload = () => {
+                this.setupPostProcessing();
+                resolve();
+            };
+            script.onerror = () => {
+                console.warn('vendor-postfx.js failed to load; continuing without bloom/SSAO/outline');
+                resolve();
+            };
+            document.head.appendChild(script);
+        });
     }
 
     /**

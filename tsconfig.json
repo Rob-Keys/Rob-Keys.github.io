@@ -13,5 +13,5 @@
     "types": ["three"]
   },
   "include": ["js/**/*.js", "types/**/*.d.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "js/vendor"]
 }
