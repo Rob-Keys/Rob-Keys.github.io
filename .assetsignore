@@ -1,0 +1,11 @@
+node_modules
+.git
+.claude
+TODO
+package.json
+package-lock.json
+tsconfig.json
+.eslintrc.json
+types
+README.md
+LICENSE
