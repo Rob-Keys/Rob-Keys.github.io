@@ -264,6 +264,25 @@ body {
     font-size: 14px;
 }
 
+.rotate-enable-btn {
+    display: none;
+    margin-top: 8px;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Shown only on iOS 13+, where DeviceOrientationEvent requires an explicit
+   gesture-triggered permission grant before it will fire. */
+body.needs-orientation-permission .rotate-enable-btn {
+    display: inline-block;
+}
+
 /* Phone rotates from portrait (0deg) to landscape (90deg) */
 @keyframes rotatePhone {
     0%, 30% {
@@ -289,4 +308,11 @@ body {
     #rotate-overlay {
         display: flex;
     }
+}
+
+/* Orientation lock keeps the layout in portrait even once the device is
+   physically turned sideways -- deviceorientation detects that real tilt
+   (see js/systems/orientation.js) and dismisses the overlay early. */
+body.physical-landscape #rotate-overlay {
+    display: none !important;
 }

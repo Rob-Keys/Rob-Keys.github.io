@@ -7,6 +7,7 @@
 import { SceneManager } from './scene.js';
 import { ObjectFactory } from '../factories/objects.js';
 import { InteractionManager } from './interactions.js';
+import { initOrientationDetection } from '../systems/orientation.js';
 
 class Portfolio3D {
     constructor() {
@@ -121,6 +122,8 @@ class Portfolio3D {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    initOrientationDetection();
+
     const portfolio = new Portfolio3D();
     window._portfolio = portfolio;
     await portfolio.init();
