@@ -1,16 +1,87 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rob Keys - Interactive Portfolio</title>
 
-    <link rel="icon" type="image/png" href="/src/assets/little_icon.png" />
+    <!-- Performance hints: preconnect to CDNs -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
-    <title>Rob Keys</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    <!-- DNS prefetch for faster resolution -->
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="canvas-container">
+        <div id="loading">
+            <div class="loading-content">
+                <p class="loading-eyebrow">Portfolio of</p>
+                <h1 class="loading-title" aria-label="Rob Keys">
+                    <span>R</span><span>o</span><span>b</span><span class="loading-space">&nbsp;</span><span>K</span><span>e</span><span>y</span><span>s</span>
+                </h1>
+                <div class="loading-track"><div class="loading-shimmer"></div></div>
+                <p class="loading-status">Setting up the desk</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="info-panel">
+        <button id="close-btn">&times;</button>
+        <div id="panel-content"></div>
+    </div>
+
+    <div id="instructions">
+        Click objects to explore • Click again to zoom out • Click another object to switch
+    </div>
+
+    <!-- Portrait orientation overlay for mobile devices -->
+    <div id="rotate-overlay">
+        <div class="rotate-content">
+            <div class="phone-icon">
+                <svg viewBox="0 0 80 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="4" width="72" height="132" rx="12" stroke="white" stroke-width="4"/>
+                    <rect x="12" y="20" width="56" height="96" rx="2" fill="rgba(255,255,255,0.15)"/>
+                    <circle cx="40" cy="128" r="4" stroke="white" stroke-width="2"/>
+                </svg>
+            </div>
+            <p class="rotate-text">Please rotate your phone</p>
+            <p class="rotate-subtext">This experience is best in landscape</p>
+        </div>
+    </div>
+
+
+
+    <!-- Three.js - defer to load in order -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- RGBELoader for HDR environment maps -->
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+    <!-- RectAreaLight for rectangular light sources (screens) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lights/RectAreaLightUniformsLib.js"></script>
+    <!-- Post-processing for bloom effect -->
+    <!-- Pass.js must load first - base class for all post-processing passes -->
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/Pass.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/OutlinePass.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/math/SimplexNoise.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/SSAOShader.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/SSAOPass.js"></script>
+    <!-- BufferGeometryUtils for merging static geometry -->
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
+    <!-- GSAP for smooth animations -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- Modular application code - loads after dependencies -->
+    <script type="module" defer src="js/core/main.js?v=2"></script>
+</body>
 </html>
