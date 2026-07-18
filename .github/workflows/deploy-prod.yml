@@ -1,0 +1,66 @@
+name: Deploy to prod
+
+# Manually promotes a build of the site to the `prod` branch, which Cloudflare
+# Pages watches and rebuilds from on every push. The `prod` branch contains
+# only the files the site actually serves at runtime -- no source tooling,
+# docs, or config. Run from the Actions tab when you're ready to publish
+# whatever is currently on `dev` (or another ref you choose).
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch or commit to deploy'
+        required: false
+        default: 'dev'
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          path: source
+
+      - name: Build trimmed prod worktree
+        working-directory: source
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin prod
+          git worktree add -B prod /tmp/prod-worktree origin/prod
+
+          # Wipe the worktree down to bare .git, then repopulate with only
+          # the files the three.js site needs to run (see CLAUDE.md "File
+          # Structure" -- everything else is dev tooling/docs).
+          find /tmp/prod-worktree -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+
+          cp index.html favicon.ico lost.html /tmp/prod-worktree/
+          cp -r css /tmp/prod-worktree/
+          cp -r js /tmp/prod-worktree/
+          cp -r assets /tmp/prod-worktree/
+
+      - name: Commit and push if changed
+        working-directory: /tmp/prod-worktree
+        run: |
+          set -euo pipefail
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes to deploy -- prod already matches ${{ inputs.ref }}."
+            exit 0
+          fi
+
+          SOURCE_SHA=$(git -C "${GITHUB_WORKSPACE}/source" rev-parse --short HEAD)
+          git commit -m "Deploy ${{ inputs.ref }}@${SOURCE_SHA} to prod"
+          git push origin HEAD:prod
