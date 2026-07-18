@@ -54,6 +54,18 @@ All portfolio content lives in `js/config/content.js`. Scene settings (camera, l
     └── textures/
 ```
 
+## Deployment
+
+`prod` is a separate branch with an unrelated commit history — it holds only the files the site serves at runtime (`index.html`, `favicon.ico`, `lost.html`, `css/`, `js/`, `assets/`), no source tooling, docs, or config. Cloudflare Pages watches `prod` and rebuilds on every push to it.
+
+There's no pull-request step. To publish:
+
+1. Merge your changes into `main` (or whatever ref you want to ship).
+2. Go to the **Actions** tab → **Deploy to prod** → **Run workflow**.
+3. Optionally override the `ref` input (defaults to `main`).
+
+The workflow (`.github/workflows/deploy-prod.yml`) checks out that ref, copies just the runtime files into a `prod` worktree, and commits/pushes straight to `prod` if anything changed.
+
 ## Dependencies
 
 All loaded via CDN in `index.html` — no package.json:
