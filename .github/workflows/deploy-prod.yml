@@ -4,7 +4,7 @@ name: Deploy to prod
 # Pages watches and rebuilds from on every push. The `prod` branch contains
 # only the files the site actually serves at runtime -- no source tooling,
 # docs, or config. Run from the Actions tab when you're ready to publish
-# whatever is currently on `dev` (or another ref you choose).
+# whatever is currently on `main` (or another ref you choose).
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ on:
       ref:
         description: 'Branch or commit to deploy'
         required: false
-        default: 'dev'
+        default: 'main'
 
 permissions:
   contents: write
