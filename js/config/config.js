@@ -16,7 +16,7 @@ export { CONTENT_DATA, SHARED_CONTENT } from './content.js';
 
 export const SHADOW_CONFIG = Object.freeze({
     main: Object.freeze({
-        mapSize: 4096,
+        mapSize: 2048,
         near: 0.5,
         far: 25,
         bias: -0.0001,
@@ -148,6 +148,17 @@ export const PORTFOLIO_CONFIG = Object.freeze({
         fogColor: 0x1a1614,
         fogNear: 10,
         fogFar: 50
+    }),
+    rendering: Object.freeze({
+        // Capped below the display's native devicePixelRatio -- every full-screen
+        // post-processing pass (bloom, SSAO, combine, outline) pays for pixel count
+        // quadratically on Retina displays, so this is a deliberate sharpness/perf trade.
+        maxPixelRatioDesktop: 1.5,
+        maxPixelRatioMobile: 1.0,
+        // Post-processing passes that are inherently blurred (bloom) or low-frequency
+        // (SSAO) render at a fraction of canvas resolution and upsample; the softening
+        // is invisible for bloom and barely perceptible for SSAO.
+        postProcessResolutionScale: 0.5
     }),
     camera: Object.freeze({
         fov: 75,

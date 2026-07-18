@@ -21,9 +21,21 @@ export class SceneManager {
         /** @type {import('three').OutlinePass | null} */ this.outlinePass = null;
         /** @type {import('three').SSAOPass | null} */ this.ssaoPass = null;
         /** @type {import('three').UnrealBloomPass | null} */ this.bloomPass = null;
-        /** @type {THREE.MeshBasicMaterial | null} */ this.darkMaterial = null;
         /** @type {unknown} */ this.lights = null;
         this.origins = OBJECT_ORIGINS.scene;
+
+        // Shared across every loader that feeds a visible material (env map, floor,
+        // diploma frame, vinyl covers) so the loading screen can stay up until all of
+        // them have actually resolved, instead of hiding as soon as init() returns.
+        // The resolve handler is wired up now, before any loader.load() call exists —
+        // attaching it later risks a race where loads (especially fast local ones)
+        // finish and fire onLoad before anything is listening.
+        this.loadingManager = new THREE.LoadingManager();
+        /** @type {Promise<void>} */
+        this._assetsReady = new Promise((resolve) => {
+            this.loadingManager.onLoad = () => resolve();
+        });
+        this.loadingManager.onError = (url) => console.warn(`Asset failed to load: ${url}`);
     }
 
     init() {
@@ -33,7 +45,7 @@ export class SceneManager {
         this.createControls();
 
         // Initialize the unified lighting system
-        this.lightingSystem = new LightingSystem(this.renderer, this.scene);
+        this.lightingSystem = new LightingSystem(this.renderer, this.scene, this.loadingManager);
         this.lightingSystem.init();
 
         // Expose lights reference for backward compatibility
@@ -82,18 +94,33 @@ export class SceneManager {
     }
 
     /**
+     * Device pixel ratio to render at, capped below native resolution since every
+     * full-screen post-processing pass pays for pixel count quadratically.
+     * @returns {number}
+     */
+    getMaxPixelRatio() {
+        const isMobile = window.innerWidth < 768;
+        const cap = isMobile
+            ? PORTFOLIO_CONFIG.rendering.maxPixelRatioMobile
+            : PORTFOLIO_CONFIG.rendering.maxPixelRatioDesktop;
+        return Math.min(window.devicePixelRatio, cap);
+    }
+
+    /**
      * Create and configure the WebGL renderer for ultra-realistic output
      */
     createRenderer() {
         this.renderer = new THREE.WebGLRenderer({
-            antialias: true, // Enable antialiasing for smooth edges
+            // Antialiasing is wasted here: the composer renders everything into
+            // non-AA render targets, so canvas MSAA never touches the final pixels.
+            antialias: false,
             powerPreference: 'high-performance',
             stencil: false,
             alpha: false,
             logarithmicDepthBuffer: false
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.setPixelRatio(this.getMaxPixelRatio());
 
         // High quality shadow mapping
         this.renderer.shadowMap.enabled = true;
@@ -155,21 +182,26 @@ export class SceneManager {
         const scene = /** @type {THREE.Scene} */ (this.scene);
         const camera = /** @type {THREE.PerspectiveCamera} */ (this.camera);
 
-        // Shared dark material for material swapping during bloom pass
-        this.darkMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-
         // Bloom composer — renders ONLY emissive objects (screens, LEDs, lamp bulb) so
-        // that bloom is confined to genuine light sources. Everything else is swapped to
-        // black in render(), so only bright emissives survive the threshold. Its output
-        // is composited additively over the full scene by the combine pass below — the
-        // result never goes straight to screen.
+        // that bloom is confined to genuine light sources. The camera's layer mask is
+        // switched to BLOOM_LAYER for this pass in render(), so everything else is
+        // skipped entirely rather than drawn and blacked out. Its output is composited
+        // additively over the full scene by the combine pass below — the result never
+        // goes straight to screen.
+        // Bloom is a blur by nature, so rendering its composer at half resolution and
+        // letting the combine pass upsample it is free — no visible quality loss.
+        const scale = PORTFOLIO_CONFIG.rendering.postProcessResolutionScale;
+        const bloomWidth = Math.round(window.innerWidth * scale);
+        const bloomHeight = Math.round(window.innerHeight * scale);
+
         this.bloomComposer = new THREE.EffectComposer(renderer);
         this.bloomComposer.renderToScreen = false;
+        this.bloomComposer.setSize(bloomWidth, bloomHeight);
         const bloomRenderPass = new THREE.RenderPass(scene, camera);
         this.bloomComposer.addPass(bloomRenderPass);
 
         const bloomPass = new THREE.UnrealBloomPass(
-            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            new THREE.Vector2(bloomWidth, bloomHeight),
             0.62,  // Strength — a soft, physically-plausible glow around emissive sources
             0.60,  // Radius — wide, gentle falloff like real lens/atmospheric scatter
             0.0    // Threshold 0: the emissive-only pass is already black everywhere else
@@ -186,7 +218,9 @@ export class SceneManager {
         // real-time shadow maps alone don't catch, since those only account for one
         // directional occluder rather than ambient occlusion from all directions.
         if (THREE.SSAOPass) {
-            const ssaoPass = new THREE.SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
+            // Half-resolution SSAO is the standard trade -- low-frequency ambient
+            // occlusion barely changes at half the sample density.
+            const ssaoPass = new THREE.SSAOPass(scene, camera, bloomWidth, bloomHeight);
             ssaoPass.kernelRadius = 0.5;
             ssaoPass.minDistance = 0.001;
             ssaoPass.maxDistance = 0.1;
@@ -292,6 +326,28 @@ export class SceneManager {
     }
 
     /**
+     * Resolves once every texture registered on `loadingManager` (env map, floor,
+     * diploma frame, vinyl covers) has finished loading — success or failure. Three's
+     * loaders call `itemEnd` on both paths, so this can't hang on a single 404.
+     * @returns {Promise<void>}
+     */
+    waitForAssets() {
+        return this._assetsReady;
+    }
+
+    /**
+     * Stop re-rendering shadow maps every frame. Nothing that casts a shadow
+     * moves in this scene, so the maps only need to be populated once. Call
+     * after the first render so all shadow casters have already been drawn.
+     * If a future change animates a shadow-casting object, set
+     * `renderer.shadowMap.needsUpdate = true` for that single frame instead
+     * of re-enabling `autoUpdate`.
+     */
+    freezeShadowMap() {
+        if (this.renderer) this.renderer.shadowMap.autoUpdate = false;
+    }
+
+    /**
      * Add a light source for screen emission (called by technology factories)
      * @param {THREE.Light} light - The light to add
      */
@@ -310,7 +366,7 @@ export class SceneManager {
             floor: { x: 0, y: 0, z: 0 }
         };
 
-        const textureLoader = new THREE.TextureLoader();
+        const textureLoader = new THREE.TextureLoader(this.loadingManager);
         const floorNormal = textureLoader.load('assets/textures/floor_nor.webp');
         const floorRoughness = textureLoader.load('assets/textures/floor_rough.webp');
 
@@ -354,17 +410,22 @@ export class SceneManager {
         const renderer = /** @type {THREE.WebGLRenderer} */ (this.renderer);
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
+        renderer.setPixelRatio(this.getMaxPixelRatio());
         renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const scale = PORTFOLIO_CONFIG.rendering.postProcessResolutionScale;
+        const halfWidth = Math.round(window.innerWidth * scale);
+        const halfHeight = Math.round(window.innerHeight * scale);
 
         // Update composer sizes if available
         if (this.bloomComposer) {
-            this.bloomComposer.setSize(window.innerWidth, window.innerHeight);
+            this.bloomComposer.setSize(halfWidth, halfHeight);
         }
         if (this.composer) {
             this.composer.setSize(window.innerWidth, window.innerHeight);
         }
         if (this.ssaoPass) {
-            this.ssaoPass.setSize(window.innerWidth, window.innerHeight);
+            this.ssaoPass.setSize(halfWidth, halfHeight);
         }
         if (this.outlinePass) {
             this.outlinePass.setSize(window.innerWidth, window.innerHeight);
@@ -385,30 +446,20 @@ export class SceneManager {
         controls.update();
 
         if (this.composer && this.bloomComposer) {
-            // Pass 1: Render bloom-only by blacking out everything that isn't an emissive
-            // light source. Non-bloom meshes are swapped to a flat-black material, and the
-            // background/fog are removed so the pass sees pure black around the emitters —
-            // this keeps the isolated glow clean and prevents fog from tinting it.
+            // Pass 1: Render bloom-only. Restricting the camera's layer mask to
+            // BLOOM_LAYER means non-emissive objects are never submitted to the GPU for
+            // this pass, instead of being drawn and blacked out. Background/fog are
+            // cleared so the pass sees pure black around the emitters.
             const savedBackground = scene.background;
             const savedFog = scene.fog;
             scene.background = null;
             scene.fog = null;
-            scene.traverse(obj => {
-                // Bitmask check: layer N has bit N set. layers.test() takes a Layers object, not a number.
-                if (obj.isMesh && !(obj.layers.mask & (1 << BLOOM_LAYER))) {
-                    obj._savedMaterial = obj.material;
-                    obj.material = /** @type {THREE.MeshBasicMaterial} */ (this.darkMaterial);
-                }
-            });
+
+            camera.layers.set(BLOOM_LAYER);
             this.bloomComposer.render();
 
-            // Restore materials, background, and fog for Pass 2
-            scene.traverse(obj => {
-                if (obj._savedMaterial) {
-                    obj.material = obj._savedMaterial;
-                    delete obj._savedMaterial;
-                }
-            });
+            // Restore the default layer mask and background/fog for Pass 2
+            camera.layers.set(0);
             scene.background = savedBackground;
             scene.fog = savedFog;
 

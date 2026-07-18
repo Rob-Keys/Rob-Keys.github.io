@@ -24,11 +24,19 @@ class Portfolio3D {
         const scene = /** @type {THREE.Scene} */ (_scene);
 
         // Pass lightingSystem to ObjectFactory for dynamic glare materials
-        this.objectFactory = new ObjectFactory(scene, /** @type {null | undefined} */ (this.sceneManager.lightingSystem));
+        this.objectFactory = new ObjectFactory(
+            scene,
+            /** @type {null | undefined} */ (this.sceneManager.lightingSystem),
+            this.sceneManager.loadingManager
+        );
         const interactiveObjects = await this.objectFactory.createAllObjects();
 
         // Fit the sun's shadow frustum to actual scene bounds now that every object exists.
         this.sceneManager.lightingSystem?.fitMainShadowToScene(scene);
+
+        // Wait for the env map, floor, diploma, and vinyl textures to actually finish
+        // loading before revealing the scene, so nothing pops in after the fade.
+        await this.sceneManager.waitForAssets();
 
         this.interactionManager = new InteractionManager(camera, controls, interactiveObjects, scene);
 
@@ -55,8 +63,10 @@ class Portfolio3D {
         this._clock = findByName('clock');
         this._monitor = findByName('monitor');
 
-        // Force full render while loading screen is visible (compiles shaders + uploads to GPU)
+        // Force full render while loading screen is visible (compiles shaders + uploads to GPU),
+        // populating the shadow maps before we freeze them.
         this.sceneManager.render();
+        this.sceneManager.freezeShadowMap();
         this.hideLoadingScreen();
 
         // Finalize objects that need post-render setup (e.g., light targeting)

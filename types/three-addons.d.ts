@@ -7,7 +7,7 @@
  */
 
 import type {
-    Camera, Color, DataTexture, Material, Object3D,
+    Camera, Color, DataTexture, LoadingManager, Material, Object3D,
     Scene, ShaderMaterial, Vector2, Vector3, WebGLRenderer,
     WebGLRenderTarget,
 } from 'three';
@@ -83,6 +83,7 @@ declare module 'three' {
     }
 
     class RGBELoader {
+        constructor(manager?: LoadingManager);
         load(
             url: string,
             onLoad: (texture: DataTexture) => void,

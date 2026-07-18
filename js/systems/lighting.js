@@ -7,9 +7,13 @@
 import { SHADOW_CONFIG } from '../config/config.js';
 
 export class LightingSystem {
-    constructor(renderer, scene) {
+    /**
+     * @param {THREE.LoadingManager | null} [loadingManager]
+     */
+    constructor(renderer, scene, loadingManager = null) {
         this.renderer = renderer;
         this.scene = scene;
+        this.loadingManager = loadingManager;
 
         /** @type {{
          *   ambient: THREE.AmbientLight | null,
@@ -41,6 +45,14 @@ export class LightingSystem {
         // Day/night cycle cached colors (avoid GC)
         this._startColor = new THREE.Color();
         this._endColor = new THREE.Color();
+        this._nightAmbientColor = new THREE.Color(0x0a0e1a);
+        this._dayAmbientColor = new THREE.Color(0x1a150d);
+        this._nightSkyColor = new THREE.Color(0x050810);
+        this._daySkyColor = new THREE.Color(0x8ab4d8);
+
+        // Throttle updateDayNightCycle to ~1 Hz — the sun position changes over
+        // minutes, not frames, so recomputing it every frame is wasted work.
+        this._lastDayNightUpdate = 0;
 
         // Directional (window) light keyframes only.
         // Interior ceiling/desk lights are constant — only window sunlight changes.
@@ -94,7 +106,7 @@ export class LightingSystem {
      */
     createEnvironmentMap() {
         const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
-        const loader = new THREE.RGBELoader();
+        const loader = new THREE.RGBELoader(this.loadingManager || undefined);
         loader.load('assets/textures/env.hdr', (texture) => {
             const envMap = pmremGenerator.fromEquirectangular(texture).texture;
             this.scene.environment = envMap;
@@ -420,6 +432,10 @@ export class LightingSystem {
     updateDayNightCycle() {
         if (!this.lights.main) return;
 
+        const nowMs = performance.now();
+        if (nowMs - this._lastDayNightUpdate < 1000) return;
+        this._lastDayNightUpdate = nowMs;
+
         const now = new Date();
         const hour = now.getHours() + now.getMinutes() / 60;
 
@@ -455,9 +471,7 @@ export class LightingSystem {
         // has a distinctly cold blue cast from sky glow, not the warm tone of an interior.
         if (this.lights.ambient) {
             // Interpolate color: night blue (#0a0e1a) → day warm (#1a150d)
-            const nightColor = new THREE.Color(0x0a0e1a);
-            const dayColor = new THREE.Color(0x1a150d);
-            this.lights.ambient.color.copy(nightColor).lerp(dayColor, dayFraction);
+            this.lights.ambient.color.copy(this._nightAmbientColor).lerp(this._dayAmbientColor, dayFraction);
             // Night floor: 0.22 (room lights keep some ambient even without sun)
             // Day peak: 0.28
             this.lights.ambient.intensity = 0.22 + dayFraction * 0.06;
@@ -465,10 +479,8 @@ export class LightingSystem {
 
         // Hemisphere: sky color shifts cool-blue at night (star/moonlit sky) → bright blue at noon.
         if (this.lights.hemisphere) {
-            const nightSky = new THREE.Color(0x050810);
-            const daySky = new THREE.Color(0x8ab4d8);
             if (this.lights.hemisphere.color) {
-                this.lights.hemisphere.color.copy(nightSky).lerp(daySky, dayFraction);
+                this.lights.hemisphere.color.copy(this._nightSkyColor).lerp(this._daySkyColor, dayFraction);
             }
             // Night: 0.04 (barely lit sky), Day peak: 0.38
             this.lights.hemisphere.intensity = 0.04 + dayFraction * 0.34;

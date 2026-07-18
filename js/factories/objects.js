@@ -11,7 +11,10 @@ import { DeskObjectFactory } from './desk-objects.js';
 import { WallObjectFactory } from './wall-objects.js';
 
 export class ObjectFactory {
-    constructor(scene, lightingSystem = null) {
+    /**
+     * @param {THREE.LoadingManager | null} [loadingManager]
+     */
+    constructor(scene, lightingSystem = null, loadingManager = null) {
         this.scene = scene;
         this.lightingSystem = lightingSystem;
         this.interactiveObjects = [];
@@ -22,7 +25,7 @@ export class ObjectFactory {
             technology: new TechnologyFactory(scene, lightingSystem),
             shelf: new ShelfObjectFactory(scene),
             desk: new DeskObjectFactory(scene),
-            wall: new WallObjectFactory(scene)
+            wall: new WallObjectFactory(scene, loadingManager)
         };
     }
 

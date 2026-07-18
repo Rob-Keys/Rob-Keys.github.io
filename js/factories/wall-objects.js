@@ -8,8 +8,12 @@ import { applyOrigin } from '../systems/utils.js';
 import { OBJECT_ORIGINS } from '../config/config.js';
 
 export class WallObjectFactory {
-    constructor(scene) {
+    /**
+     * @param {THREE.LoadingManager | null} [loadingManager]
+     */
+    constructor(scene, loadingManager = null) {
         this.scene = scene;
+        this.loadingManager = loadingManager;
         this.interactiveObjects = [];
         this._diploma = null; // Reference for post-init finalization
 
@@ -31,7 +35,7 @@ export class WallObjectFactory {
         };
 
         // Load wood texture for frame
-        const textureLoader = new THREE.TextureLoader();
+        const textureLoader = new THREE.TextureLoader(this.loadingManager || undefined);
         const woodTexture = textureLoader.load('assets/textures/wood_table_worn_diff_4k_1k.webp');
         woodTexture.colorSpace = THREE.SRGBColorSpace;
         woodTexture.wrapS = THREE.RepeatWrapping;
@@ -303,7 +307,7 @@ export class WallObjectFactory {
         const coverGeometry = new THREE.BoxGeometry(coverSize, coverSize, coverDepth);
         
         // Load all 4 album cover images
-        const textureLoader = new THREE.TextureLoader();
+        const textureLoader = new THREE.TextureLoader(this.loadingManager || undefined);
         const albumImages = [
             { path: 'assets/images/kendrick.webp', position: { x: -spacing/2, y: spacing/2 } }, // Top left
             { path: 'assets/images/kanye.webp', position: { x: spacing/2, y: spacing/2 } }, // Top right
