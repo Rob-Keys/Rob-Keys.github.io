@@ -40,11 +40,14 @@ class Portfolio3D {
 
         this.interactionManager = new InteractionManager(camera, controls, interactiveObjects, scene);
 
-        // Wire outline pass for hint glow on interactive objects
-        const outlinePass = this.sceneManager.getOutlinePass();
-        if (outlinePass) {
-            this.interactionManager.setOutlinePass(outlinePass, interactiveObjects);
-        }
+        // Post-processing (bloom/SSAO/outline) loads async in the background, so the
+        // outline pass may not exist yet — wire it up once it does, whenever that is.
+        this.sceneManager.postFXReady?.then(() => {
+            const outlinePass = this.sceneManager?.getOutlinePass();
+            if (outlinePass && this.interactionManager) {
+                this.interactionManager.setOutlinePass(outlinePass, interactiveObjects);
+            }
+        });
 
         // Cache frequently-accessed objects
         /** @param {string} name @returns {THREE.Object3D | null} */
