@@ -33,18 +33,153 @@ export class MonitorRenderer {
         // Scale to fit 1280x560 content into 1024x512 (Standard Power of Two texture)
         ctx.scale(1024/1280, 512/560);
 
-        // Save context and translate for scrolling
-        ctx.save();
-        ctx.translate(0, -scrollOffset);
+        const chromeHeight = this._renderBrowserChrome(ctx);
+        const contentHeight = 560 - chromeHeight;
 
+        // Clip page content to the area below the browser chrome
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, chromeHeight, 1280, contentHeight);
+        ctx.clip();
+
+        ctx.translate(0, chromeHeight - scrollOffset);
         this._renderContent(ctx);
 
         ctx.restore();
 
-        // Add simple scrollbar indicator
-        this._renderScrollbar(ctx, scrollOffset);
+        // Add simple scrollbar indicator, confined to the content area
+        this._renderScrollbar(ctx, scrollOffset, chromeHeight, contentHeight);
 
         return canvas;
+    }
+
+    /**
+     * Render a browser window chrome (traffic lights, tab, address bar)
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @returns {number} Height of the chrome, in logical pixels
+     */
+    _renderBrowserChrome(ctx) {
+        const width = 1280;
+        const titleBarHeight = 34;
+        const tabBarHeight = 34;
+        const addressBarHeight = 40;
+        const chromeHeight = titleBarHeight + tabBarHeight + addressBarHeight;
+
+        // Title bar
+        ctx.fillStyle = '#dee1e6';
+        ctx.fillRect(0, 0, width, titleBarHeight);
+
+        // Traffic light buttons
+        const lightColors = ['#ff5f57', '#febc2e', '#28c840'];
+        lightColors.forEach((color, i) => {
+            ctx.beginPath();
+            ctx.arc(28 + i * 28, titleBarHeight / 2, 7, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+        });
+
+        // Tab bar
+        let y = titleBarHeight;
+        ctx.fillStyle = '#dee1e6';
+        ctx.fillRect(0, y, width, tabBarHeight);
+
+        const tabWidth = 260;
+        ctx.fillStyle = '#ffffff';
+        this._roundRect(ctx, 12, y + 4, tabWidth, tabBarHeight - 4, [8, 8, 0, 0]);
+        ctx.fill();
+
+        ctx.fillStyle = '#333333';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('Rob Keys — Portfolio', 34, y + tabBarHeight - 12);
+
+        // Favicon dot
+        ctx.beginPath();
+        ctx.arc(24, y + tabBarHeight / 2 + 2, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#4a90d9';
+        ctx.fill();
+
+        // Address bar
+        y += tabBarHeight;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, y, width, addressBarHeight);
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, y + addressBarHeight);
+        ctx.lineTo(width, y + addressBarHeight);
+        ctx.stroke();
+
+        // Nav buttons (back / forward / reload)
+        ctx.strokeStyle = '#5f6368';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const navY = y + addressBarHeight / 2;
+        /** @type {[string, number][]} */
+        const navButtons = [['back', 30], ['forward', 66], ['reload', 102]];
+        navButtons.forEach(([type, cx]) => {
+            if (type === 'back' || type === 'forward') {
+                const dir = type === 'back' ? -1 : 1;
+                ctx.beginPath();
+                ctx.moveTo(cx + dir * 5, navY - 7);
+                ctx.lineTo(cx - dir * 5, navY);
+                ctx.lineTo(cx + dir * 5, navY + 7);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.arc(cx, navY, 8, 0.3, Math.PI * 1.7);
+                ctx.stroke();
+            }
+        });
+
+        // URL pill
+        const pillX = 130;
+        const pillWidth = width - pillX - 130;
+        ctx.fillStyle = '#f1f3f4';
+        this._roundRect(ctx, pillX, y + 6, pillWidth, addressBarHeight - 12, 14);
+        ctx.fill();
+
+        // Lock icon
+        ctx.strokeStyle = '#5f6368';
+        ctx.lineWidth = 1.5;
+        const lockX = pillX + 18;
+        const lockY = navY;
+        ctx.beginPath();
+        ctx.arc(lockX, lockY - 3, 4, Math.PI, 0);
+        ctx.stroke();
+        ctx.fillStyle = '#5f6368';
+        ctx.fillRect(lockX - 5, lockY - 3, 10, 8);
+
+        ctx.fillStyle = '#3c4043';
+        ctx.font = '16px Arial';
+        ctx.fillText('robkeys.dev', lockX + 16, navY + 5);
+
+        return chromeHeight;
+    }
+
+    /**
+     * Build a rounded rectangle path; caller fills or strokes it
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {number} x
+     * @param {number} y
+     * @param {number} w
+     * @param {number} h
+     * @param {number|number[]} radius
+     */
+    _roundRect(ctx, x, y, w, h, radius) {
+        const r = Array.isArray(radius) ? radius : [radius, radius, radius, radius];
+        ctx.beginPath();
+        ctx.moveTo(x + r[0], y);
+        ctx.lineTo(x + w - r[1], y);
+        ctx.arcTo(x + w, y, x + w, y + r[1], r[1]);
+        ctx.lineTo(x + w, y + h - r[2]);
+        ctx.arcTo(x + w, y + h, x + w - r[2], y + h, r[2]);
+        ctx.lineTo(x + r[3], y + h);
+        ctx.arcTo(x, y + h, x, y + h - r[3], r[3]);
+        ctx.lineTo(x, y + r[0]);
+        ctx.arcTo(x, y, x + r[0], y, r[0]);
+        ctx.closePath();
     }
 
     /**
@@ -288,16 +423,15 @@ export class MonitorRenderer {
     }
 
     /**
-     * Render scrollbar indicator
+     * Render scrollbar indicator within the page content area
      */
-    _renderScrollbar(ctx, scrollOffset) {
+    _renderScrollbar(ctx, scrollOffset, chromeHeight, contentHeight) {
         const logicalWidth = 1280;
-        const logicalHeight = 560;
         const scrollBarHeight = 50;
         const maxScroll = 2000;
-        const scrollBarY = (scrollOffset / maxScroll) * (logicalHeight - scrollBarHeight);
+        const scrollBarY = chromeHeight + (scrollOffset / maxScroll) * (contentHeight - scrollBarHeight);
 
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
         ctx.fillRect(logicalWidth - 10, scrollBarY, 8, scrollBarHeight);
     }
 
