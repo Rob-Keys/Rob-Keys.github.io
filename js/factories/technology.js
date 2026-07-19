@@ -4,7 +4,14 @@
  * Handles monitor, keyboard, mouse, laptop, and other tech items
  */
 
-import { applyOrigin, wrapText } from '../systems/utils.js';
+import {
+    applyOrigin,
+    wrapText,
+    createBeveledBox,
+    createKeycapGeometry,
+    createRoughnessVariationTexture,
+    createScreenSmudgeTexture
+} from '../systems/utils.js';
 import { LIGHTING_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 
 export class TechnologyFactory {
@@ -135,6 +142,7 @@ export class TechnologyFactory {
             emissiveMap: texture,
             emissiveIntensity: 1.15,
             roughness: 0.15, // Lower roughness for realistic screen reflection
+            roughnessMap: createScreenSmudgeTexture(), // faint fingerprint/smudge catches env light when the screen is dark
             metalness: 0.0,
             envMapIntensity: LIGHTING_CONFIG.environment.screen
         });
@@ -207,13 +215,14 @@ export class TechnologyFactory {
         group.userData.screenLight = screenLight;
 
         // Screen bezel (realistic thickness)
-        const bezelGeometry = new THREE.BoxGeometry(3.4, 1.6, 0.12);
+        const bezelGeometry = createBeveledBox(3.4, 1.6, 0.12, 0.006, 3);
         const bezelMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x1a1a1a,
             roughness: 0.3,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.0,
-            clearcoat: 0.8,
-            clearcoatRoughness: 0.1
+            clearcoat: 0.2,
+            clearcoatRoughness: 0.55
         });
         const bezel = new THREE.Mesh(bezelGeometry, bezelMaterial);
         bezel.position.set(offsets.bezel.x, offsets.bezel.y, offsets.bezel.z);
@@ -222,7 +231,7 @@ export class TechnologyFactory {
         group.add(bezel);
 
         // Inner bezel for screen
-        const innerBezelGeometry = new THREE.BoxGeometry(3.25, 1.45, 0.08);
+        const innerBezelGeometry = createBeveledBox(3.25, 1.45, 0.08, 0.005, 3);
         const innerBezelMaterial = new THREE.MeshStandardMaterial({
             color: 0x0a0a0a,
             roughness: 0.1,
@@ -273,6 +282,7 @@ export class TechnologyFactory {
         const armMaterial = new THREE.MeshStandardMaterial({
             color: 0x2a2a2a,
             roughness: 0.4,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.7
         });
         const arm = new THREE.Mesh(armGeometry, armMaterial);
@@ -286,6 +296,7 @@ export class TechnologyFactory {
         const jointMaterial = new THREE.MeshStandardMaterial({
             color: 0x3a3a3a,
             roughness: 0.2,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.8
         });
         const upperJointGeo = jointGeometry.clone();
@@ -305,6 +316,7 @@ export class TechnologyFactory {
         const baseMaterial = new THREE.MeshStandardMaterial({
             color: 0x1a1a1a,
             roughness: 0.4,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.6
         });
         const base = new THREE.Mesh(baseGeometry, baseMaterial);
@@ -395,16 +407,20 @@ export class TechnologyFactory {
         const metalMaterial = new THREE.MeshStandardMaterial({
             color: 0x3a3a3a,
             roughness: 0.55,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.5
         });
-        const darkMaterial = new THREE.MeshStandardMaterial({
+        const darkMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x2a2a2a,
             roughness: 0.7,
-            metalness: 0.3
+            roughnessMap: createRoughnessVariationTexture(),
+            metalness: 0.3,
+            clearcoat: 0.15,
+            clearcoatRoughness: 0.55
         });
 
         // Keyboard base
-        const baseGeometry = new THREE.BoxGeometry(2.1, 0.05, 0.85);
+        const baseGeometry = createBeveledBox(2.1, 0.05, 0.85, 0.006, 2);
         const base = new THREE.Mesh(baseGeometry, metalMaterial);
         base.position.set(offsets.base.x, offsets.base.y, offsets.base.z);
         base.castShadow = true;
@@ -412,7 +428,7 @@ export class TechnologyFactory {
         group.add(base);
 
         // Keyboard case
-        const caseGeometry = new THREE.BoxGeometry(2.0, 0.12, 0.8);
+        const caseGeometry = createBeveledBox(2.0, 0.12, 0.8, 0.008, 2);
         const keyboardCase = new THREE.Mesh(caseGeometry, darkMaterial);
         keyboardCase.position.set(offsets.case.x, offsets.case.y, offsets.case.z);
         keyboardCase.rotation.x = -Math.PI / 36;
@@ -494,8 +510,10 @@ export class TechnologyFactory {
             });
         });
 
-        // Create instanced mesh for all keycaps (single draw call)
-        const keycapGeometry = new THREE.BoxGeometry(1, 0.04, 1);
+        // Create instanced mesh for all keycaps (single draw call).
+        // Unit footprint with draft-angle taper and a shallow top dish; per-key
+        // width/depth is applied via the instance matrix's non-uniform X/Z scale.
+        const keycapGeometry = createKeycapGeometry(1, 1, 0.04, 0.82, 0.14, 2);
         const keycapMaterial = new THREE.MeshStandardMaterial({
             color: 0xf0f0f0,
             roughness: 0.85,
@@ -554,10 +572,13 @@ export class TechnologyFactory {
         const group = new THREE.Group();
         const origin = this.origins.mouse;
 
-        const bodyMaterial = new THREE.MeshStandardMaterial({
+        const bodyMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x2a2a2a,
             roughness: 0.3,
-            metalness: 0.1
+            roughnessMap: createRoughnessVariationTexture(),
+            metalness: 0.1,
+            clearcoat: 0.25,
+            clearcoatRoughness: 0.5
         });
 
         // Main body - half cylinder (arc) rotated to form mouse shape
@@ -610,13 +631,14 @@ export class TechnologyFactory {
         const metalMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x2a2a2a,
             roughness: 0.4,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.8,
             clearcoat: 0.5,
             clearcoatRoughness: 0.2
         });
 
         // Base (bottom half with keyboard)
-        const baseGeometry = new THREE.BoxGeometry(1.4, 0.05, 0.9);
+        const baseGeometry = createBeveledBox(1.4, 0.05, 0.9, 0.006, 2);
         const base = new THREE.Mesh(baseGeometry, metalMaterial);
         base.position.set(0, 0.025, 0);
         base.castShadow = true;
@@ -662,7 +684,7 @@ export class TechnologyFactory {
         const screenLid = new THREE.Group();
 
         // Screen bezel/frame
-        const lidGeometry = new THREE.BoxGeometry(1.4, 0.9, 0.04);
+        const lidGeometry = createBeveledBox(1.4, 0.9, 0.04, 0.005, 2);
         const lid = new THREE.Mesh(lidGeometry, metalMaterial);
         lid.position.set(0, 0.45, 0);
         lid.castShadow = true;
@@ -755,6 +777,7 @@ export class TechnologyFactory {
             emissiveMap: texture,
             emissiveIntensity: 1,
             roughness: 0.05,
+            roughnessMap: createScreenSmudgeTexture(),
             metalness: 0.0,
             envMapIntensity: LIGHTING_CONFIG.environment.screen
         });

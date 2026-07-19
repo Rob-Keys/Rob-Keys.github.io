@@ -4,7 +4,12 @@
  * Handles coffee mugs, desk lamps, notebooks, and other items that sit on the desk
  */
 
-import { applyOrigin } from '../systems/utils.js';
+import {
+    applyOrigin,
+    createBeveledBox,
+    createPaperGrainNormalTexture,
+    createRoughnessVariationTexture
+} from '../systems/utils.js';
 import { SHADOW_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 
 export class DeskObjectFactory {
@@ -28,7 +33,7 @@ export class DeskObjectFactory {
             binding: { x: -0.42, y: -0.12, z: 0 }
         };
 
-        const coverGeometry = new THREE.BoxGeometry(0.9, 0.04, 1.2);
+        const coverGeometry = createBeveledBox(0.9, 0.04, 1.2, 0.006, 2);
         const coverMaterial = new THREE.MeshStandardMaterial({
             color: 0x2c3e50,
             roughness: 0.7,
@@ -116,10 +121,13 @@ export class DeskObjectFactory {
         else if (THREE.sRGBEncoding !== undefined) pageTexture.encoding = THREE.sRGBEncoding;
 
         // Bottom 7 pages — merged into a single draw call (identical material)
+        const paperGrainTexture = createPaperGrainNormalTexture();
         const plainPageMaterial = new THREE.MeshStandardMaterial({
             color: 0xf8f4e8,
             roughness: 0.95,
-            metalness: 0.0
+            metalness: 0.0,
+            normalMap: paperGrainTexture,
+            normalScale: new THREE.Vector2(0.15, 0.15)
         });
         const pageBaseGeometry = new THREE.BoxGeometry(0.81, 0.006, 1.11);
         const bottomPageGeometries = [];
@@ -146,7 +154,9 @@ export class DeskObjectFactory {
             map: pageTexture,
             roughness: 0.95,
             metalness: 0.0,
-            color: 0xffffff
+            color: 0xffffff,
+            normalMap: paperGrainTexture,
+            normalScale: new THREE.Vector2(0.15, 0.15)
         });
         const topPage = new THREE.Mesh(topPageGeometry, [
             plainPageMaterial, plainPageMaterial,
@@ -356,12 +366,14 @@ export class DeskObjectFactory {
         const metalMaterial = new THREE.MeshStandardMaterial({
             color: 0x2a2a2a,
             roughness: 0.3,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.8,
         });
 
         const chromeMaterial = new THREE.MeshStandardMaterial({
             color: 0x888888,
             roughness: 0.1,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.9
         });
 

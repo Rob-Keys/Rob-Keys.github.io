@@ -98,6 +98,155 @@ export function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
     return currentY + lineHeight;
 }
 
+const _roundedRectShapeCache = new Map();
+
+/**
+ * Build (and cache) a rounded-rectangle Shape centered at the origin.
+ * @param {number} width
+ * @param {number} height
+ * @param {number} radius
+ * @returns {THREE.Shape}
+ */
+function _roundedRectShape(width, height, radius) {
+    const key = `${width}|${height}|${radius}`;
+    const cached = _roundedRectShapeCache.get(key);
+    if (cached) return cached;
+
+    const w = width / 2;
+    const h = height / 2;
+    const r = Math.max(0, Math.min(radius, w, h));
+
+    const shape = new THREE.Shape();
+    shape.moveTo(-w + r, -h);
+    shape.lineTo(w - r, -h);
+    shape.quadraticCurveTo(w, -h, w, -h + r);
+    shape.lineTo(w, h - r);
+    shape.quadraticCurveTo(w, h, w - r, h);
+    shape.lineTo(-w + r, h);
+    shape.quadraticCurveTo(-w, h, -w, h - r);
+    shape.lineTo(-w, -h + r);
+    shape.quadraticCurveTo(-w, -h, -w + r, -h);
+    shape.closePath();
+
+    _roundedRectShapeCache.set(key, shape);
+    return shape;
+}
+
+const _beveledBoxCache = new Map();
+
+/**
+ * Create (and cache by dimension key) a box geometry with rounded edges,
+ * built from a rounded-rect profile extruded and beveled on all 12 edges.
+ * Drop-in replacement for `new THREE.BoxGeometry(width, height, depth)`.
+ * @param {number} width
+ * @param {number} height
+ * @param {number} depth
+ * @param {number} [bevelRadius] - Scene-scale edge radius (~0.005 for a 4-unit-wide desk).
+ * @param {number} [segments] - Bevel/curve tessellation; 2-3 is enough for small objects.
+ * @returns {THREE.BufferGeometry}
+ */
+export function createBeveledBox(width, height, depth, bevelRadius = 0.005, segments = 2) {
+    const key = `${width}|${height}|${depth}|${bevelRadius}|${segments}`;
+    const cached = _beveledBoxCache.get(key);
+    if (cached) return cached;
+
+    const maxRadius = Math.min(width, height, depth) / 2 - 0.0001;
+    const radius = Math.max(0, Math.min(bevelRadius, maxRadius));
+
+    const shape = _roundedRectShape(width, height, radius);
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+        steps: 1,
+        depth,
+        bevelEnabled: radius > 0,
+        bevelThickness: radius,
+        bevelSize: radius,
+        bevelOffset: 0,
+        bevelSegments: segments,
+        curveSegments: segments
+    });
+    geometry.translate(0, 0, -depth / 2);
+
+    _beveledBoxCache.set(key, geometry);
+    return geometry;
+}
+
+const _keycapGeometryCache = new Map();
+
+/**
+ * Create (and cache) a tapered keycap geometry: a rounded-rect base narrowing
+ * to a smaller rounded-rect top (draft angle) with a slightly dished top face.
+ * Built as a unit footprint (1x1) so instances can non-uniformly scale X/Z per
+ * key width while sharing one geometry/draw call.
+ * @param {number} width
+ * @param {number} depth
+ * @param {number} height
+ * @param {number} [topScale] - Top footprint as a fraction of the base (draft angle).
+ * @param {number} [bevelRadius] - Corner radius in the unit footprint's own units.
+ * @param {number} [segments] - Corner tessellation.
+ * @returns {THREE.BufferGeometry}
+ */
+export function createKeycapGeometry(width, depth, height, topScale = 0.82, bevelRadius = 0.12, segments = 2) {
+    const key = `${width}|${depth}|${height}|${topScale}|${bevelRadius}|${segments}`;
+    const cached = _keycapGeometryCache.get(key);
+    if (cached) return cached;
+
+    const bottomRadius = Math.max(0, Math.min(bevelRadius, width / 2 - 0.0001, depth / 2 - 0.0001));
+    const topWidth = width * topScale;
+    const topDepth = depth * topScale;
+    const topRadius = Math.max(0, Math.min(bottomRadius * topScale, topWidth / 2 - 0.0001, topDepth / 2 - 0.0001));
+
+    const bottomShape = _roundedRectShape(width, depth, bottomRadius);
+    const topShape = _roundedRectShape(topWidth, topDepth, topRadius);
+
+    const divisions = Math.max(8, segments * 4);
+    const bottomPts = bottomShape.getSpacedPoints(divisions);
+    const topPts = topShape.getSpacedPoints(divisions);
+
+    const halfH = height / 2;
+    const dishDepth = height * 0.12;
+    const positions = [];
+    const uvs = [];
+
+    // Side walls (draft-angle taper from base to top)
+    for (let i = 0; i < divisions; i++) {
+        const b0 = bottomPts[i];
+        const b1 = bottomPts[(i + 1) % divisions];
+        const t0 = topPts[i];
+        const t1 = topPts[(i + 1) % divisions];
+
+        positions.push(
+            b0.x, -halfH, b0.y,  b1.x, -halfH, b1.y,  t1.x, halfH, t1.y,
+            b0.x, -halfH, b0.y,  t1.x, halfH, t1.y,   t0.x, halfH, t0.y
+        );
+        const u0 = i / divisions, u1 = (i + 1) / divisions;
+        uvs.push(u0, 0, u1, 0, u1, 1, u0, 0, u1, 1, u0, 1);
+    }
+
+    // Bottom cap (flat fan)
+    for (let i = 0; i < divisions; i++) {
+        const b0 = bottomPts[i];
+        const b1 = bottomPts[(i + 1) % divisions];
+        positions.push(0, -halfH, 0, b1.x, -halfH, b1.y, b0.x, -halfH, b0.y);
+        uvs.push(0.5, 0.5, 0, 0, 0, 0);
+    }
+
+    // Top cap (fan pulled down slightly at center for a shallow dish)
+    for (let i = 0; i < divisions; i++) {
+        const t0 = topPts[i];
+        const t1 = topPts[(i + 1) % divisions];
+        positions.push(0, halfH - dishDepth, 0, t0.x, halfH, t0.y, t1.x, halfH, t1.y);
+        uvs.push(0.5, 0.5, 0, 0, 1, 1);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.computeVertexNormals();
+
+    _keycapGeometryCache.set(key, geometry);
+    return geometry;
+}
+
 /**
  * Create a 1×1 solid-color data texture (used for shader pre-compilation).
  * @param {number} r
@@ -111,5 +260,130 @@ export function createSolidTexture(r, g, b) {
     // @ts-ignore — r128 uses numeric encoding constants; newer Three.js uses colorSpace strings
     texture.encoding = THREE.sRGBEncoding;
     texture.needsUpdate = true;
+    return texture;
+}
+
+/** @type {THREE.CanvasTexture | null} */
+let _roughnessVariationTexture = null;
+
+/**
+ * Shared low-frequency roughness-variation texture for plastics and metals
+ * across the whole scene. One instance is generated and reused everywhere;
+ * per-material look comes from varying the base `roughness` value, not this
+ * map. Tileable via repeat wrapping so it reads as subtle wear rather than a
+ * visible seam.
+ * @returns {THREE.CanvasTexture}
+ */
+export function createRoughnessVariationTexture() {
+    if (_roughnessVariationTexture) return _roughnessVariationTexture;
+
+    const size = 256;
+    const { texture } = createCanvasTexture(size, size, (ctx) => {
+        // Mid-gray base (roughnessMap only modulates the material's roughness value).
+        ctx.fillStyle = '#808080';
+        ctx.fillRect(0, 0, size, size);
+
+        // Low-frequency blotches: large soft-edged circles at random gray levels,
+        // reads as smudges/wear rather than uniform noise at typical viewing distance.
+        const blotchCount = 40;
+        for (let i = 0; i < blotchCount; i++) {
+            const x = Math.random() * size;
+            const y = Math.random() * size;
+            const radius = 20 + Math.random() * 60;
+            const gray = 100 + Math.random() * 110;
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+            gradient.addColorStop(0, `rgba(${gray}, ${gray}, ${gray}, 0.35)`);
+            gradient.addColorStop(1, 'rgba(128, 128, 128, 0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        }
+    });
+
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    // This is a grayscale data map, not a color image — no sRGB decode.
+    if (texture.colorSpace !== undefined) {
+        texture.colorSpace = THREE.NoColorSpace;
+    }
+
+    _roughnessVariationTexture = texture;
+    return texture;
+}
+
+/** @type {THREE.CanvasTexture | null} */
+let _screenSmudgeTexture = null;
+
+/**
+ * Shared fingerprint/smudge texture for screen glass (monitor + laptop).
+ * A handful of faint radial smears; used as a roughnessMap so the smudges
+ * only become visible where they catch reflected light, matching how real
+ * screen grime behaves.
+ * @returns {THREE.CanvasTexture}
+ */
+export function createScreenSmudgeTexture() {
+    if (_screenSmudgeTexture) return _screenSmudgeTexture;
+
+    const size = 256;
+    const { texture } = createCanvasTexture(size, size, (ctx) => {
+        ctx.fillStyle = '#e0e0e0';
+        ctx.fillRect(0, 0, size, size);
+
+        const smearCount = 5;
+        for (let i = 0; i < smearCount; i++) {
+            const x = Math.random() * size;
+            const y = Math.random() * size;
+            const radius = 15 + Math.random() * 35;
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+            gradient.addColorStop(0, 'rgba(120, 120, 120, 0.25)');
+            gradient.addColorStop(0.7, 'rgba(150, 150, 150, 0.1)');
+            gradient.addColorStop(1, 'rgba(224, 224, 224, 0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        }
+    });
+
+    if (texture.colorSpace !== undefined) {
+        texture.colorSpace = THREE.NoColorSpace;
+    }
+
+    _screenSmudgeTexture = texture;
+    return texture;
+}
+
+/** @type {THREE.CanvasTexture | null} */
+let _paperGrainNormalTexture = null;
+
+/**
+ * Shared fine-grain paper normal texture (notebook pages, book covers).
+ * Flat normal-map blue (128, 128, 255) perturbed with small per-texel bumps;
+ * meant to be used with a small `normalScale` so it reads as paper tooth
+ * rather than a visible pattern.
+ * @returns {THREE.CanvasTexture}
+ */
+export function createPaperGrainNormalTexture() {
+    if (_paperGrainNormalTexture) return _paperGrainNormalTexture;
+
+    const size = 128;
+    const { texture } = createCanvasTexture(size, size, (ctx) => {
+        const imageData = ctx.createImageData(size, size);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            const nx = 128 + (Math.random() - 0.5) * 20;
+            const ny = 128 + (Math.random() - 0.5) * 20;
+            data[i] = nx;
+            data[i + 1] = ny;
+            data[i + 2] = 255;
+            data[i + 3] = 255;
+        }
+        ctx.putImageData(imageData, 0, 0);
+    });
+
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    if (texture.colorSpace !== undefined) {
+        texture.colorSpace = THREE.NoColorSpace;
+    }
+
+    _paperGrainNormalTexture = texture;
     return texture;
 }

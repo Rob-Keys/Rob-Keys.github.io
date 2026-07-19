@@ -4,7 +4,7 @@
  * Handles diploma, and other wall-mounted items
  */
 
-import { applyOrigin } from '../systems/utils.js';
+import { applyOrigin, createBeveledBox } from '../systems/utils.js';
 import { OBJECT_ORIGINS } from '../config/config.js';
 
 export class WallObjectFactory {
@@ -43,7 +43,7 @@ export class WallObjectFactory {
         woodTexture.repeat.set(2, 1);
 
         // Frame with ornate border - Thicker and with wood texture
-        const frameGeometry = new THREE.BoxGeometry(1.3, 1.0, 0.08);
+        const frameGeometry = createBeveledBox(1.3, 1.0, 0.08, 0.006, 3);
         const frameMaterial = new THREE.MeshStandardMaterial({
             map: woodTexture,
             color: 0x8B5A2B,
@@ -304,7 +304,7 @@ export class WallObjectFactory {
         const coverDepth = 0.01;
 
         // Album cover geometry
-        const coverGeometry = new THREE.BoxGeometry(coverSize, coverSize, coverDepth);
+        const coverGeometry = createBeveledBox(coverSize, coverSize, coverDepth, 0.004, 2);
         
         // Load all 4 album cover images
         const textureLoader = new THREE.TextureLoader(this.loadingManager || undefined);

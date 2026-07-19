@@ -4,7 +4,12 @@
  * Handles books, plants, and other items that sit on shelves
  */
 
-import { applyOrigin } from '../systems/utils.js';
+import {
+    applyOrigin,
+    createBeveledBox,
+    createPaperGrainNormalTexture,
+    createRoughnessVariationTexture
+} from '../systems/utils.js';
 import { OBJECT_ORIGINS } from '../config/config.js';
 
 export class ShelfObjectFactory {
@@ -34,13 +39,16 @@ export class ShelfObjectFactory {
         const bookDepth = 0.25;
 
         // Pre-create materials (reusable pattern - each book has different color so separate materials needed)
+        const bookGrainTexture = createPaperGrainNormalTexture();
         const materials = books.map(data => new THREE.MeshStandardMaterial({
             color: data.color,
-            roughness: 0.7
+            roughness: 0.7,
+            normalMap: bookGrainTexture,
+            normalScale: new THREE.Vector2(0.12, 0.12)
         }));
 
         books.forEach((data, index) => {
-            const geometry = new THREE.BoxGeometry(data.width, bookHeight, bookDepth);
+            const geometry = createBeveledBox(data.width, bookHeight, bookDepth, 0.004, 2);
             const book = new THREE.Mesh(geometry, materials[index]);
             book.position.set(data.offsetX, bookHeight / 2 + 0.08, 0.15);
             book.rotation.z = (index - 1) * 0.03;
@@ -63,6 +71,7 @@ export class ShelfObjectFactory {
         const potMaterial = new THREE.MeshStandardMaterial({
             color: 0xc4713f,  // Terracotta orange
             roughness: 0.8,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.0
         });
         const rimMaterial = new THREE.MeshStandardMaterial({
