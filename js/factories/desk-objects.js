@@ -9,7 +9,7 @@ import {
     createBeveledBox,
     createPaperGrainNormalTexture,
     createRoughnessVariationTexture,
-    createContactShadowPlane
+    addContactShadow
 } from '../systems/utils.js';
 import { SHADOW_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 
@@ -186,10 +186,7 @@ export class DeskObjectFactory {
         group.add(binding);
 
         // Contact shadow for realistic grounding (Phase 3.1)
-        const notebookShadow = createContactShadowPlane(1.0, 1.3);
-        notebookShadow.position.set(0, -0.2, 0);
-        notebookShadow.rotation.x = -Math.PI / 2;
-        group.add(notebookShadow);
+        addContactShadow(group, 1.0, 1.3, -0.19);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'notebook', label: 'Notebook - Personal Projects' };
@@ -250,11 +247,16 @@ export class DeskObjectFactory {
         const coffeeLevel = cupHeight / 2 - 0.08;
         const coffeeRadius = cupTopRadius - 0.015;
 
+        // Liquid surface: MeshPhysicalMaterial with a near-mirror clearcoat
+        // (Phase 5.6) -- a flat diffuse disc never sold coffee's meniscus
+        // reflection the way a thin clearcoat layer over a dark base does.
         const coffeeGeometry = new THREE.CylinderGeometry(coffeeRadius, coffeeRadius, 0.001, 32);
-        const coffeeMaterial = new THREE.MeshStandardMaterial({
-            color: 0x3d2314,
-            roughness: 0.05, // Very smooth liquid surface for realistic reflection
+        const coffeeMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x2a150c,
+            roughness: 0.35,
             metalness: 0.0,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.03,
             envMapIntensity: 0.6 // Reflect environment for liquid look
         });
         const coffee = new THREE.Mesh(coffeeGeometry, coffeeMaterial);
@@ -360,10 +362,7 @@ export class DeskObjectFactory {
         };
 
         // Contact shadow for realistic grounding (Phase 3.1)
-        const coffeeShadow = createContactShadowPlane(0.35, 0.35);
-        coffeeShadow.position.set(0, -0.2, 0);
-        coffeeShadow.rotation.x = -Math.PI / 2;
-        group.add(coffeeShadow);
+        addContactShadow(group, 0.35, 0.35, -0.4);
 
         applyOrigin(group, origin);
         group.userData = { name: 'coffee', label: 'Starbucks - What Drives Me', animateSteam: animateSteamFunc };
@@ -549,10 +548,7 @@ export class DeskObjectFactory {
         group.add(lampSwitch);
 
         // Contact shadow for realistic grounding (Phase 3.1)
-        const lampShadow = createContactShadowPlane(0.6, 0.6);
-        lampShadow.position.set(0, -0.2, 0);
-        lampShadow.rotation.x = -Math.PI / 2;
-        group.add(lampShadow);
+        addContactShadow(group, 0.6, 0.6, -0.19);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'lamp', label: 'Desk Lamp - Resume', deskLampLight: spotLight, warmFillLight: warmFillLight };

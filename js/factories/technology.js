@@ -11,7 +11,7 @@ import {
     createKeycapGeometry,
     createRoughnessVariationTexture,
     createScreenSmudgeTexture,
-    createContactShadowPlane
+    addContactShadow
 } from '../systems/utils.js';
 import { LIGHTING_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 
@@ -564,10 +564,7 @@ export class TechnologyFactory {
         group.add(port);
 
         // Contact shadow for realistic grounding (Phase 3.1)
-        const keyboardShadow = createContactShadowPlane(2.3, 1.0);
-        keyboardShadow.position.set(0, -0.2, 0);
-        keyboardShadow.rotation.x = -Math.PI / 2;
-        group.add(keyboardShadow);
+        addContactShadow(group, 2.3, 1.0, -0.19);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'keyboard', label: 'Keyboard - My Skills' };
@@ -588,12 +585,40 @@ export class TechnologyFactory {
             clearcoatRoughness: 0.5
         });
 
-        // Main body - half cylinder (arc) rotated to form mouse shape
-        const bodyGeometry = new THREE.CylinderGeometry(0.09, 0.09, 0.24, 12, 1, false, 0, Math.PI);
-        bodyGeometry.rotateZ(Math.PI);
-        bodyGeometry.rotateY(Math.PI / 2);
+        // Ergonomic shell (Phase 5.1): a domed cross-section revolved into an
+        // axisymmetric blob, elongated into an oval footprint, then tapered
+        // narrower toward the front (buttons/wheel) and fuller toward the back
+        // (palm rest). A uniform-radius cylinder reads as an obvious CG capsule;
+        // real mice are widest under the palm and pinch toward the fingertips.
+        const mouseHalfLength = 0.12;
+        const mouseRadius = 0.09;
+        const bodyHeight = 0.16;
+        const domeProfile = [];
+        const profileSegments = 8;
+        for (let i = 0; i <= profileSegments; i++) {
+            const t = i / profileSegments; // 0 = base rim, 1 = crown
+            const angle = (t * Math.PI) / 2;
+            domeProfile.push(new THREE.Vector2(
+                Math.max(mouseRadius * Math.cos(angle), 0.001),
+                bodyHeight * Math.sin(angle)
+            ));
+        }
+        const bodyGeometry = new THREE.LatheGeometry(domeProfile, 20);
+        bodyGeometry.scale(1, 1, mouseHalfLength / mouseRadius);
+
+        const bodyPos = bodyGeometry.attributes.position;
+        for (let i = 0; i < bodyPos.count; i++) {
+            const x = bodyPos.getX(i);
+            const z = bodyPos.getZ(i);
+            const tFront = THREE.MathUtils.clamp(z / mouseHalfLength, -1, 1); // -1 palm, +1 front tip
+            const widthScale = THREE.MathUtils.lerp(1.08, 0.55, Math.pow(Math.max(tFront, 0), 1.6));
+            bodyPos.setX(i, x * widthScale);
+        }
+        bodyPos.needsUpdate = true;
+        bodyGeometry.computeVertexNormals();
+
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.set(0, -0.12, 0);
+        body.position.set(0, -0.2, 0); // rests on the flat bottom plate below
         body.castShadow = true;
         body.receiveShadow = true;
         group.add(body);
@@ -606,6 +631,17 @@ export class TechnologyFactory {
         bottom.receiveShadow = true;
         group.add(bottom);
 
+        // Recessed scroll-wheel channel: a slightly wider dark ring sunk just
+        // below the shell surface so the wheel itself reads as sitting in a
+        // cavity rather than floating on top of the dome.
+        const wheelWellGeometry = new THREE.CylinderGeometry(0.024, 0.024, 0.006, 16);
+        const wheelWellMaterial = new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.9 });
+        const wheelWell = new THREE.Mesh(wheelWellGeometry, wheelWellMaterial);
+        wheelWell.position.set(0, -0.065, 0.04);
+        wheelWell.rotation.z = Math.PI / 2;
+        wheelWell.receiveShadow = true;
+        group.add(wheelWell);
+
         // Scroll wheel
         const wheelGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.025, 8);
         const wheelMaterial = new THREE.MeshStandardMaterial({
@@ -613,23 +649,21 @@ export class TechnologyFactory {
             roughness: 0.6
         });
         const scrollWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-        scrollWheel.position.set(0, -0.07, 0.04);
+        scrollWheel.position.set(0, -0.06, 0.04);
         scrollWheel.rotation.z = Math.PI / 2;
         scrollWheel.castShadow = true;
         group.add(scrollWheel);
 
-        // Button divider line
-        const dividerGeometry = new THREE.BoxGeometry(0.004, 0.01, 0.1);
-        const divider = new THREE.Mesh(dividerGeometry, new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
-        divider.position.set(0, -0.06, 0.06);
-        divider.castShadow = true;
-        group.add(divider);
+        // Button seam: real mice split the top shell between left/right
+        // buttons from the front tip back to just past the scroll wheel.
+        const seamGeometry = new THREE.BoxGeometry(0.003, 0.008, 0.14);
+        const seam = new THREE.Mesh(seamGeometry, new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.9 }));
+        seam.position.set(0, -0.045, 0.03);
+        seam.castShadow = true;
+        group.add(seam);
 
         // Contact shadow for realistic grounding (Phase 3.1)
-        const mouseShadow = createContactShadowPlane(0.25, 0.35);
-        mouseShadow.position.set(0, -0.2, 0);
-        mouseShadow.rotation.x = -Math.PI / 2;
-        group.add(mouseShadow);
+        addContactShadow(group, 0.25, 0.35, -0.21);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'mouse', label: 'Mouse - Navigation & Tools' };
@@ -703,7 +737,11 @@ export class TechnologyFactory {
         lid.castShadow = true;
         screenLid.add(lid);
 
-        // Create screen display content
+        // Create screen display content: a code-editor mock (Phase 5.4) rather
+        // than a plain text window -- a screen showing real-looking code is a
+        // much stronger realism cue for a software engineer's laptop, and it
+        // reads clearly at the shallow lid angle where a text-heavy window
+        // would blur into noise.
         const canvas = document.createElement('canvas');
         canvas.width = 1024;
         canvas.height = 768;
@@ -711,66 +749,65 @@ export class TechnologyFactory {
         if (!ctx) throw new Error('Failed to get 2D context for keyboard canvas');
 
         // Fill with simple color initially
-        ctx.fillStyle = '#667eea';
+        ctx.fillStyle = '#1e1e2e';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const texture = new THREE.CanvasTexture(canvas);
 
         // Defer heavy rendering
         requestAnimationFrame(() => setTimeout(() => {
-            // Desktop background gradient
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#667eea');
-            gradient.addColorStop(1, '#764ba2');
-            ctx.fillStyle = gradient;
+            // Editor background
+            ctx.fillStyle = '#1e1e2e';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Window
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.fillRect(100, 100, 824, 568);
-
-            // Window title bar
-            ctx.fillStyle = '#f0f0f0';
-            ctx.fillRect(100, 100, 824, 40);
-
-            // Window controls
-            ctx.fillStyle = '#ff5f57';
-            ctx.beginPath();
-            ctx.arc(120, 120, 6, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#ffbd2e';
-            ctx.beginPath();
-            ctx.arc(140, 120, 6, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#28ca42';
-            ctx.beginPath();
-            ctx.arc(160, 120, 6, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Content
-            ctx.fillStyle = '#333333';
-            ctx.font = 'bold 32px Arial';
+            // Title bar
+            ctx.fillStyle = '#181825';
+            ctx.fillRect(0, 0, canvas.width, 44);
+            ['#ff5f57', '#ffbd2e', '#28ca42'].forEach((color, i) => {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(28 + i * 24, 22, 7, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.font = '15px "Courier New", monospace';
+            ctx.fillStyle = '#9399b2';
             ctx.textAlign = 'center';
-            ctx.fillText('Work Experience', canvas.width / 2, 200);
+            ctx.fillText('experience.ts — laptop', canvas.width / 2, 27);
 
-            ctx.font = 'bold 24px Arial';
-            ctx.fillStyle = '#333333';
-            ctx.fillText('Amazon Web Services', canvas.width / 2, 280);
+            // Line-number gutter
+            const gutterWidth = 56;
+            ctx.fillStyle = '#181825';
+            ctx.fillRect(0, 44, gutterWidth, canvas.height - 44);
 
-            ctx.font = '20px Arial';
-            ctx.fillStyle = '#4a90e2';
-            ctx.fillText('Software Development Engineer', canvas.width / 2, 320);
-            ctx.fillText('Starting June 2026 | Full-time', canvas.width / 2, 355);
+            // Syntax-highlighted lines: a small TS snippet describing the role
+            const lines = [
+                { text: 'interface Role {', color: '#cdd6f4' },
+                { text: '  company: string;', color: '#89b4fa' },
+                { text: '  title: string;', color: '#89b4fa' },
+                { text: '  start: Date;', color: '#89b4fa' },
+                { text: '}', color: '#cdd6f4' },
+                { text: '', color: '#cdd6f4' },
+                { text: 'const nextRole: Role = {', color: '#cdd6f4' },
+                { text: '  company: "Amazon Web Services",', color: '#a6e3a1' },
+                { text: '  title: "Software Development Engineer",', color: '#a6e3a1' },
+                { text: '  start: new Date("2026-06-01"),', color: '#a6e3a1' },
+                { text: '};', color: '#cdd6f4' },
+                { text: '', color: '#cdd6f4' },
+                { text: '// AWS — SDE Intern, Summer 2025, Seattle WA', color: '#6c7086' },
+                { text: 'console.log(`Welcome, ${nextRole.title}`);', color: '#f9e2af' }
+            ];
 
-            ctx.font = 'bold 24px Arial';
-            ctx.fillStyle = '#333333';
-            ctx.fillText('AWS - SDE Intern', canvas.width / 2, 420);
-
-            ctx.font = '20px Arial';
-            ctx.fillStyle = '#4a90e2';
-            ctx.fillText('Summer 2025 | Seattle, WA', canvas.width / 2, 460);
+            ctx.textAlign = 'left';
+            ctx.font = '20px "Courier New", monospace';
+            const lineHeight = 34;
+            let y = 44 + 30;
+            lines.forEach((line, i) => {
+                ctx.fillStyle = '#585b70';
+                ctx.fillText(String(i + 1), 16, y);
+                ctx.fillStyle = line.color;
+                ctx.fillText(line.text, gutterWidth + 20, y);
+                y += lineHeight;
+            });
 
             texture.needsUpdate = true;
         }, 0));
@@ -838,18 +875,39 @@ export class TechnologyFactory {
         // Store light reference
         group.userData.screenLight = laptopScreenLight;
 
+        // Faint cool bounce light from the laptop screen onto nearby desk
+        // surfaces (Phase 3.3 TODO, closed out here). Built as a child of
+        // screenLid so its position tracks the tilted screen correctly, then
+        // handed off to addEmissiveLight (which parents lights to the scene
+        // root) using its computed world position -- reading its *local*
+        // position after that reparent would silently drop the screenLid/group
+        // tilt and offset.
+        const laptopBounceLight = this.lightingSystem ? new THREE.PointLight(0x8fb8ff, 0.05, 2, 2) : null;
+        if (laptopBounceLight) {
+            laptopBounceLight.position.set(0, 0.45, 0.1);
+            screenLid.add(laptopBounceLight);
+        }
+
         // Position screen lid at the back edge of the base, tilted open
         screenLid.position.set(0, 0.05, -0.45);
         screenLid.rotation.x = -Math.PI / 6;  // Open at ~30 degrees from vertical
         group.add(screenLid);
 
         // Contact shadow for realistic grounding (Phase 3.1)
-        const laptopShadow = createContactShadowPlane(1.6, 1.1);
-        laptopShadow.position.set(0, -0.05, 0);
-        laptopShadow.rotation.x = -Math.PI / 2;
-        group.add(laptopShadow);
+        addContactShadow(group, 1.6, 1.1, 0);
 
         applyOrigin(group, origin, true); // Static object
+
+        if (laptopBounceLight && this.lightingSystem) {
+            const worldPos = new THREE.Vector3();
+            laptopBounceLight.getWorldPosition(worldPos);
+            screenLid.remove(laptopBounceLight);
+            laptopBounceLight.position.copy(worldPos);
+            laptopBounceLight.matrixAutoUpdate = false;
+            laptopBounceLight.updateMatrix();
+            this.lightingSystem.addEmissiveLight(laptopBounceLight);
+        }
+
         group.userData = { name: 'laptop', label: 'Laptop - Work Experience' };
         this.interactiveObjects.push(group);
         return group;

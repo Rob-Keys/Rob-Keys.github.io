@@ -14,6 +14,8 @@ export class SceneManager {
     constructor() {
         /** @type {THREE.Scene | null} */ this.scene = null;
         /** @type {THREE.PerspectiveCamera | null} */ this.camera = null;
+        /** @type {THREE.Points | null} */ this.dustCloud = null;
+        this._dustCloudBaseY = 0;
         /** @type {THREE.WebGLRenderer | null} */ this.renderer = null;
         /** @type {import('three').OrbitControls | null} */ this.controls = null;
         /** @type {import('three').EffectComposer | null} */ this.composer = null;
@@ -22,6 +24,8 @@ export class SceneManager {
         /** @type {import('three').OutlinePass | null} */ this.outlinePass = null;
         /** @type {import('three').SSAOPass | null} */ this.ssaoPass = null;
         /** @type {import('three').UnrealBloomPass | null} */ this.bloomPass = null;
+        /** @type {import('three').ShaderPass | null} */ this.fxaaPass = null;
+        /** @type {import('three').ShaderPass | null} */ this.grainVignettePass = null;
         /** @type {unknown} */ this.lights = null;
         /** @type {Promise<void> | null} */ this.postFXReady = null;
         this.origins = OBJECT_ORIGINS.scene;
@@ -348,6 +352,70 @@ export class SceneManager {
             this.composer.addPass(outlinePass);
             this.outlinePass = outlinePass;
         }
+
+        // FXAA — last geometry-aliasing fix in the chain. Cheap (single-tap edge
+        // blend) at the 1.5x pixel ratio cap, and removes the crawling edges that
+        // the composer path never gets from canvas MSAA (antialias: false above,
+        // since canvas MSAA can't touch pixels produced by later composer passes).
+        if (THREE.FXAAShader) {
+            const fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
+            const pixelRatio = renderer.getPixelRatio();
+            const fxaaResolution = /** @type {THREE.Vector2} */ (fxaaPass.uniforms['resolution'].value);
+            fxaaResolution.set(
+                1 / (window.innerWidth * pixelRatio),
+                1 / (window.innerHeight * pixelRatio)
+            );
+            this.composer.addPass(fxaaPass);
+            this.fxaaPass = fxaaPass;
+        }
+
+        // Film grain + vignette — final grade pass (Phase 4.2). Runs after FXAA so
+        // the grain isn't itself smoothed away by the edge blend. Kept as one
+        // combined ShaderPass rather than two to avoid an extra full-screen sample.
+        const grainVignettePass = new THREE.ShaderPass(
+            new THREE.ShaderMaterial({
+                uniforms: {
+                    tDiffuse: { value: null },
+                    time: { value: 0 },
+                    grainAmplitude: { value: PORTFOLIO_CONFIG.rendering.filmGrainAmplitude },
+                    vignetteIntensity: { value: PORTFOLIO_CONFIG.rendering.vignetteIntensity }
+                },
+                vertexShader: [
+                    'varying vec2 vUv;',
+                    'void main() {',
+                    '    vUv = uv;',
+                    '    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+                    '}'
+                ].join('\n'),
+                fragmentShader: [
+                    'uniform sampler2D tDiffuse;',
+                    'uniform float time;',
+                    'uniform float grainAmplitude;',
+                    'uniform float vignetteIntensity;',
+                    'varying vec2 vUv;',
+                    '',
+                    'float noise(vec2 p) {',
+                    '    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);',
+                    '}',
+                    '',
+                    'void main() {',
+                    '    vec4 color = texture2D(tDiffuse, vUv);',
+                    '',
+                    '    float grain = (noise(vUv * vec2(1000.0, 1000.0) + time) - 0.5) * grainAmplitude;',
+                    '    color.rgb += grain;',
+                    '',
+                    '    vec2 centered = vUv - 0.5;',
+                    '    float vignette = 1.0 - vignetteIntensity * dot(centered, centered) * 2.0;',
+                    '    color.rgb *= vignette;',
+                    '',
+                    '    gl_FragColor = color;',
+                    '}'
+                ].join('\n')
+            }),
+            'tDiffuse'
+        );
+        this.composer.addPass(grainVignettePass);
+        this.grainVignettePass = grainVignettePass;
     }
 
     /**
@@ -453,8 +521,22 @@ export class SceneManager {
         dustCloud.position.set(0.5, 2.0, -1.0);
         this.scene.add(dustCloud);
 
-        // Store for animation updates
         this.dustCloud = dustCloud;
+        this._dustCloudBaseY = dustCloud.position.y;
+    }
+
+    /**
+     * Drift the dust cloud slowly within the light cone (Phase 3.5). Cheap by
+     * design: a whole-cloud rotation plus a single sine-driven Y offset, not a
+     * per-particle buffer rewrite, so the cost is one matrix update regardless
+     * of particle count.
+     */
+    updateDustParticles() {
+        if (!this.dustCloud) return;
+
+        const t = performance.now() * 0.001;
+        this.dustCloud.rotation.y = t * 0.02;
+        this.dustCloud.position.y = this._dustCloudBaseY + Math.sin(t * 0.15) * 0.1;
     }
 
     /**
@@ -485,6 +567,23 @@ export class SceneManager {
         if (this.outlinePass) {
             this.outlinePass.setSize(window.innerWidth, window.innerHeight);
         }
+        if (this.fxaaPass) {
+            const pixelRatio = renderer.getPixelRatio();
+            const fxaaResolution = /** @type {THREE.Vector2} */ (this.fxaaPass.uniforms['resolution'].value);
+            fxaaResolution.set(
+                1 / (window.innerWidth * pixelRatio),
+                1 / (window.innerHeight * pixelRatio)
+            );
+        }
+    }
+
+    /**
+     * Advance the film grain animation (Phase 4.2). Called once per frame from
+     * the main animation loop, mirroring updateDustParticles.
+     */
+    updateFilmGrain() {
+        if (!this.grainVignettePass) return;
+        this.grainVignettePass.uniforms['time'].value = performance.now() * 0.001;
     }
 
     /**

@@ -94,6 +94,12 @@ declare module 'three' {
 
     const RectAreaLightUniformsLib: { init(): void };
 
+    const FXAAShader: {
+        uniforms: Record<string, { value: unknown }>;
+        vertexShader: string;
+        fragmentShader: string;
+    };
+
     // r128 uses numeric encoding constants; newer Three.js uses string color spaces.
     // We declare the string form here so r128 compat-guard code doesn't produce type errors.
     const SRGBColorSpace: string;

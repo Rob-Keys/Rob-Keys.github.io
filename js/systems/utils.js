@@ -3,6 +3,12 @@
  * Shared utilities for 3D scene object creation.
  */
 
+import { PORTFOLIO_CONFIG } from '../config/config.js';
+
+// Contact shadow planes sit slightly below the object's true resting point
+// so they never share a Z-depth with the desk surface they're drawn over.
+const CONTACT_SHADOW_EPSILON = 0.01;
+
 /**
  * Assert a condition at runtime. Throws in both dev and prod — use for
  * invariants that must always hold (bad input from a factory, missing config).
@@ -442,6 +448,26 @@ export function createContactShadowPlane(width, depth) {
     const plane = new THREE.Mesh(geometry, material);
     plane.renderOrder = 0;
     return plane;
+}
+
+/**
+ * Add a contact shadow plane beneath an object, honoring
+ * `PORTFOLIO_CONFIG.rendering.enableContactShadows` (Phase 3.1). No-ops when
+ * the flag is off so the feature can actually be disabled for low-end/mobile
+ * perf tuning instead of always paying the extra draw call.
+ * @param {THREE.Object3D} group - Parent to attach the shadow plane to.
+ * @param {number} width - Contact shadow width.
+ * @param {number} depth - Contact shadow depth.
+ * @param {number} groundY - Local Y of the object's resting point (its lowest
+ *   vertex in the parent's local space); the plane is placed a hair below it.
+ */
+export function addContactShadow(group, width, depth, groundY) {
+    if (!PORTFOLIO_CONFIG.rendering.enableContactShadows) return;
+
+    const plane = createContactShadowPlane(width, depth);
+    plane.position.set(0, groundY - CONTACT_SHADOW_EPSILON, 0);
+    plane.rotation.x = -Math.PI / 2;
+    group.add(plane);
 }
 
 /**

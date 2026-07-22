@@ -134,7 +134,8 @@ export const OBJECT_ORIGINS = Object.freeze({
     }),
     shelf: Object.freeze({
         books:      Object.freeze({ x: 0,    y: 3.5, z: -1.7, rotationX: 0, rotationY: 0, rotationZ: 0 }),
-        shelfPlant: Object.freeze({ x: -2.0, y: 3.5, z: -1.6, rotationX: 0, rotationY: 0, rotationZ: 0 })
+        shelfPlant: Object.freeze({ x: -2.0, y: 3.5, z: -1.6, rotationX: 0, rotationY: 0, rotationZ: 0 }),
+        tidbyt:     Object.freeze({ x: 1.4,  y: 3.5, z: -1.65, rotationX: 0, rotationY: 0, rotationZ: 0 })
     }),
     wall: Object.freeze({
         diploma: Object.freeze({ x: 3.7,  y: 3,   z: -1.8, rotationX: 0, rotationY: 0, rotationZ: 0 }),

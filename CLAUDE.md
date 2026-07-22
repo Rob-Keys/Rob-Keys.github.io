@@ -166,8 +166,3 @@ Manual only -- open in browser with WebGL. No test framework.
 ## TODOs
 
 - OutlinePass: scene dimming still occurs -- need to override render() or replace with custom edge-only pass
-- Books: larger, spine facing user, visible titles
-- Diploma: match real UVA style
-- Laptop screen: add content
-- Mouse: proper ergonomic shape
-- Shelf: add Tidbyt

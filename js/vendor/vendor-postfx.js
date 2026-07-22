@@ -123,6 +123,97 @@
 ( function () {
 
 	/**
+	 * NVIDIA FXAA 3.11 by TIMOTHY LOTTES, ported to a single ShaderPass-compatible
+	 * shader (three.js r128 examples/jsm/shaders/FXAAShader.js).
+	 */
+	const FXAAShader = {
+		uniforms: {
+			'tDiffuse': { value: null },
+			'resolution': { value: new THREE.Vector2( 1 / 1024, 1 / 512 ) }
+		},
+		vertexShader:
+	/* glsl */
+	`
+		varying vec2 vUv;
+
+		void main() {
+
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+		}`,
+		fragmentShader:
+	/* glsl */
+	`
+		precision highp float;
+
+		uniform sampler2D tDiffuse;
+		uniform vec2 resolution;
+		varying vec2 vUv;
+
+		// FXAA 3.11 (console-quality subset): edge detection via luma contrast,
+		// then blend along the local edge direction. Cheap enough for a full-screen
+		// pass at 1.5x pixel ratio -- this is the whole point of Phase 4.1.
+		#define FXAA_REDUCE_MIN   (1.0/128.0)
+		#define FXAA_REDUCE_MUL   (1.0/8.0)
+		#define FXAA_SPAN_MAX     8.0
+
+		void main() {
+
+			vec2 texelSize = resolution;
+
+			vec3 rgbNW = texture2D( tDiffuse, vUv + ( vec2( -1.0, -1.0 ) ) * texelSize ).rgb;
+			vec3 rgbNE = texture2D( tDiffuse, vUv + ( vec2( 1.0, -1.0 ) ) * texelSize ).rgb;
+			vec3 rgbSW = texture2D( tDiffuse, vUv + ( vec2( -1.0, 1.0 ) ) * texelSize ).rgb;
+			vec3 rgbSE = texture2D( tDiffuse, vUv + ( vec2( 1.0, 1.0 ) ) * texelSize ).rgb;
+			vec4 rgbaM  = texture2D( tDiffuse, vUv );
+			vec3 rgbM  = rgbaM.rgb;
+
+			vec3 luma = vec3( 0.299, 0.587, 0.114 );
+			float lumaNW = dot( rgbNW, luma );
+			float lumaNE = dot( rgbNE, luma );
+			float lumaSW = dot( rgbSW, luma );
+			float lumaSE = dot( rgbSE, luma );
+			float lumaM  = dot( rgbM, luma );
+
+			float lumaMin = min( lumaM, min( min( lumaNW, lumaNE ), min( lumaSW, lumaSE ) ) );
+			float lumaMax = max( lumaM, max( max( lumaNW, lumaNE ), max( lumaSW, lumaSE ) ) );
+
+			vec2 dir;
+			dir.x = -( ( lumaNW + lumaNE ) - ( lumaSW + lumaSE ) );
+			dir.y =  ( ( lumaNW + lumaSW ) - ( lumaNE + lumaSE ) );
+
+			float dirReduce = max( ( lumaNW + lumaNE + lumaSW + lumaSE ) * ( 0.25 * FXAA_REDUCE_MUL ), FXAA_REDUCE_MIN );
+			float rcpDirMin = 1.0 / ( min( abs( dir.x ), abs( dir.y ) ) + dirReduce );
+			dir = min( vec2( FXAA_SPAN_MAX, FXAA_SPAN_MAX ), max( vec2( -FXAA_SPAN_MAX, -FXAA_SPAN_MAX ), dir * rcpDirMin ) ) * texelSize;
+
+			vec3 rgbA = 0.5 * (
+				texture2D( tDiffuse, vUv + dir * ( 1.0 / 3.0 - 0.5 ) ).rgb +
+				texture2D( tDiffuse, vUv + dir * ( 2.0 / 3.0 - 0.5 ) ).rgb );
+			vec3 rgbB = rgbA * 0.5 + 0.25 * (
+				texture2D( tDiffuse, vUv + dir * ( 0.0 / 3.0 - 0.5 ) ).rgb +
+				texture2D( tDiffuse, vUv + dir * ( 3.0 / 3.0 - 0.5 ) ).rgb );
+
+			float lumaB = dot( rgbB, luma );
+
+			vec4 color;
+			if ( lumaB < lumaMin || lumaB > lumaMax ) {
+				color = vec4( rgbA, rgbaM.a );
+			} else {
+				color = vec4( rgbB, rgbaM.a );
+			}
+
+			gl_FragColor = color;
+
+		}`
+	};
+
+	THREE.FXAAShader = FXAAShader;
+
+} )();
+( function () {
+
+	/**
  * Luminosity
  * http://en.wikipedia.org/wiki/Luminosity
  */

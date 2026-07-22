@@ -108,6 +108,8 @@ class Portfolio3D {
         if (sm.lightingSystem && sm.camera) {
             sm.lightingSystem.update(sm.camera);
         }
+        sm.updateDustParticles();
+        sm.updateFilmGrain();
 
         // Animate coffee steam (using cached reference)
         if (this._coffeeMug?.userData.animateSteam) {

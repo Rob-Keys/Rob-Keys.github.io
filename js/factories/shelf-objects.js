@@ -5,12 +5,50 @@
  */
 
 import {
+    addContactShadow,
     applyOrigin,
     createBeveledBox,
+    createCanvasTexture,
     createPaperGrainNormalTexture,
     createRoughnessVariationTexture
 } from '../systems/utils.js';
 import { OBJECT_ORIGINS } from '../config/config.js';
+
+/**
+ * Render a book spine label onto a canvas: title text along the spine,
+ * a thin rule, and a small author line. Real spines use small, varied
+ * typography rather than a single uniform font/size -- that uniformity is
+ * the tell that separates props from real books (Phase 5.2).
+ * @param {string} title
+ * @param {string} author
+ * @param {string} font - CSS font-family for the title.
+ * @param {string} textColor
+ * @returns {THREE.CanvasTexture}
+ */
+function createBookSpineTexture(title, author, font, textColor) {
+    const width = 64;
+    const height = 512;
+    const { texture } = createCanvasTexture(width, height, (ctx) => {
+        ctx.clearRect(0, 0, width, height);
+        ctx.translate(width / 2, height / 2);
+        ctx.rotate(Math.PI / 2);
+        ctx.translate(-height / 2, -width / 2);
+
+        ctx.fillStyle = textColor;
+        ctx.textBaseline = 'middle';
+
+        ctx.font = `bold 26px ${font}`;
+        ctx.fillText(title, 18, width * 0.38, height - 36);
+
+        ctx.font = `italic 16px ${font}`;
+        ctx.globalAlpha = 0.75;
+        ctx.fillText(author, 18, width * 0.72, height - 36);
+        ctx.globalAlpha = 1;
+    });
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    return texture;
+}
 
 export class ShelfObjectFactory {
     constructor(scene) {
@@ -28,34 +66,94 @@ export class ShelfObjectFactory {
         const group = new THREE.Group();
         const origin = this.origins.books;
 
-        // Simple book data: color, width, offsetX
+        // Book data: cover color, spine width/height, title/author, and a
+        // distinct font per book -- uniform width/height/typography was the
+        // biggest tell that these were props rather than a real shelf (Phase 5.2).
         const books = [
-            { color: 0x8B0000, width: 0.06, offsetX: -0.9 },
-            { color: 0x1e3a8a, width: 0.07, offsetX: -0.82 },
-            { color: 0x1a472a, width: 0.05, offsetX: -0.73 }
+            { color: 0x8B0000, width: 0.075, height: 0.42, title: 'CLEAN CODE', author: 'R. Martin', font: 'Georgia, serif' },
+            { color: 0x1e3a8a, width: 0.09,  height: 0.46, title: 'THE PRAGMATIC PROGRAMMER', author: 'Hunt & Thomas', font: 'Arial, sans-serif' },
+            { color: 0x1a472a, width: 0.06,  height: 0.38, title: 'DESIGNING DATA-INTENSIVE APPS', author: 'M. Kleppmann', font: '"Courier New", monospace' },
+            { color: 0x4a3c2a, width: 0.07,  height: 0.44, title: 'STRUCTURE AND INTERPRETATION', author: 'Abelson & Sussman', font: 'Georgia, serif' },
+            { color: 0x6b1f1f, width: 0.055, height: 0.40, title: 'THE MYTHICAL MAN-MONTH', author: 'F. Brooks', font: 'Arial, sans-serif' },
+            { color: 0x2a2a4a, width: 0.08,  height: 0.36, title: 'CRACKING THE CODING INTERVIEW', author: 'G. McDowell', font: '"Courier New", monospace' },
+            { color: 0x3a5a3a, width: 0.065, height: 0.43, title: 'REFACTORING', author: 'M. Fowler', font: 'Georgia, serif' }
         ];
 
-        const bookHeight = 0.35;
         const bookDepth = 0.25;
-
-        // Pre-create materials (reusable pattern - each book has different color so separate materials needed)
         const bookGrainTexture = createPaperGrainNormalTexture();
-        const materials = books.map(data => new THREE.MeshStandardMaterial({
-            color: data.color,
-            roughness: 0.7,
-            normalMap: bookGrainTexture,
-            normalScale: new THREE.Vector2(0.12, 0.12)
-        }));
 
+        // Deterministic per-book jitter (not Math.random) so lean/offset stays
+        // stable across reloads instead of reshuffling the shelf every visit.
+        const jitter = (seed) => {
+            const x = Math.sin(seed * 12.9898) * 43758.5453;
+            return x - Math.floor(x); // 0..1
+        };
+
+        let cursorX = -0.95;
         books.forEach((data, index) => {
-            const geometry = createBeveledBox(data.width, bookHeight, bookDepth, 0.004, 2);
-            const book = new THREE.Mesh(geometry, materials[index]);
-            book.position.set(data.offsetX, bookHeight / 2 + 0.08, 0.15);
-            book.rotation.z = (index - 1) * 0.03;
+            const bodyGeometry = createBeveledBox(data.width, data.height, bookDepth, 0.004, 2);
+            const bodyMaterial = new THREE.MeshStandardMaterial({
+                color: data.color,
+                roughness: 0.7,
+                normalMap: bookGrainTexture,
+                normalScale: new THREE.Vector2(0.12, 0.12)
+            });
+            const book = new THREE.Mesh(bodyGeometry, bodyMaterial);
+
+            const lean = (jitter(index * 3.1) - 0.5) * 0.09; // slight random lean
+            const depthOffset = (jitter(index * 5.7) - 0.5) * 0.03; // slight random depth stagger
+            book.position.set(cursorX + data.width / 2, data.height / 2 + 0.08, 0.15 + depthOffset);
+            book.rotation.z = lean;
             book.castShadow = true;
             book.receiveShadow = true;
             group.add(book);
+
+            // Spine label -- a thin plane sitting just proud of the spine's
+            // front cap so the title/author text never z-fights the cover.
+            const spineTexture = createBookSpineTexture(data.title, data.author, data.font, '#f0e8d8');
+            const spinePlane = new THREE.Mesh(
+                new THREE.PlaneGeometry(data.width * 0.86, data.height * 0.9),
+                new THREE.MeshStandardMaterial({
+                    map: spineTexture,
+                    transparent: true,
+                    roughness: 0.6,
+                    metalness: 0.0
+                })
+            );
+            spinePlane.position.set(0, 0, bookDepth / 2 + 0.01);
+            spinePlane.castShadow = false;
+            book.add(spinePlane);
+
+            cursorX += data.width + 0.012;
         });
+
+        // Exposed page block: a shared unit-cube geometry instanced once per
+        // book, non-uniformly scaled per instance so every book's visible page
+        // edge (top of the spine, opposite the cover) reuses one draw call.
+        const pageGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const pageMaterial = new THREE.MeshStandardMaterial({ color: 0xede4d0, roughness: 0.85 });
+        const pageBlock = new THREE.InstancedMesh(pageGeometry, pageMaterial, books.length);
+        pageBlock.castShadow = true;
+        pageBlock.receiveShadow = true;
+
+        cursorX = -0.95;
+        const pageThickness = 0.012;
+        const matrix = new THREE.Matrix4();
+        books.forEach((data, index) => {
+            const depthOffset = (jitter(index * 5.7) - 0.5) * 0.03;
+            const x = cursorX + data.width / 2;
+            const y = data.height + 0.08 - pageThickness / 2;
+            const z = 0.15 + depthOffset;
+            matrix.compose(
+                new THREE.Vector3(x, y, z),
+                new THREE.Quaternion(),
+                new THREE.Vector3(data.width * 0.94, pageThickness, bookDepth * 0.9)
+            );
+            pageBlock.setMatrixAt(index, matrix);
+            cursorX += data.width + 0.012;
+        });
+        pageBlock.instanceMatrix.needsUpdate = true;
+        group.add(pageBlock);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'books', label: 'Books - Knowledge Base' };
@@ -414,6 +512,82 @@ export class ShelfObjectFactory {
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'shelfPlant', label: 'Pothos - Work-Life Balance' };
+        this.interactiveObjects.push(group);
+        return group;
+    }
+
+    /**
+     * Create a small Tidbyt-style LED matrix display on the shelf (Phase 5.5).
+     * A beveled wood-tone box with an emissive coarse-pixel-grid canvas
+     * texture on the bloom layer, so the LED matrix glows like the monitor
+     * and lamp rather than reading as a flat colored plane.
+     */
+    createTidbyt() {
+        const group = new THREE.Group();
+        const origin = this.origins.tidbyt;
+
+        const bodyWidth = 0.32;
+        const bodyHeight = 0.2;
+        const bodyDepth = 0.06;
+
+        const bodyMaterial = new THREE.MeshStandardMaterial({
+            color: 0x5a4632,
+            roughness: 0.6,
+            roughnessMap: createRoughnessVariationTexture(),
+            metalness: 0.1
+        });
+        const body = new THREE.Mesh(createBeveledBox(bodyWidth, bodyHeight, bodyDepth, 0.004, 2), bodyMaterial);
+        body.position.set(0, bodyHeight / 2, 0);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        group.add(body);
+
+        // Coarse LED-matrix canvas: a low-res dot grid upscaled with nearest-
+        // neighbor sampling so each "pixel" reads as a distinct LED rather
+        // than blurring into a smooth gradient.
+        const gridWidth = 32;
+        const gridHeight = 16;
+        const { texture: matrixTexture } = createCanvasTexture(gridWidth, gridHeight, (ctx) => {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, gridWidth, gridHeight);
+
+            // A simple readable glyph pattern: a smiling pixel face, cheap to
+            // hand-place and instantly reads as "a tiny LED display" rather
+            // than noise.
+            const lit = [
+                [10, 4], [11, 4], [20, 4], [21, 4],
+                [10, 5], [11, 5], [20, 5], [21, 5],
+                [8, 9], [9, 10], [10, 11], [11, 11], [12, 11], [13, 11],
+                [14, 11], [15, 11], [16, 11], [17, 11], [18, 11], [19, 11],
+                [20, 11], [21, 11], [22, 11], [23, 10], [24, 9]
+            ];
+            ctx.fillStyle = '#ff9d2e';
+            lit.forEach(([x, y]) => ctx.fillRect(x, y, 1, 1));
+        });
+        matrixTexture.magFilter = THREE.NearestFilter;
+        matrixTexture.minFilter = THREE.NearestFilter;
+        if (matrixTexture.colorSpace !== undefined) matrixTexture.colorSpace = THREE.SRGBColorSpace;
+
+        const screenMaterial = new THREE.MeshStandardMaterial({
+            map: matrixTexture,
+            emissive: 0xffffff,
+            emissiveMap: matrixTexture,
+            emissiveIntensity: 1.4,
+            roughness: 0.4,
+            metalness: 0.0
+        });
+        const screen = new THREE.Mesh(
+            new THREE.PlaneGeometry(bodyWidth * 0.85, bodyHeight * 0.72),
+            screenMaterial
+        );
+        screen.position.set(0, bodyHeight / 2, bodyDepth / 2 + 0.001);
+        screen.layers.enable(1); // Bloom layer -- LEDs should glow like the monitor/lamp
+        group.add(screen);
+
+        addContactShadow(group, bodyWidth * 1.1, bodyDepth * 2.2, -0.001);
+
+        applyOrigin(group, origin, true); // Static object
+        group.userData = { name: 'tidbyt', label: 'Tidbyt - Daily Dashboard' };
         this.interactiveObjects.push(group);
         return group;
     }

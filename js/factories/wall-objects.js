@@ -55,12 +55,15 @@ export class WallObjectFactory {
         frame.receiveShadow = true;
         group.add(frame);
 
-        // diploma canvas
+        // diploma canvas -- higher resolution than the original 512x384 so the
+        // finer rule work and seal detail hold up at the zoom-in distance
+        // (Phase 5.3: match real UVA diploma proportions/layout).
         const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 384;
+        canvas.width = 1024;
+        canvas.height = 768;
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error('Failed to get 2D context for diploma canvas');
+        const scale = canvas.width / 512; // keep all the layout math below in the old 512-wide coordinate space
 
         // Fill with simple color initially
         ctx.fillStyle = '#f5f0e1';
@@ -68,35 +71,82 @@ export class WallObjectFactory {
 
         const texture = new THREE.CanvasTexture(canvas);
 
+        // UVA brand colors (navy + orange) in place of the generic ivy green/gold
+        // used before -- this is the detail that reads as "a real UVA diploma"
+        // rather than a generic collegiate template.
+        const navy = '#232D4B';
+        const orange = '#E57200';
+
+        // Simple rotunda silhouette (dome + colonnade), drawn as line art rather
+        // than a seal reproduction -- enough to read as "UVA" at this scale
+        // without copying the university's actual seal artwork.
+        const drawRotunda = (cx, cy, r) => {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.strokeStyle = navy;
+            ctx.fillStyle = navy;
+            ctx.lineWidth = Math.max(1, r * 0.05);
+
+            // Dome
+            ctx.beginPath();
+            ctx.arc(0, -r * 0.15, r * 0.55, Math.PI, 0);
+            ctx.stroke();
+            // Base pediment
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.6, -r * 0.15);
+            ctx.lineTo(r * 0.6, -r * 0.15);
+            ctx.lineTo(r * 0.6, r * 0.35);
+            ctx.lineTo(-r * 0.6, r * 0.35);
+            ctx.closePath();
+            ctx.stroke();
+            // Columns
+            const columnCount = 5;
+            for (let i = 0; i < columnCount; i++) {
+                const x = -r * 0.45 + (i * (r * 0.9)) / (columnCount - 1);
+                ctx.beginPath();
+                ctx.moveTo(x, -r * 0.1);
+                ctx.lineTo(x, r * 0.3);
+                ctx.stroke();
+            }
+            // Finial
+            ctx.beginPath();
+            ctx.arc(0, -r * 0.72, r * 0.05, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        };
+
         // Defer heavy rendering
         requestAnimationFrame(() => setTimeout(() => {
+            ctx.save();
+            ctx.scale(scale, scale);
+
             // Parchment background with subtle texture
-            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            const gradient = ctx.createLinearGradient(0, 0, 512, 384);
             gradient.addColorStop(0, '#faf6e8');
             gradient.addColorStop(0.5, '#f5f0e1');
             gradient.addColorStop(1, '#efe5d5');
             ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, 512, 384);
 
-            // Inner decorative border
-            ctx.strokeStyle = '#c9a66b';
+            // Outer rule (orange) + inner rule (navy) -- Jeffersonian double-border
+            const margin = 18;
+            ctx.strokeStyle = orange;
             ctx.lineWidth = 3;
-            const margin = 20;
-            ctx.strokeRect(margin, margin, canvas.width - margin * 2, canvas.height - margin * 2);
+            ctx.strokeRect(margin, margin, 512 - margin * 2, 384 - margin * 2);
 
-            ctx.strokeStyle = '#8B7355';
+            ctx.strokeStyle = navy;
             ctx.lineWidth = 1;
-            ctx.strokeRect(margin + 4, margin + 4, canvas.width - (margin * 2 + 8), canvas.height - (margin * 2 + 8));
+            ctx.strokeRect(margin + 6, margin + 6, 512 - (margin * 2 + 12), 384 - (margin * 2 + 12));
 
             // Corner ornaments
-            const cornerSize = 30;
-            ctx.strokeStyle = '#8B7355';
-            ctx.lineWidth = 2;
+            const cornerSize = 26;
+            ctx.strokeStyle = navy;
+            ctx.lineWidth = 1.5;
             const corners = [
-                [margin, margin, 1, 1],
-                [canvas.width - margin, margin, -1, 1],
-                [margin, canvas.height - margin, 1, -1],
-                [canvas.width - margin, canvas.height - margin, -1, -1]
+                [margin + 6, margin + 6, 1, 1],
+                [512 - margin - 6, margin + 6, -1, 1],
+                [margin + 6, 384 - margin - 6, 1, -1],
+                [512 - margin - 6, 384 - margin - 6, -1, -1]
             ];
             corners.forEach(([x, y, dx, dy]) => {
                 ctx.beginPath();
@@ -106,78 +156,84 @@ export class WallObjectFactory {
                 ctx.stroke();
             });
 
-            // Header text
-            ctx.fillStyle = '#1a1a2a';
-            ctx.font = 'bold 24px Georgia, serif';
             ctx.textAlign = 'center';
-            ctx.fillText('diploma OF', canvas.width / 2, 55);
 
-            ctx.font = 'bold 32px Georgia, serif';
-            ctx.fillStyle = '#2d4a22';
-            ctx.fillText('GRADUATION', canvas.width / 2, 90);
+            // Rotunda mark
+            drawRotunda(256, 48, 26);
 
             // University name
-            ctx.font = 'bold 20px Georgia, serif';
-            ctx.fillStyle = '#1a1a2a';
-            ctx.fillText('University of Virginia', canvas.width / 2, 125);
+            ctx.font = 'bold 22px Georgia, serif';
+            ctx.fillStyle = navy;
+            ctx.fillText('UNIVERSITY OF VIRGINIA', 256, 100);
 
-            ctx.font = 'italic 16px Georgia, serif';
-            ctx.fillText('Charlottesville, Virginia', canvas.width / 2, 145);
+            ctx.font = 'italic 13px Georgia, serif';
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillText('Charlottesville, Virginia · Founded 1819', 256, 118);
 
             // Awarded text
-            ctx.font = '14px Georgia, serif';
-            ctx.fillText('This certifies that', canvas.width / 2, 175);
+            ctx.font = '13px Georgia, serif';
+            ctx.fillStyle = '#1a1a2a';
+            ctx.fillText('Know all by these presents that', 256, 150);
 
             // Name
-            ctx.font = 'bold 28px Georgia, serif';
-            ctx.fillStyle = '#2d4a22';
-            ctx.fillText('ROB KEYS', canvas.width / 2, 205);
+            ctx.font = 'bold 30px Georgia, serif';
+            ctx.fillStyle = orange;
+            ctx.fillText('ROB KEYS', 256, 183);
 
-            ctx.font = 'italic 14px Georgia, serif';
+            ctx.font = 'italic 13px Georgia, serif';
             ctx.fillStyle = '#1a1a2a';
-            ctx.fillText('has been awarded the degree of', canvas.width / 2, 230);
+            ctx.fillText('has satisfied the requirements and been admitted to the degree of', 256, 205);
 
             // Degree
-            ctx.font = 'bold 18px Georgia, serif';
+            ctx.font = 'bold 19px Georgia, serif';
+            ctx.fillStyle = navy;
+            ctx.fillText('BACHELOR OF SCIENCE', 256, 232);
+            ctx.font = '15px Georgia, serif';
+            ctx.fillText('in Computer Science', 256, 251);
+
+            ctx.font = 'italic 12px Georgia, serif';
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillText('School of Engineering and Applied Science', 256, 268);
+
+            ctx.font = '11px Georgia, serif';
             ctx.fillStyle = '#1a1a2a';
-            ctx.fillText('Bachelor of Science', canvas.width / 2, 255);
-            ctx.fillText('in Computer Science', canvas.width / 2, 278);
+            ctx.fillText('Graduated May 2026', 256, 288);
 
-            // UVA Seal - drawn on canvas
-            const sealX = canvas.width / 2;
-            const sealY = 330;
-            const sealRadius = 25;
+            // Signature lines
+            ctx.strokeStyle = '#3a3a3a';
+            ctx.lineWidth = 1;
+            [[110, 340], [402, 340]].forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.moveTo(x - 55, y);
+                ctx.lineTo(x + 55, y);
+                ctx.stroke();
+            });
+            ctx.font = '10px Georgia, serif';
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillText('Rector and Visitors', 110, 354);
+            ctx.fillText('President', 402, 354);
 
-            // Outer ring
+            // Wax-style seal, bottom center
+            const sealX = 256;
+            const sealY = 335;
+            const sealRadius = 22;
+
             ctx.beginPath();
             ctx.arc(sealX, sealY, sealRadius, 0, Math.PI * 2);
-            ctx.fillStyle = '#c9a66b';
+            ctx.fillStyle = orange;
             ctx.fill();
-            ctx.strokeStyle = '#8B7355';
+            ctx.strokeStyle = navy;
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // Inner circle
             ctx.beginPath();
             ctx.arc(sealX, sealY, sealRadius - 5, 0, Math.PI * 2);
             ctx.fillStyle = '#f5f0e1';
             ctx.fill();
 
-            // "U" in the center
-            ctx.font = 'bold 18px Georgia, serif';
-            ctx.fillStyle = '#2d4a22';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('U', sealX - 6, sealY);
-            ctx.fillText('V', sealX + 6, sealY);
-            ctx.textBaseline = 'alphabetic';
+            drawRotunda(sealX, sealY + 2, 14);
 
-            // Date
-            ctx.font = '12px Georgia, serif';
-            ctx.fillStyle = '#1a1a2a';
-            ctx.textAlign = 'center';
-            ctx.fillText('Graduated May 2026', canvas.width / 2, 375);
-
+            ctx.restore();
             texture.needsUpdate = true;
         }, 0));
 
