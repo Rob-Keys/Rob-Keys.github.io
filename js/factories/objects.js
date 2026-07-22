@@ -58,6 +58,7 @@ export class ObjectFactory {
             // Shelf objects
             { obj: shelf.createShelfPlant(), interactive: false },
             { obj: shelf.createShelfBooks(), interactive: false },
+            { obj: shelf.createTidbyt(), interactive: true },
             // Technology
             { obj: technology.createMonitor(), interactive: true },
             { obj: technology.createKeyboard(), interactive: false },

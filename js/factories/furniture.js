@@ -5,7 +5,7 @@
  * Uses progressive texture loading for fast initial render
  */
 
-import { createSolidTexture, applyOrigin } from '../systems/utils.js';
+import { createSolidTexture, applyOrigin, createBeveledBox } from '../systems/utils.js';
 import { OBJECT_ORIGINS } from '../config/config.js';
 
 // Texture configuration for each material type
@@ -151,7 +151,7 @@ export class FurnitureFactory {
 
         // Desk surface
         const desk = new THREE.Mesh(
-            new THREE.BoxGeometry(7, 0.08, 3),
+            createBeveledBox(7, 0.08, 3, 0.006, 3),
             this._createTexturedMaterial('wood', 0.75, 0.0, true)
         );
         desk.position.set(0, 0.04, 0);
@@ -169,7 +169,7 @@ export class FurnitureFactory {
         group.add(edge);
 
         // Legs — merged into a single draw call
-        const legGeometry = new THREE.BoxGeometry(0.1, 1.25, 0.1);
+        const legGeometry = createBeveledBox(0.1, 1.25, 0.1, 0.005, 2);
         const legMaterial = this._createTexturedMaterial('wood', 0.85, 0.02);
         const legGeometries = legOffsets.map(offset => {
             const g = legGeometry.clone();
@@ -199,6 +199,11 @@ export class FurnitureFactory {
         wallMat.clearcoat = 0.0;
         wallMat.clearcoatRoughness = 1.0;
         wallMat.envMapIntensity = 0.04;
+        // Baked-in warm tint (Phase 3.1) replacing the backWallWash PointLight that used
+        // to lift this wall out of pure black — a static emissive term costs nothing per
+        // frame and the wall never moves relative to camera or lights.
+        wallMat.emissive = new THREE.Color(0xffe9d6);
+        wallMat.emissiveIntensity = 0.035;
         wallMat.needsUpdate = true;
 
         const wall = new THREE.Mesh(
@@ -285,7 +290,7 @@ export class FurnitureFactory {
         const screwMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.2, metalness: 0.9 });
 
         // Main shelf
-        const shelf = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 0.8), shelfMaterial);
+        const shelf = new THREE.Mesh(createBeveledBox(5, 0.15, 0.8, 0.006, 2), shelfMaterial);
         shelf.castShadow = true;
         shelf.receiveShadow = true;
         group.add(shelf);

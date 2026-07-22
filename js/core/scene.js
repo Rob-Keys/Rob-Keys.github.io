@@ -6,6 +6,7 @@
 
 import { PORTFOLIO_CONFIG, LIGHTING_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 import { LightingSystem } from '../systems/lighting.js';
+import { createDustParticles } from '../systems/utils.js';
 
 const BLOOM_LAYER = 1;
 
@@ -13,14 +14,16 @@ export class SceneManager {
     constructor() {
         /** @type {THREE.Scene | null} */ this.scene = null;
         /** @type {THREE.PerspectiveCamera | null} */ this.camera = null;
+        /** @type {THREE.Points | null} */ this.dustCloud = null;
+        this._dustCloudBaseY = 0;
         /** @type {THREE.WebGLRenderer | null} */ this.renderer = null;
         /** @type {import('three').OrbitControls | null} */ this.controls = null;
         /** @type {import('three').EffectComposer | null} */ this.composer = null;
         /** @type {import('three').EffectComposer | null} */ this.bloomComposer = null;
         /** @type {import('../systems/lighting.js').LightingSystem | null} */ this.lightingSystem = null;
-        /** @type {import('three').OutlinePass | null} */ this.outlinePass = null;
-        /** @type {import('three').SSAOPass | null} */ this.ssaoPass = null;
         /** @type {import('three').UnrealBloomPass | null} */ this.bloomPass = null;
+        /** @type {import('three').ShaderPass | null} */ this.fxaaPass = null;
+        /** @type {import('three').ShaderPass | null} */ this.gradePass = null;
         /** @type {unknown} */ this.lights = null;
         /** @type {Promise<void> | null} */ this.postFXReady = null;
         this.origins = OBJECT_ORIGINS.scene;
@@ -53,6 +56,7 @@ export class SceneManager {
         this.lights = this.lightingSystem.lights;
 
         this.createFloor();
+        this.createDustParticlesEffect();
 
         // Bloom/SSAO/outline aren't needed for the first frame: render() already
         // falls back to a plain renderer.render() while composer/bloomComposer are
@@ -65,8 +69,9 @@ export class SceneManager {
     }
 
     /**
-     * Fetches the post-processing bundle (Pass/EffectComposer/UnrealBloomPass/
-     * SSAOPass/OutlinePass) and runs setupPostProcessing() once it's parsed. Kept as
+     * Fetches the post-processing bundle (Pass/EffectComposer/UnrealBloomPass, plus
+     * SSAOPass/OutlinePass which the bundle still contains but this file no longer
+     * instantiates) and runs setupPostProcessing() once it's parsed. Kept as
      * a separate lazy-loaded script (rather than bundled with vendor-core.js) so the
      * initial scene can paint before it arrives. BufferGeometryUtils stays in
      * vendor-core.js since the object factories call it synchronously while building
@@ -156,6 +161,15 @@ export class SceneManager {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+        // The composer chain issues several internal renderer.render() calls per
+        // frame (bloom pass, scene pass, each ShaderPass), and info.autoReset
+        // (default true) clears the counters after every single one — so reading
+        // renderer.info after a normal render() call only shows the last internal
+        // pass, not the frame's real total. Disable autoReset and clear it exactly
+        // once per frame ourselves (see `render()`) so the Phase 0 profiler and
+        // any future draw-call auditing reflect the whole frame.
+        this.renderer.info.autoReset = false;
+
         // ACESFilmic tone mapping for cinematic look
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         // 0.88: ceiling spot decay changed from 1.5→2 (physically correct inverse-square),
@@ -244,29 +258,48 @@ export class SceneManager {
         const renderPass = new THREE.RenderPass(scene, camera);
         this.composer.addPass(renderPass);
 
-        // SSAO — darkens crevices and contact points (object bases, corners) that the
-        // real-time shadow maps alone don't catch, since those only account for one
-        // directional occluder rather than ambient occlusion from all directions.
-        if (THREE.SSAOPass) {
-            // Half-resolution SSAO is the standard trade -- low-frequency ambient
-            // occlusion barely changes at half the sample density.
-            const ssaoPass = new THREE.SSAOPass(scene, camera, bloomWidth, bloomHeight);
-            ssaoPass.kernelRadius = 0.5;
-            ssaoPass.minDistance = 0.001;
-            ssaoPass.maxDistance = 0.1;
-            this.composer.addPass(ssaoPass);
-            this.ssaoPass = ssaoPass;
+        // SSAOPass was removed (Phase 2): it cost two extra full-scene renders plus a
+        // large-kernel blur every frame for a subtle, static effect. The scene doesn't
+        // move, so the same darkening at contact points is baked into materials instead —
+        // see `addContactShadow()` in js/systems/utils.js, applied per-object in the
+        // factories (desk-objects.js, technology.js, shelf-objects.js).
+
+        // OutlinePass was removed here (Phase 4.2): its internal depth/mask buffer
+        // re-renders dimmed the whole scene even with the overlay-material fix applied
+        // (see the CLAUDE.md TODO this closes out). The hint-glow highlight on
+        // interactive objects is now a real inflated-backface mesh drawn in the normal
+        // scene pass above — see `InteractionManager.initHintOutline()` in
+        // js/core/interactions.js — so there's no separate outline pass at all anymore.
+
+        // FXAA runs on the raw scene render, before bloom is added. Bloom is inherently
+        // blurred (half-res, upsampled) so it doesn't reintroduce hard edges for FXAA to
+        // have caught — this lets FXAA sit before the merged grade pass below instead of
+        // needing its own pass in between combine and grain (Phase 4.1).
+        if (THREE.FXAAShader) {
+            const fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
+            const pixelRatio = renderer.getPixelRatio();
+            const fxaaResolution = /** @type {THREE.Vector2} */ (fxaaPass.uniforms['resolution'].value);
+            fxaaResolution.set(
+                1 / (window.innerWidth * pixelRatio),
+                1 / (window.innerHeight * pixelRatio)
+            );
+            this.composer.addPass(fxaaPass);
+            this.fxaaPass = fxaaPass;
         }
 
-        // Combine pass: base scene color + isolated bloom texture (additive).
-        // This is the compositing step that the previous full-scene bloom was missing —
-        // it restricts glow to actual light sources instead of washing out lit diffuse
-        // surfaces (keyboard, album art, notebook, desktop).
-        const combinePass = new THREE.ShaderPass(
+        // Grade pass (Phase 4.1): combine (add isolated bloom), grain, and vignette
+        // merged into one ShaderPass instead of three separate full-screen swaps. Grain
+        // still lands after FXAA (this pass runs after the FXAA pass above), so the edge
+        // blend can't smooth away its per-pixel randomness — the same ordering guarantee
+        // the previous three-pass chain had, just without the extra render target swaps.
+        const gradePass = new THREE.ShaderPass(
             new THREE.ShaderMaterial({
                 uniforms: {
                     baseTexture: { value: null },
-                    bloomTexture: { value: this.bloomComposer.renderTarget2.texture }
+                    bloomTexture: { value: this.bloomComposer.renderTarget2.texture },
+                    time: { value: 0 },
+                    grainAmplitude: { value: PORTFOLIO_CONFIG.rendering.filmGrainAmplitude },
+                    vignetteIntensity: { value: PORTFOLIO_CONFIG.rendering.vignetteIntensity }
                 },
                 vertexShader: [
                     'varying vec2 vUv;',
@@ -278,81 +311,36 @@ export class SceneManager {
                 fragmentShader: [
                     'uniform sampler2D baseTexture;',
                     'uniform sampler2D bloomTexture;',
+                    'uniform float time;',
+                    'uniform float grainAmplitude;',
+                    'uniform float vignetteIntensity;',
                     'varying vec2 vUv;',
+                    '',
+                    'float noise(vec2 p) {',
+                    '    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);',
+                    '}',
+                    '',
                     'void main() {',
                     '    vec4 base = texture2D(baseTexture, vUv);',
                     '    vec4 bloom = texture2D(bloomTexture, vUv);',
-                    '    gl_FragColor = base + bloom;',
+                    '    vec4 color = base + bloom;',
+                    '',
+                    '    float grain = (noise(vUv * vec2(1000.0, 1000.0) + time) - 0.5) * grainAmplitude;',
+                    '    color.rgb += grain;',
+                    '',
+                    '    vec2 centered = vUv - 0.5;',
+                    '    float vignette = 1.0 - vignetteIntensity * dot(centered, centered) * 2.0;',
+                    '    color.rgb *= vignette;',
+                    '',
+                    '    gl_FragColor = color;',
                     '}'
                 ].join('\n'),
                 defines: {}
             }),
             'baseTexture'
         );
-        combinePass.needsSwap = true;
-        this.composer.addPass(combinePass);
-
-        // Add outline pass for hint glow on interactive objects (to final composer)
-        if (THREE.OutlinePass) {
-            const outlinePass = new THREE.OutlinePass(
-                new THREE.Vector2(window.innerWidth, window.innerHeight),
-                scene,
-                camera
-            );
-            outlinePass.visibleEdgeColor.set(0xff3333);
-            outlinePass.hiddenEdgeColor.set(0xff3333);
-            outlinePass.edgeStrength = 2.0;
-            outlinePass.edgeGlow = 0.3;
-            outlinePass.edgeThickness = 1.0;
-            outlinePass.pulsePeriod = 3.0;
-            outlinePass.enabled = false;
-
-            // Replace overlay material to avoid dimming
-            outlinePass.overlayMaterial = new THREE.ShaderMaterial({
-                uniforms: {
-                    'maskTexture': { value: null },
-                    'edgeTexture1': { value: null },
-                    'edgeTexture2': { value: null },
-                    'patternTexture': { value: null },
-                    'edgeStrength': { value: 1.0 },
-                    'edgeGlow': { value: 1.0 },
-                    'usePatternTexture': { value: 0.0 }
-                },
-                vertexShader: [
-                    'varying vec2 vUv;',
-                    'void main() {',
-                    '    vUv = uv;',
-                    '    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
-                    '}'
-                ].join('\n'),
-                fragmentShader: [
-                    'varying vec2 vUv;',
-                    'uniform sampler2D edgeTexture1;',
-                    'uniform sampler2D edgeTexture2;',
-                    'uniform float edgeStrength;',
-                    'uniform float edgeGlow;',
-                    'void main() {',
-                    '    vec4 edge = texture2D(edgeTexture1, vUv)',
-                    '             + texture2D(edgeTexture2, vUv) * edgeGlow;',
-                    '    gl_FragColor = edgeStrength * edge;',
-                    '}'
-                ].join('\n'),
-                blending: THREE.AdditiveBlending,
-                depthTest: false,
-                depthWrite: false,
-                transparent: true
-            });
-
-            this.composer.addPass(outlinePass);
-            this.outlinePass = outlinePass;
-        }
-    }
-
-    /**
-     * Get the outline pass for hint glow
-     */
-    getOutlinePass() {
-        return this.outlinePass || null;
+        this.composer.addPass(gradePass);
+        this.gradePass = gradePass;
     }
 
     /**
@@ -433,6 +421,43 @@ export class SceneManager {
     }
 
     /**
+     * Create dust particles in light cones (Phase 3.5).
+     * Disabled on mobile to preserve performance.
+     */
+    createDustParticlesEffect() {
+        // Skip dust on mobile (screen width < 768)
+        if (window.innerWidth < 768) return;
+
+        if (!PORTFOLIO_CONFIG.rendering.enableDustParticles) return;
+        if (!this.scene) return;
+
+        // Dust cloud in lamp/window light cone
+        const dustCloud = createDustParticles(
+            PORTFOLIO_CONFIG.rendering.dustParticleCount,
+            1.5
+        );
+        dustCloud.position.set(0.5, 2.0, -1.0);
+        this.scene.add(dustCloud);
+
+        this.dustCloud = dustCloud;
+        this._dustCloudBaseY = dustCloud.position.y;
+    }
+
+    /**
+     * Drift the dust cloud slowly within the light cone (Phase 3.5). Cheap by
+     * design: a whole-cloud rotation plus a single sine-driven Y offset, not a
+     * per-particle buffer rewrite, so the cost is one matrix update regardless
+     * of particle count.
+     */
+    updateDustParticles() {
+        if (!this.dustCloud) return;
+
+        const t = performance.now() * 0.001;
+        this.dustCloud.rotation.y = t * 0.02;
+        this.dustCloud.position.y = this._dustCloudBaseY + Math.sin(t * 0.15) * 0.1;
+    }
+
+    /**
      * Handle window resize events
      */
     onWindowResize() {
@@ -454,44 +479,63 @@ export class SceneManager {
         if (this.composer) {
             this.composer.setSize(window.innerWidth, window.innerHeight);
         }
-        if (this.ssaoPass) {
-            this.ssaoPass.setSize(halfWidth, halfHeight);
-        }
-        if (this.outlinePass) {
-            this.outlinePass.setSize(window.innerWidth, window.innerHeight);
+        if (this.fxaaPass) {
+            const pixelRatio = renderer.getPixelRatio();
+            const fxaaResolution = /** @type {THREE.Vector2} */ (this.fxaaPass.uniforms['resolution'].value);
+            fxaaResolution.set(
+                1 / (window.innerWidth * pixelRatio),
+                1 / (window.innerHeight * pixelRatio)
+            );
         }
     }
 
     /**
-     * Render the scene with selective bloom via two-pass rendering.
-     * Called every frame after init() — all fields are guaranteed non-null.
+     * Advance the film grain animation. Called once per frame from the main
+     * animation loop, mirroring updateDustParticles.
      */
-    render() {
+    updateFilmGrain() {
+        if (!this.gradePass) return;
+        this.gradePass.uniforms['time'].value = performance.now() * 0.001;
+    }
+
+    /**
+     * Render the scene with selective bloom via two-pass rendering.
+     * Called once per rendered frame after init() — all fields are guaranteed non-null.
+     * @param {boolean} [bloomDirty] - Whether the bloom-layer pass needs to be
+     *   re-rendered this frame (camera moved, or bloom-layer content changed).
+     *   When false, the bloom composer's render target is left untouched and the
+     *   combine pass reuses last frame's bloom texture — safe because nothing
+     *   that feeds it changed, and the target is a persistent GPU resource.
+     */
+    render(bloomDirty = true) {
         // Fields are assigned by init() before animate() starts; narrow for type checker
         const controls = /** @type {import('three').OrbitControls} */ (this.controls);
         const scene = /** @type {THREE.Scene} */ (this.scene);
         const renderer = /** @type {THREE.WebGLRenderer} */ (this.renderer);
         const camera = /** @type {THREE.PerspectiveCamera} */ (this.camera);
 
+        renderer.info.reset();
         controls.update();
 
         if (this.composer && this.bloomComposer) {
-            // Pass 1: Render bloom-only. Restricting the camera's layer mask to
-            // BLOOM_LAYER means non-emissive objects are never submitted to the GPU for
-            // this pass, instead of being drawn and blacked out. Background/fog are
-            // cleared so the pass sees pure black around the emitters.
-            const savedBackground = scene.background;
-            const savedFog = scene.fog;
-            scene.background = null;
-            scene.fog = null;
+            if (bloomDirty) {
+                // Pass 1: Render bloom-only. Restricting the camera's layer mask to
+                // BLOOM_LAYER means non-emissive objects are never submitted to the GPU for
+                // this pass, instead of being drawn and blacked out. Background/fog are
+                // cleared so the pass sees pure black around the emitters.
+                const savedBackground = scene.background;
+                const savedFog = scene.fog;
+                scene.background = null;
+                scene.fog = null;
 
-            camera.layers.set(BLOOM_LAYER);
-            this.bloomComposer.render();
+                camera.layers.set(BLOOM_LAYER);
+                this.bloomComposer.render();
 
-            // Restore the default layer mask and background/fog for Pass 2
-            camera.layers.set(0);
-            scene.background = savedBackground;
-            scene.fog = savedFog;
+                // Restore the default layer mask and background/fog for Pass 2
+                camera.layers.set(0);
+                scene.background = savedBackground;
+                scene.fog = savedFog;
+            }
 
             // Pass 2: Render normal scene, then the combine pass adds the isolated bloom on top
             this.composer.render();

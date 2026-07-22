@@ -4,7 +4,13 @@
  * Handles coffee mugs, desk lamps, notebooks, and other items that sit on the desk
  */
 
-import { applyOrigin } from '../systems/utils.js';
+import {
+    applyOrigin,
+    createBeveledBox,
+    createPaperGrainNormalTexture,
+    createRoughnessVariationTexture,
+    addContactShadow
+} from '../systems/utils.js';
 import { SHADOW_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 
 export class DeskObjectFactory {
@@ -28,7 +34,7 @@ export class DeskObjectFactory {
             binding: { x: -0.42, y: -0.12, z: 0 }
         };
 
-        const coverGeometry = new THREE.BoxGeometry(0.9, 0.04, 1.2);
+        const coverGeometry = createBeveledBox(0.9, 0.04, 1.2, 0.006, 2);
         const coverMaterial = new THREE.MeshStandardMaterial({
             color: 0x2c3e50,
             roughness: 0.7,
@@ -116,10 +122,13 @@ export class DeskObjectFactory {
         else if (THREE.sRGBEncoding !== undefined) pageTexture.encoding = THREE.sRGBEncoding;
 
         // Bottom 7 pages — merged into a single draw call (identical material)
+        const paperGrainTexture = createPaperGrainNormalTexture();
         const plainPageMaterial = new THREE.MeshStandardMaterial({
             color: 0xf8f4e8,
             roughness: 0.95,
-            metalness: 0.0
+            metalness: 0.0,
+            normalMap: paperGrainTexture,
+            normalScale: new THREE.Vector2(0.15, 0.15)
         });
         const pageBaseGeometry = new THREE.BoxGeometry(0.81, 0.006, 1.11);
         const bottomPageGeometries = [];
@@ -146,7 +155,9 @@ export class DeskObjectFactory {
             map: pageTexture,
             roughness: 0.95,
             metalness: 0.0,
-            color: 0xffffff
+            color: 0xffffff,
+            normalMap: paperGrainTexture,
+            normalScale: new THREE.Vector2(0.15, 0.15)
         });
         const topPage = new THREE.Mesh(topPageGeometry, [
             plainPageMaterial, plainPageMaterial,
@@ -173,6 +184,9 @@ export class DeskObjectFactory {
         binding.castShadow = true;
         binding.receiveShadow = true;
         group.add(binding);
+
+        // Contact shadow for realistic grounding (Phase 3.1)
+        addContactShadow(group, 1.0, 1.3, -0.19);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'notebook', label: 'Notebook - Personal Projects' };
@@ -233,11 +247,16 @@ export class DeskObjectFactory {
         const coffeeLevel = cupHeight / 2 - 0.08;
         const coffeeRadius = cupTopRadius - 0.015;
 
+        // Liquid surface: MeshPhysicalMaterial with a near-mirror clearcoat
+        // (Phase 5.6) -- a flat diffuse disc never sold coffee's meniscus
+        // reflection the way a thin clearcoat layer over a dark base does.
         const coffeeGeometry = new THREE.CylinderGeometry(coffeeRadius, coffeeRadius, 0.001, 32);
-        const coffeeMaterial = new THREE.MeshStandardMaterial({
-            color: 0x3d2314,
-            roughness: 0.05, // Very smooth liquid surface for realistic reflection
+        const coffeeMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x2a150c,
+            roughness: 0.35,
             metalness: 0.0,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.03,
             envMapIntensity: 0.6 // Reflect environment for liquid look
         });
         const coffee = new THREE.Mesh(coffeeGeometry, coffeeMaterial);
@@ -342,6 +361,9 @@ export class DeskObjectFactory {
             });
         };
 
+        // Contact shadow for realistic grounding (Phase 3.1)
+        addContactShadow(group, 0.35, 0.35, -0.4);
+
         applyOrigin(group, origin);
         group.userData = { name: 'coffee', label: 'Starbucks - What Drives Me', animateSteam: animateSteamFunc };
         this.interactiveObjects.push(group);
@@ -356,12 +378,14 @@ export class DeskObjectFactory {
         const metalMaterial = new THREE.MeshStandardMaterial({
             color: 0x2a2a2a,
             roughness: 0.3,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.8,
         });
 
         const chromeMaterial = new THREE.MeshStandardMaterial({
             color: 0x888888,
             roughness: 0.1,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.9
         });
 
@@ -522,6 +546,9 @@ export class DeskObjectFactory {
         lampSwitch.position.set(0.18, -0.12, 0);
         lampSwitch.castShadow = true;
         group.add(lampSwitch);
+
+        // Contact shadow for realistic grounding (Phase 3.1)
+        addContactShadow(group, 0.6, 0.6, -0.19);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'lamp', label: 'Desk Lamp - Resume', deskLampLight: spotLight, warmFillLight: warmFillLight };
