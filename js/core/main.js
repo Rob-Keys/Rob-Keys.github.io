@@ -8,6 +8,13 @@ import { SceneManager } from './scene.js';
 import { ObjectFactory } from '../factories/objects.js';
 import { InteractionManager } from './interactions.js';
 import { initOrientationDetection } from '../systems/orientation.js';
+import { createPerfMonitor } from '../systems/utils.js';
+
+// Render-on-demand tuning (Phase 1). The scene is idle almost all the time —
+// dust drift, film grain, and coffee steam are the only things moving, and
+// none of them need display-refresh-rate updates to read as continuous.
+const INTERACTION_TIMEOUT_MS = 500; // How long to keep rendering at full rate after the last change.
+const IDLE_FRAME_INTERVAL_MS = 1000 / 30; // Cadence for ambient-only frames once idle.
 
 class Portfolio3D {
     constructor() {
@@ -17,6 +24,31 @@ class Portfolio3D {
         /** @type {THREE.Object3D | null} */ this._coffeeMug = null;
         /** @type {THREE.Object3D | null} */ this._clock = null;
         /** @type {THREE.Object3D | null} */ this._monitor = null;
+
+        // Render-on-demand state (Phase 1)
+        this._lastInteractionTime = 0; // 0 keeps the reveal frame(s) rendering at full rate.
+        this._lastRenderTime = 0;
+        this._bloomDirty = true;
+        this._rafId = null;
+
+        // Dev-only frame profiler (Phase 0), enabled via `?perf=1`. Created in
+        // init() once the renderer exists.
+        this._perfEnabled = new URLSearchParams(window.location.search).get('perf') === '1';
+        /** @type {(() => void) | null} */
+        this._perfUpdate = null;
+    }
+
+    /**
+     * Notify the render-on-demand loop that a frame is needed. Called from
+     * OrbitControls' `change` event, GSAP camera/UI tweens, hover-light changes,
+     * monitor scroll, clock redraws, and the day/night cycle.
+     * @param {boolean} [bloomAffecting] - True when the change touches
+     *   bloom-layer content or moves the camera, so the bloom composer needs
+     *   to re-render this frame too (see `SceneManager.render`).
+     */
+    requestRender(bloomAffecting = true) {
+        this._lastInteractionTime = performance.now();
+        if (bloomAffecting) this._bloomDirty = true;
     }
 
     async init() {
@@ -39,14 +71,28 @@ class Portfolio3D {
         // loading before revealing the scene, so nothing pops in after the fade.
         await this.sceneManager.waitForAssets();
 
-        this.interactionManager = new InteractionManager(camera, controls, interactiveObjects, scene);
+        this.interactionManager = new InteractionManager(
+            /** @type {THREE.PerspectiveCamera} */ (camera),
+            /** @type {import('three').OrbitControls} */ (controls),
+            interactiveObjects, scene,
+            (bloomAffecting) => this.requestRender(bloomAffecting)
+        );
 
-        // Post-processing (bloom/SSAO/outline) loads async in the background, so the
-        // outline pass may not exist yet — wire it up once it does, whenever that is.
-        this.sceneManager.postFXReady?.then(() => {
-            const outlinePass = this.sceneManager?.getOutlinePass();
-            if (outlinePass && this.interactionManager) {
-                this.interactionManager.setOutlinePass(outlinePass, interactiveObjects);
+        // OrbitControls fires 'change' on every user drag step and on each damping
+        // settle step afterward — exactly the signal the render-on-demand loop
+        // needs to know the camera moved.
+        /** @type {import('three').OrbitControls} */ (controls).addEventListener(
+            'change', () => this.requestRender(true)
+        );
+
+        // Pause rendering entirely while the tab is hidden; resume on return.
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (this._rafId !== null) cancelAnimationFrame(this._rafId);
+                this._rafId = null;
+            } else if (this._rafId === null) {
+                this.requestRender(true);
+                this.animate();
             }
         });
 
@@ -76,6 +122,15 @@ class Portfolio3D {
         // Finalize objects that need post-render setup (e.g., light targeting)
         this.objectFactory.finalizeObjects();
 
+        // Build hint-glow outlines after finalizeObjects() so world matrices are final.
+        // Unlike the old OutlinePass this doesn't depend on the lazy-loaded postfx
+        // bundle at all, so it no longer needs to wait on postFXReady.
+        this.interactionManager.initHintOutline(interactiveObjects);
+
+        if (this._perfEnabled && this.sceneManager.renderer) {
+            this._perfUpdate = createPerfMonitor(this.sceneManager.renderer);
+        }
+
         this.animate();
     }
 
@@ -93,10 +148,26 @@ class Portfolio3D {
         }
     }
 
+    /**
+     * Render-on-demand loop (Phase 1). Ambient effects (dust, grain, steam)
+     * animate continuously, so frames never fully stop — but they're throttled
+     * to IDLE_FRAME_INTERVAL_MS once nothing has changed for INTERACTION_TIMEOUT_MS,
+     * instead of running the whole pipeline at display refresh rate forever.
+     */
     animate() {
-        requestAnimationFrame(() => this.animate());
+        this._rafId = requestAnimationFrame(() => this.animate());
+
+        const now = performance.now();
+        const interacting = now - this._lastInteractionTime < INTERACTION_TIMEOUT_MS;
+        const frameInterval = interacting ? 0 : IDLE_FRAME_INTERVAL_MS;
+        if (now - this._lastRenderTime < frameInterval) return;
+        this._lastRenderTime = now;
+
         this.updateAnimations();
-        this.sceneManager?.render();
+        this.sceneManager?.render(this._bloomDirty);
+        this._bloomDirty = false;
+
+        this._perfUpdate?.();
     }
 
     /**
@@ -106,7 +177,8 @@ class Portfolio3D {
         // sceneManager is guaranteed non-null after init(); narrow for type checker
         const sm = /** @type {import('./scene.js').SceneManager} */ (this.sceneManager);
         if (sm.lightingSystem && sm.camera) {
-            sm.lightingSystem.update(sm.camera);
+            const dayNightChanged = sm.lightingSystem.update(sm.camera);
+            if (dayNightChanged) this.requestRender(false);
         }
         sm.updateDustParticles();
         sm.updateFilmGrain();
@@ -118,7 +190,8 @@ class Portfolio3D {
 
         // Update digital clock (using cached reference)
         if (this._clock?.userData.updateTime) {
-            this._clock.userData.updateTime();
+            const clockChanged = this._clock.userData.updateTime();
+            if (clockChanged) this.requestRender(false);
         }
     }
 }

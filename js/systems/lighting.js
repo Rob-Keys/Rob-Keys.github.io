@@ -4,7 +4,7 @@
  * Handles all lighting concerns: environment maps, lights, shadows, glare, and day/night cycle
  */
 
-import { SHADOW_CONFIG } from '../config/config.js';
+import { SHADOW_CONFIG, LIGHTING_CONFIG } from '../config/config.js';
 
 export class LightingSystem {
     /**
@@ -22,8 +22,7 @@ export class LightingSystem {
          *   fill: THREE.SpotLight | null,
          *   fill2: THREE.SpotLight | null,
          *   rim: THREE.PointLight | null,
-         *   deskLamp: THREE.SpotLight | null,
-         *   roomBounce: THREE.PointLight | null
+         *   deskLamp: THREE.SpotLight | null
          * }} */
         this.lights = {
             ambient: null,
@@ -32,8 +31,7 @@ export class LightingSystem {
             fill: null,
             fill2: null,
             rim: null,
-            deskLamp: null,
-            roomBounce: null
+            deskLamp: null
         };
 
         /** @type {THREE.Texture | null} */ this.envMap = null;
@@ -121,12 +119,17 @@ export class LightingSystem {
      *   - Near-zero ambient (prevents pure-black, nothing more)
      *   - Cool hemisphere (daylight sky bounce through window)
      *   - Directional window light that follows day/night cycle (morning angle from upper-left)
+     *   - Front fill directional (soft lift on faces the ceiling spots rake past)
      *   - Two warm overhead SpotLights at reduced intensity (ceiling can't out-compete natural light)
-     *   - Focused desk lamp SpotLight (warm 2700K amber — the hero accent light)
+     *   - Focused desk lamp SpotLight (warm 2700K amber — the hero accent light) plus its
+     *     small shade-glow and desk-bounce PointLights
      *   - Strong monitor bounce (visible blue screen glow on keyboard/desk)
-     *   - Laptop screen bounce (cool fill from left side)
-     *   - Minimal room bounce (don't fill shadows that add depth)
-     *   - Ceiling ambient bounce (subtle reflected warmth from ceiling)
+     *
+     * Phase 3 consolidation: the wide-radius GI-approximation fills that used to sit
+     * alongside these (backWallWash, roomFill, roomBounce, ceilingBounce, a static
+     * laptopBounce duplicate) were removed — a forward renderer charges full per-fragment
+     * cost for a light regardless of how dim or short-range it is. Their contribution now
+     * lives in the ambient/hemisphere day-night floors and a baked wall emissive tint.
      */
     setupLights() {
         const isMobile = window.innerWidth < 768;
@@ -175,30 +178,34 @@ export class LightingSystem {
 
         // Front fill directional — soft warm fill from the viewer side onto the desk and
         // the front faces of objects the ceiling spots rake past. Aimed at scene origin.
-        // Very low intensity — only lifts the deepest fronts without flattening form.
-        const wallFill = new THREE.DirectionalLight(0xfff4ee, 0.10);
+        // Intensity raised slightly (0.10 → 0.14, Phase 3.1) to help cover the front-face
+        // fill that roomBounce used to provide before its removal below.
+        const wallFill = new THREE.DirectionalLight(0xfff4ee, 0.14);
         wallFill.position.set(0, 4, 8);
         this.scene.add(wallFill);
 
-        // Back-wall wash — a wide, dim PointLight placed just in front of the back wall to
-        // lift it out of pure black, so the scene reads as an enclosed room. Positioned high
-        // and behind the shelf line; distance-limited so it never spills onto the desk.
-        const backWallWash = new THREE.PointLight(0xffe9d6, 2.2, 9, 2);
-        backWallWash.position.set(0, 4.2, -2.9);
-        this.scene.add(backWallWash);
+        // Phase 3.1: backWallWash, roomFill, roomBounce, ceilingBounce, and the static
+        // laptopBounce point lights were removed here. They were dim, wide-radius fills
+        // approximating GI that a forward renderer still charges full per-fragment cost
+        // for regardless of intensity or range. Their contribution is folded into the
+        // wallFill bump above, the day/night ambient/hemisphere floors below, and a baked
+        // emissive tint on the back wall material (see furniture.js createWall()).
+        // laptopBounce specifically duplicated the correctly-positioned emissive light
+        // technology.js already registers via addEmissiveLight() for the laptop screen.
 
         // Ceiling SpotLight 1 — primary overhead fixture (3000K warm-white LED).
         // Cone angle π/4 (~45°) is closer to a real surface-mounted LED downlight than the
         // previous π/3.5 (~51°). Penumbra 0.45 gives a soft edge without looking like a projector.
         // Casts shadows so desk objects produce realistic contact shadows on the desktop.
-        // Decay 2 = inverse-square (physically correct). Intensity raised to 28 to compensate:
-        // at desk distance (~5.8 units) illuminance = 28/5.8² ≈ 0.83, matching the old system's 0.72.
-        const ceilingMain = new THREE.SpotLight(0xffcba0, 28.0, 18, Math.PI / 4, 0.45, 2);
+        // Decay 2 = inverse-square (physically correct). Base intensity (LIGHTING_CONFIG.ceiling)
+        // raised slightly over the previous 28 to help compensate for the fills removed above.
+        const ceilingMain = new THREE.SpotLight(0xffcba0, LIGHTING_CONFIG.ceiling.mainIntensity, 18, Math.PI / 4, 0.45, 2);
         ceilingMain.position.set(-0.8, 5.8, -0.2);
         ceilingMain.target.position.set(-0.4, 0.0, -1.0);
         ceilingMain.castShadow = true;
-        ceilingMain.shadow.mapSize.width = isMobile ? 1024 : 2048;
-        ceilingMain.shadow.mapSize.height = isMobile ? 1024 : 2048;
+        // Tight room, close-range fixture — 1024 loses no visible resolution over 2048 (Phase 3.3).
+        ceilingMain.shadow.mapSize.width = SHADOW_CONFIG.ceiling.mapSize;
+        ceilingMain.shadow.mapSize.height = SHADOW_CONFIG.ceiling.mapSize;
         ceilingMain.shadow.bias = -0.0003;
         ceilingMain.shadow.normalBias = 0.02;
         ceilingMain.shadow.radius = 3;
@@ -208,20 +215,12 @@ export class LightingSystem {
 
         // Ceiling SpotLight 2 — secondary overhead, slightly cooler 3500K.
         // Offset right to balance coverage and give the right side of the desk its own fill.
-        const ceilingFill = new THREE.SpotLight(0xffd8b8, 18.0, 18, Math.PI / 4, 0.50, 2);
+        const ceilingFill = new THREE.SpotLight(0xffd8b8, LIGHTING_CONFIG.ceiling.fillIntensity, 18, Math.PI / 4, 0.50, 2);
         ceilingFill.position.set(0.8, 5.8, 0.4);
         ceilingFill.target.position.set(0.6, 0.0, -0.8);
         this.scene.add(ceilingFill);
         this.scene.add(ceilingFill.target);
         this.lights.fill2 = ceilingFill;
-
-        // Room fill PointLight — indirect ceiling bounce.
-        // Represents multi-bounce illumination that a real room accumulates from overhead
-        // fixtures scattering off ceiling, walls, and furniture. Kept dim (3.0) because the
-        // ceiling spots already provide significant direct light; this only fills the gaps.
-        const roomFill = new THREE.PointLight(0xfff0e8, 6.0, 22, 2);
-        roomFill.position.set(0, 5.8, 2.0);
-        this.scene.add(roomFill);
 
         // Desk lamp SpotLight — 2700K incandescent-equivalent warm amber.
         // 2700K accurate hex: #FFA740. Tight cone (π/11 ≈ 16°) with soft penumbra 0.20.
@@ -261,25 +260,6 @@ export class LightingSystem {
         monitorBounce.position.set(0, 1.8, 0.4);
         this.scene.add(monitorBounce);
         this.lights.rim = monitorBounce;
-
-        // Laptop screen bounce — cooler fill from the laptop on the left.
-        const laptopBounce = new THREE.PointLight(0xd0e4ff, 0.30, 3, 2);
-        laptopBounce.position.set(-2.4, 1.5, 0.6);
-        this.scene.add(laptopBounce);
-
-        // Room bounce — fills front-faces of objects that ceiling spots can't reach.
-        // Positioned behind the camera, aimed at the scene. Kept very dim (0.7) — only
-        // fills the deepest shadows, not bright enough to compete with ceiling fixtures.
-        const roomBounce = new THREE.PointLight(0xfff4ee, 0.7, 20, 2);
-        roomBounce.position.set(0, 3.0, 6.5);
-        this.scene.add(roomBounce);
-        this.lights.roomBounce = roomBounce;
-
-        // Ceiling bounce — indirect fill from the ceiling surface itself.
-        // Simulates ceiling-reflected light coming downward into the scene.
-        const ceilingBounce = new THREE.PointLight(0xffe8d8, 0.5, 24, 2);
-        ceilingBounce.position.set(0, 7.0, 0);
-        this.scene.add(ceilingBounce);
     }
 
     /**
@@ -428,12 +408,15 @@ export class LightingSystem {
      * Update day/night cycle based on real time.
      * Only the window directional light follows the sun; indoor ceiling and
      * desk lights are constant (they're always on in a home office).
+     * @returns {boolean} True when the lighting actually changed this call
+     *   (throttled to ~1 Hz internally) — used by the render loop to know
+     *   whether a frame needs to be drawn to reflect the change.
      */
     updateDayNightCycle() {
-        if (!this.lights.main) return;
+        if (!this.lights.main) return false;
 
         const nowMs = performance.now();
-        if (nowMs - this._lastDayNightUpdate < 1000) return;
+        if (nowMs - this._lastDayNightUpdate < 1000) return false;
         this._lastDayNightUpdate = nowMs;
 
         const now = new Date();
@@ -472,9 +455,10 @@ export class LightingSystem {
         if (this.lights.ambient) {
             // Interpolate color: night blue (#0a0e1a) → day warm (#1a150d)
             this.lights.ambient.color.copy(this._nightAmbientColor).lerp(this._dayAmbientColor, dayFraction);
-            // Night floor: 0.22 (room lights keep some ambient even without sun)
-            // Day peak: 0.28
-            this.lights.ambient.intensity = 0.22 + dayFraction * 0.06;
+            // Night floor: 0.25, Day peak: 0.32. Raised slightly over the pre-Phase-3
+            // 0.22/0.28 floor to help cover the wide-radius fill lights removed from
+            // setupLights() (backWallWash, roomFill, roomBounce, ceilingBounce).
+            this.lights.ambient.intensity = 0.25 + dayFraction * 0.07;
         }
 
         // Hemisphere: sky color shifts cool-blue at night (star/moonlit sky) → bright blue at noon.
@@ -482,8 +466,8 @@ export class LightingSystem {
             if (this.lights.hemisphere.color) {
                 this.lights.hemisphere.color.copy(this._nightSkyColor).lerp(this._daySkyColor, dayFraction);
             }
-            // Night: 0.04 (barely lit sky), Day peak: 0.38
-            this.lights.hemisphere.intensity = 0.04 + dayFraction * 0.34;
+            // Night: 0.05, Day peak: 0.43 (raised from 0.04/0.38, same reason as ambient above).
+            this.lights.hemisphere.intensity = 0.05 + dayFraction * 0.38;
         }
 
         // Ceiling lights: slight night boost so the room doesn't go pitch black.
@@ -492,25 +476,30 @@ export class LightingSystem {
         // Night boost: ceiling lights brighten slightly at night since they're the only source.
         const nightBoost = Math.max(0, nightFraction - 0.2) * 0.5;
         if (this.lights.fill) {
-            this.lights.fill.intensity = 28.0 + nightBoost * 10.0;
+            this.lights.fill.intensity = LIGHTING_CONFIG.ceiling.mainIntensity + nightBoost * LIGHTING_CONFIG.ceiling.mainNightBoost;
         }
         if (this.lights.fill2) {
-            this.lights.fill2.intensity = 18.0 + nightBoost * 7.0;
+            this.lights.fill2.intensity = LIGHTING_CONFIG.ceiling.fillIntensity + nightBoost * LIGHTING_CONFIG.ceiling.fillNightBoost;
         }
 
         // Update glare light intensities to match current window light
         for (const material of this.glareMaterials) {
             material.uniforms.uLightIntensities.value[0] = mainIntensity * 0.5;
         }
+
+        return true;
     }
 
     /**
      * Main update method - call each frame
      * @param {THREE.Camera} camera - The scene camera
+     * @returns {boolean} True when the day/night cycle actually changed lighting
+     *   this call — see `updateDayNightCycle`.
      */
     update(camera) {
-        this.updateDayNightCycle();
+        const dayNightChanged = this.updateDayNightCycle();
         this.updateGlare(camera);
+        return dayNightChanged;
     }
 
     /**

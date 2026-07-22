@@ -471,6 +471,55 @@ export function addContactShadow(group, width, depth, groundY) {
 }
 
 /**
+ * Create a dev-only frame profiler, active behind `?perf=1`. Draws a rolling
+ * frame-time average plus renderer.info counters to a small corner canvas —
+ * exempt from the no-HTML-overlay rule since it's a debug view, not portfolio
+ * content (see CLAUDE.md Phase 0 baseline measurement).
+ * @param {THREE.WebGLRenderer} renderer
+ * @returns {() => void} Call once per rendered frame to refresh the readout.
+ */
+export function createPerfMonitor(renderer) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 260;
+    canvas.height = 80;
+    Object.assign(canvas.style, {
+        position: 'fixed',
+        top: '8px',
+        left: '8px',
+        zIndex: '9999',
+        background: 'rgba(0, 0, 0, 0.65)',
+        pointerEvents: 'none'
+    });
+    document.body.appendChild(canvas);
+
+    const ctx = canvas.getContext('2d');
+    assert(ctx !== null, 'Failed to get 2D context for perf monitor canvas');
+
+    const MAX_SAMPLES = 60;
+    /** @type {number[]} */
+    const frameTimes = [];
+    let lastTime = performance.now();
+
+    return function updatePerfMonitor() {
+        const now = performance.now();
+        frameTimes.push(now - lastTime);
+        lastTime = now;
+        if (frameTimes.length > MAX_SAMPLES) frameTimes.shift();
+
+        const avgMs = frameTimes.reduce((sum, t) => sum + t, 0) / frameTimes.length;
+        const info = renderer.info;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#0f0';
+        ctx.font = '12px monospace';
+        ctx.fillText(`frame: ${avgMs.toFixed(2)} ms (${(1000 / avgMs).toFixed(0)} fps)`, 8, 16);
+        ctx.fillText(`draw calls: ${info.render.calls}`, 8, 32);
+        ctx.fillText(`triangles: ${info.render.triangles}`, 8, 48);
+        ctx.fillText(`programs: ${info.programs?.length ?? 0}`, 8, 64);
+    };
+}
+
+/**
  * Create a dust particles cloud (Phase 3.5).
  * Sparse additive points that drift slowly inside light cones.
  * @param {number} count - Number of dust particles (200-400 recommended)

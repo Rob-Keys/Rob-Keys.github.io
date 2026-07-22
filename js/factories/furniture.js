@@ -199,6 +199,11 @@ export class FurnitureFactory {
         wallMat.clearcoat = 0.0;
         wallMat.clearcoatRoughness = 1.0;
         wallMat.envMapIntensity = 0.04;
+        // Baked-in warm tint (Phase 3.1) replacing the backWallWash PointLight that used
+        // to lift this wall out of pure black — a static emissive term costs nothing per
+        // frame and the wall never moves relative to camera or lights.
+        wallMat.emissive = new THREE.Color(0xffe9d6);
+        wallMat.emissiveIntensity = 0.035;
         wallMat.needsUpdate = true;
 
         const wall = new THREE.Mesh(

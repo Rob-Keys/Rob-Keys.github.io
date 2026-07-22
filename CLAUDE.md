@@ -147,11 +147,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 - Post-processing bloom: strength 0.3, radius 0.4, threshold 0.7
 - `SpotLight`/`PointLight` with `decay: 2` for realistic falloff
 
-## OutlinePass Customization (r128)
+## Hint-glow outline
 
-When replacing `outlinePass.overlayMaterial`, the new ShaderMaterial MUST include ALL uniforms that the `render()` method writes to: `maskTexture`, `edgeTexture1`, `edgeTexture2`, `patternTexture`, `edgeStrength`, `edgeGlow`, `usePatternTexture`. If any uniform is missing, the `render()` method throws when assigning `.value`, silently aborting the overlay composite -- but the internal depth/mask scene re-renders have already run, causing visible dimming with no outlines. The shader itself doesn't need to USE all uniforms, they just need to exist in the uniforms object.
-
-**Known issue:** The scene still dims when the OutlinePass is enabled, despite the overlay material replacement. The dimming likely comes from the pass's internal scene re-renders (depth buffer, mask buffer) which temporarily modify scene background, clear color, and object visibility. The overlay shader fix alone is not sufficient -- the render() method itself needs to be overridden or the pass replaced entirely.
+Interactive objects get a hint outline (fades in after `HINT_DELAY` of no clicks) via an inflated-backface mesh per object — see `InteractionManager.initHintOutline()` in `js/core/interactions.js`. This replaced `THREE.OutlinePass`, which dimmed the whole scene whenever enabled: its internal depth/mask scene re-renders temporarily altered scene background, clear color, and object visibility, and no overlay-material fix could prevent that (only overriding its `render()` or dropping the pass could). The current approach draws real geometry in the normal scene pass instead, so there's no separate pass and no dimming.
 
 ## Mobile
 
@@ -162,7 +160,3 @@ When replacing `outlinePass.overlayMaterial`, the new ShaderMaterial MUST includ
 ## Testing
 
 Manual only -- open in browser with WebGL. No test framework.
-
-## TODOs
-
-- OutlinePass: scene dimming still occurs -- need to override render() or replace with custom edge-only pass

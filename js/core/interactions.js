@@ -8,11 +8,22 @@ import { PORTFOLIO_CONFIG, ZOOM_CONFIG } from '../config/config.js';
 import { MonitorRenderer } from '../factories/monitor-renderer.js';
 
 export class InteractionManager {
-    constructor(camera, controls, interactiveObjects, scene) {
+    /**
+     * @param {THREE.Camera} camera
+     * @param {import('three').OrbitControls} controls
+     * @param {THREE.Object3D[]} interactiveObjects
+     * @param {THREE.Scene} scene
+     * @param {(bloomAffecting?: boolean) => void} [requestRender] - Notifies the
+     *   render-on-demand loop (js/core/main.js) that a frame is needed. Pass
+     *   `bloomAffecting: true` when the change touches bloom-layer content or
+     *   moves the camera; defaults to a no-op so this class works standalone.
+     */
+    constructor(camera, controls, interactiveObjects, scene, requestRender = () => {}) {
         this.camera = camera;
         this.controls = controls;
         this.interactiveObjects = interactiveObjects;
         this.scene = scene;
+        this.requestRender = requestRender;
 
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
@@ -29,7 +40,8 @@ export class InteractionManager {
         this.touchStartPosition = new THREE.Vector2();
 
         // Hint glow state -- outlines appear after 5s without clicking an object
-        this.outlinePass = null;
+        /** @type {THREE.Group | null} */ this.hintOutlineGroup = null;
+        /** @type {THREE.MeshBasicMaterial | null} */ this.hintOutlineMaterial = null;
         this.hintActive = false;
         this.hintTimer = null;
         this.HINT_DELAY = 999999; // Temporarily extended for lighting calibration
@@ -137,19 +149,23 @@ export class InteractionManager {
             // Position light slightly above the hover point
             this.hoverLight.position.copy(point);
             this.hoverLight.position.y += 0.3;
-            
+
             // Animate light intensity
             this.hoverLight.intensity = Math.min(1.0, this.hoverLight.intensity + 0.1);
-            
+
             // Add to scene if not already added
             if (!this.hoverLight.parent && this.scene) {
                 this.scene.add(this.hoverLight);
             }
-            
+
             // Update hovered object tracking
             if (this.hoveredObject !== object) {
                 this.hoveredObject = object;
             }
+
+            // The hover light is a normal (non-bloom-layer) light, but bloom-layer
+            // meshes stay in light layer 0 too, so its glow still reaches them.
+            this.requestRender(true);
         }
     }
 
@@ -163,6 +179,7 @@ export class InteractionManager {
                 this.hoverLight.visible = false;
                 this.hoveredObject = null;
             }
+            this.requestRender(true);
         }
     }
 
@@ -279,7 +296,8 @@ export class InteractionManager {
             y: zoomPosition.y,
             z: zoomPosition.z,
             duration: duration,
-            ease: ease
+            ease: ease,
+            onUpdate: () => this.requestRender(true)
         });
 
         gsap.to(this.controls.target, {
@@ -307,7 +325,8 @@ export class InteractionManager {
                 y: this.originalCameraPosition.y,
                 z: this.originalCameraPosition.z,
                 duration: duration,
-                ease: ease
+                ease: ease,
+                onUpdate: () => this.requestRender(true)
             });
 
             gsap.to(this.controls.target, {
@@ -361,6 +380,7 @@ export class InteractionManager {
 
             // Update monitor texture
             this.updateMonitorTexture();
+            this.requestRender(true); // Monitor screen is on the bloom layer
         }
     }
 
@@ -414,12 +434,50 @@ export class InteractionManager {
     }
 
     /**
-     * Configure the outline pass for hint glow.
-     * Outlines appear after a delay if the user hasn't clicked anything.
+     * Build the hint-glow geometry for every interactive object: a slightly inflated
+     * clone of each mesh, backface-only, sharing one flat-color material. Front faces of
+     * the real object occlude the inner backfaces of the clone, leaving only a silhouette
+     * edge visible around it -- the classic "inflated hull" outline technique. This draws
+     * as ordinary geometry in the normal scene pass (no extra scene re-renders, no
+     * depth/mask buffers), replacing the old OutlinePass -- which dimmed the whole scene
+     * via those internal buffers even after its overlay-material fix (see the closed-out
+     * CLAUDE.md TODO). Geometry is shared by reference with the source meshes; only new
+     * Mesh wrapper objects are created, and instanced meshes (keycaps) are skipped since
+     * a single non-instanced draw can't reproduce their per-instance transforms.
+     * @param {THREE.Object3D[]} interactiveObjects
      */
-    setOutlinePass(outlinePass, interactiveObjects) {
-        this.outlinePass = outlinePass;
-        this.outlinePass.selectedObjects = interactiveObjects;
+    initHintOutline(interactiveObjects) {
+        this.hintOutlineMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff3333,
+            side: THREE.BackSide,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            toneMapped: false
+        });
+
+        this.hintOutlineGroup = new THREE.Group();
+        this.hintOutlineGroup.visible = false;
+
+        const outlineMaterial = /** @type {THREE.MeshBasicMaterial} */ (this.hintOutlineMaterial);
+        const INFLATE_SCALE = 1.03;
+        for (const object of interactiveObjects) {
+            object.updateMatrixWorld(true);
+            object.traverse((child) => {
+                if (!(child instanceof THREE.Mesh) || child instanceof THREE.InstancedMesh) return;
+
+                const outlineMesh = new THREE.Mesh(child.geometry, outlineMaterial);
+                child.updateMatrixWorld(true);
+                outlineMesh.matrix.copy(child.matrixWorld);
+                outlineMesh.matrix.decompose(outlineMesh.position, outlineMesh.quaternion, outlineMesh.scale);
+                outlineMesh.scale.multiplyScalar(INFLATE_SCALE);
+                outlineMesh.matrixAutoUpdate = false;
+                outlineMesh.updateMatrix();
+                /** @type {THREE.Group} */ (this.hintOutlineGroup).add(outlineMesh);
+            });
+        }
+
+        if (this.scene) this.scene.add(this.hintOutlineGroup);
         this.startHintTimer();
     }
 
@@ -437,16 +495,17 @@ export class InteractionManager {
      * Fade in the hint outlines on interactive objects
      */
     showHint() {
-        if (!this.outlinePass || this.currentZoomedObject) return;
+        if (!this.hintOutlineGroup || !this.hintOutlineMaterial || this.currentZoomedObject) return;
 
         this.hintActive = true;
-        this.outlinePass.edgeStrength = 0;
-        this.outlinePass.enabled = true;
+        this.hintOutlineMaterial.opacity = 0;
+        this.hintOutlineGroup.visible = true;
 
-        gsap.to(this.outlinePass, {
-            edgeStrength: 2.0,
+        gsap.to(this.hintOutlineMaterial, {
+            opacity: 0.6,
             duration: 2.0,
-            ease: 'power1.out'
+            ease: 'power1.out',
+            onUpdate: () => this.requestRender(false)
         });
     }
 
@@ -454,14 +513,15 @@ export class InteractionManager {
      * Fade out the hint outlines after the user clicks an object
      */
     hideHint() {
-        if (!this.outlinePass || !this.hintActive) return;
+        if (!this.hintOutlineGroup || !this.hintOutlineMaterial || !this.hintActive) return;
 
-        gsap.to(this.outlinePass, {
-            edgeStrength: 0,
+        gsap.to(this.hintOutlineMaterial, {
+            opacity: 0,
             duration: 1.0,
             ease: 'power1.in',
+            onUpdate: () => this.requestRender(false),
             onComplete: () => {
-                this.outlinePass.enabled = false;
+                /** @type {THREE.Group} */ (this.hintOutlineGroup).visible = false;
                 this.hintActive = false;
             }
         });

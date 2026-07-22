@@ -26,26 +26,29 @@ export const SHADOW_CONFIG = Object.freeze({
     mobile: Object.freeze({
         mapSize: 2048
     }),
+    // Tight cone, small coverage area -- 1024 wastes no visible resolution
+    // versus the 2048 used previously (Phase 3.3).
     lamp: Object.freeze({
-        mapSize: 2048,
+        mapSize: 1024,
         bias: -0.0002,
         normalBias: 0.02,
         radius: 4
+    }),
+    ceiling: Object.freeze({
+        mapSize: 1024
     })
 });
 
 export const LIGHTING_CONFIG = Object.freeze({
-    // Ceiling overhead light (PointLight, warm white ~3000K)
-    fill: Object.freeze({
-        intensity: 0.35,
-        distance: 10,
-        decay: 2
-    }),
-    // Monitor bounce fill (PointLight, cool blue-white ~6500K)
-    rim: Object.freeze({
-        intensity: 0.12,
-        distance: 7,
-        decay: 2
+    // Ceiling overhead SpotLights (warm ~3000K / cooler ~3500K). Base intensities
+    // plus the night-boost added as these become the room's only light source
+    // (see updateDayNightCycle in lighting.js). Centralized here so retuning after
+    // a lighting change stays in one place (Phase 3.4).
+    ceiling: Object.freeze({
+        mainIntensity: 30.0,
+        mainNightBoost: 10.0,
+        fillIntensity: 19.0,
+        fillNightBoost: 7.0
     }),
     // Environment map intensity for materials
     environment: Object.freeze({
@@ -152,13 +155,12 @@ export const PORTFOLIO_CONFIG = Object.freeze({
     }),
     rendering: Object.freeze({
         // Capped below the display's native devicePixelRatio -- every full-screen
-        // post-processing pass (bloom, SSAO, combine, outline) pays for pixel count
+        // post-processing pass (bloom, combine, outline) pays for pixel count
         // quadratically on Retina displays, so this is a deliberate sharpness/perf trade.
         maxPixelRatioDesktop: 1.5,
         maxPixelRatioMobile: 1.0,
-        // Post-processing passes that are inherently blurred (bloom) or low-frequency
-        // (SSAO) render at a fraction of canvas resolution and upsample; the softening
-        // is invisible for bloom and barely perceptible for SSAO.
+        // Bloom is inherently blurred, so rendering it at a fraction of canvas
+        // resolution and letting the combine pass upsample it is free.
         postProcessResolutionScale: 0.5,
         // Phase 3 features
         enableContactShadows: true,

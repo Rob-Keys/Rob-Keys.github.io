@@ -953,11 +953,12 @@ export class TechnologyFactory {
         // Time update function
         let lastTimeString = '';
         
+        /** @returns {boolean} True when the clock face was actually redrawn. */
         const updateTime = () => {
             const now = new Date();
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            if (timeString === lastTimeString) return;
+
+            if (timeString === lastTimeString) return false;
             lastTimeString = timeString;
 
             ctx.fillStyle = '#050505';
@@ -970,8 +971,9 @@ export class TechnologyFactory {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(timeString, canvas.width / 2, canvas.height / 2 + 5);
-            
+
             texture.needsUpdate = true;
+            return true;
         };
 
         updateTime();

@@ -28,6 +28,7 @@ declare module 'three' {
         enabled: boolean;
         target: Vector3;
         update(): void;
+        addEventListener(type: string, listener: (event: unknown) => void): void;
     }
 
     class EffectComposer {
