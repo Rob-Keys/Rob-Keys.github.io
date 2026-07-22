@@ -158,7 +158,13 @@ export const PORTFOLIO_CONFIG = Object.freeze({
         // Post-processing passes that are inherently blurred (bloom) or low-frequency
         // (SSAO) render at a fraction of canvas resolution and upsample; the softening
         // is invisible for bloom and barely perceptible for SSAO.
-        postProcessResolutionScale: 0.5
+        postProcessResolutionScale: 0.5,
+        // Phase 3 features
+        enableContactShadows: true,
+        enableDustParticles: true,
+        dustParticleCount: 300,
+        filmGrainAmplitude: 0.015,
+        vignetteIntensity: 0.15
     }),
     camera: Object.freeze({
         fov: 75,

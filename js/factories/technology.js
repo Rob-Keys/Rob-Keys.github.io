@@ -10,7 +10,8 @@ import {
     createBeveledBox,
     createKeycapGeometry,
     createRoughnessVariationTexture,
-    createScreenSmudgeTexture
+    createScreenSmudgeTexture,
+    createContactShadowPlane
 } from '../systems/utils.js';
 import { LIGHTING_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 
@@ -562,6 +563,12 @@ export class TechnologyFactory {
         port.position.set(offsets.port.x, offsets.port.y, offsets.port.z);
         group.add(port);
 
+        // Contact shadow for realistic grounding (Phase 3.1)
+        const keyboardShadow = createContactShadowPlane(2.3, 1.0);
+        keyboardShadow.position.set(0, -0.2, 0);
+        keyboardShadow.rotation.x = -Math.PI / 2;
+        group.add(keyboardShadow);
+
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'keyboard', label: 'Keyboard - My Skills' };
         this.interactiveObjects.push(group);
@@ -617,6 +624,12 @@ export class TechnologyFactory {
         divider.position.set(0, -0.06, 0.06);
         divider.castShadow = true;
         group.add(divider);
+
+        // Contact shadow for realistic grounding (Phase 3.1)
+        const mouseShadow = createContactShadowPlane(0.25, 0.35);
+        mouseShadow.position.set(0, -0.2, 0);
+        mouseShadow.rotation.x = -Math.PI / 2;
+        group.add(mouseShadow);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'mouse', label: 'Mouse - Navigation & Tools' };
@@ -829,6 +842,12 @@ export class TechnologyFactory {
         screenLid.position.set(0, 0.05, -0.45);
         screenLid.rotation.x = -Math.PI / 6;  // Open at ~30 degrees from vertical
         group.add(screenLid);
+
+        // Contact shadow for realistic grounding (Phase 3.1)
+        const laptopShadow = createContactShadowPlane(1.6, 1.1);
+        laptopShadow.position.set(0, -0.05, 0);
+        laptopShadow.rotation.x = -Math.PI / 2;
+        group.add(laptopShadow);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'laptop', label: 'Laptop - Work Experience' };

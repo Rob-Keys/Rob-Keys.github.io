@@ -8,7 +8,8 @@ import {
     applyOrigin,
     createBeveledBox,
     createPaperGrainNormalTexture,
-    createRoughnessVariationTexture
+    createRoughnessVariationTexture,
+    createContactShadowPlane
 } from '../systems/utils.js';
 import { SHADOW_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 
@@ -184,6 +185,12 @@ export class DeskObjectFactory {
         binding.receiveShadow = true;
         group.add(binding);
 
+        // Contact shadow for realistic grounding (Phase 3.1)
+        const notebookShadow = createContactShadowPlane(1.0, 1.3);
+        notebookShadow.position.set(0, -0.2, 0);
+        notebookShadow.rotation.x = -Math.PI / 2;
+        group.add(notebookShadow);
+
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'notebook', label: 'Notebook - Personal Projects' };
         this.interactiveObjects.push(group);
@@ -351,6 +358,12 @@ export class DeskObjectFactory {
                 }
             });
         };
+
+        // Contact shadow for realistic grounding (Phase 3.1)
+        const coffeeShadow = createContactShadowPlane(0.35, 0.35);
+        coffeeShadow.position.set(0, -0.2, 0);
+        coffeeShadow.rotation.x = -Math.PI / 2;
+        group.add(coffeeShadow);
 
         applyOrigin(group, origin);
         group.userData = { name: 'coffee', label: 'Starbucks - What Drives Me', animateSteam: animateSteamFunc };
@@ -534,6 +547,12 @@ export class DeskObjectFactory {
         lampSwitch.position.set(0.18, -0.12, 0);
         lampSwitch.castShadow = true;
         group.add(lampSwitch);
+
+        // Contact shadow for realistic grounding (Phase 3.1)
+        const lampShadow = createContactShadowPlane(0.6, 0.6);
+        lampShadow.position.set(0, -0.2, 0);
+        lampShadow.rotation.x = -Math.PI / 2;
+        group.add(lampShadow);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'lamp', label: 'Desk Lamp - Resume', deskLampLight: spotLight, warmFillLight: warmFillLight };

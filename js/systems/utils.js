@@ -387,3 +387,92 @@ export function createPaperGrainNormalTexture() {
     _paperGrainNormalTexture = texture;
     return texture;
 }
+
+/** @type {THREE.CanvasTexture | null} */
+let _contactShadowTexture = null;
+
+/**
+ * Shared radial-gradient contact shadow texture (dark at center, fades to transparent).
+ * Used on planes beneath desk objects to ground them realistically.
+ * @returns {THREE.CanvasTexture}
+ */
+export function createContactShadowTexture() {
+    if (_contactShadowTexture) return _contactShadowTexture;
+
+    const size = 128;
+    const { texture } = createCanvasTexture(size, size, (ctx) => {
+        const centerX = size / 2;
+        const centerY = size / 2;
+        const maxRadius = size / 2;
+
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0.6)');
+        gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.2)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+    });
+
+    if (texture.colorSpace !== undefined) {
+        texture.colorSpace = THREE.NoColorSpace;
+    }
+
+    _contactShadowTexture = texture;
+    return texture;
+}
+
+/**
+ * Create a contact shadow plane beneath an object (Phase 3.1).
+ * Returns a mesh ready to add to the scene; position it under your object.
+ * @param {number} width - Contact shadow width
+ * @param {number} depth - Contact shadow depth
+ * @returns {THREE.Mesh}
+ */
+export function createContactShadowPlane(width, depth) {
+    const geometry = new THREE.PlaneGeometry(width, depth);
+    const material = new THREE.MeshBasicMaterial({
+        map: createContactShadowTexture(),
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.4,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+
+    const plane = new THREE.Mesh(geometry, material);
+    plane.renderOrder = 0;
+    return plane;
+}
+
+/**
+ * Create a dust particles cloud (Phase 3.5).
+ * Sparse additive points that drift slowly inside light cones.
+ * @param {number} count - Number of dust particles (200-400 recommended)
+ * @param {number} scale - Size of the particle cloud
+ * @returns {THREE.Points}
+ */
+export function createDustParticles(count = 300, scale = 2.0) {
+    const positions = [];
+    for (let i = 0; i < count; i++) {
+        positions.push(
+            (Math.random() - 0.5) * scale,
+            (Math.random() - 0.5) * scale,
+            (Math.random() - 0.5) * scale
+        );
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+
+    const material = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.02,
+        transparent: true,
+        opacity: 0.1,
+        sizeAttenuation: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+
+    return new THREE.Points(geometry, material);
+}

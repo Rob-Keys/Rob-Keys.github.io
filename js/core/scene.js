@@ -6,6 +6,7 @@
 
 import { PORTFOLIO_CONFIG, LIGHTING_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 import { LightingSystem } from '../systems/lighting.js';
+import { createDustParticles } from '../systems/utils.js';
 
 const BLOOM_LAYER = 1;
 
@@ -53,6 +54,7 @@ export class SceneManager {
         this.lights = this.lightingSystem.lights;
 
         this.createFloor();
+        this.createDustParticlesEffect();
 
         // Bloom/SSAO/outline aren't needed for the first frame: render() already
         // falls back to a plain renderer.render() while composer/bloomComposer are
@@ -430,6 +432,29 @@ export class SceneManager {
         floor.matrixAutoUpdate = false;
 
         if (this.scene) this.scene.add(floor);
+    }
+
+    /**
+     * Create dust particles in light cones (Phase 3.5).
+     * Disabled on mobile to preserve performance.
+     */
+    createDustParticlesEffect() {
+        // Skip dust on mobile (screen width < 768)
+        if (window.innerWidth < 768) return;
+
+        if (!PORTFOLIO_CONFIG.rendering.enableDustParticles) return;
+        if (!this.scene) return;
+
+        // Dust cloud in lamp/window light cone
+        const dustCloud = createDustParticles(
+            PORTFOLIO_CONFIG.rendering.dustParticleCount,
+            1.5
+        );
+        dustCloud.position.set(0.5, 2.0, -1.0);
+        this.scene.add(dustCloud);
+
+        // Store for animation updates
+        this.dustCloud = dustCloud;
     }
 
     /**
