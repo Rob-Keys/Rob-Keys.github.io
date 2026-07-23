@@ -60,10 +60,9 @@ npm run lint         # eslint js/ only
 
 ## Dependencies
 
-All loaded via CDN in `index.html` (no build step for the served files):
-- Three.js r128
-- GSAP 3.12.2
-- Three.js addons: OrbitControls, RGBELoader, RectAreaLightUniformsLib, EffectComposer, UnrealBloomPass, OutlinePass
+Self-hosted, minified vendor bundles in `js/vendor/` (no CDN, no build step for the served files):
+- `vendor-core.js`: Three.js r128, GSAP 3.12.2, and the addons OrbitControls, RGBELoader, RectAreaLightUniformsLib, BufferGeometryUtils
+- `vendor-postfx.js`: EffectComposer, RenderPass, ShaderPass, UnrealBloomPass (lazy-loaded from `scene.js` after the first render; `OutlinePass`/`SSAOPass` were removed, see Phase 4/5 in PERFORMANCE_PLAN.md)
 
 ## File Structure
 

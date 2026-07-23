@@ -44,7 +44,7 @@ export class InteractionManager {
         /** @type {THREE.MeshBasicMaterial | null} */ this.hintOutlineMaterial = null;
         this.hintActive = false;
         this.hintTimer = null;
-        this.HINT_DELAY = 999999; // Temporarily extended for lighting calibration
+        this.HINT_DELAY = 5000;
 
         // Monitor renderer for canvas content
         this.monitorRenderer = new MonitorRenderer();

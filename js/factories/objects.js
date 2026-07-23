@@ -85,6 +85,15 @@ export class ObjectFactory {
     }
 
     /**
+     * Kick off the deferred (post-reveal) texture loads -- diploma frame wood
+     * grain and vinyl cover art (Phase 5.3). Call once, after the loading screen
+     * has hidden.
+     */
+    loadDeferredTextures() {
+        this.factories.wall.loadDeferredTextures();
+    }
+
+    /**
      * Get all created interactive objects.
      * @returns {THREE.Group[]} Array of interactive objects
      */

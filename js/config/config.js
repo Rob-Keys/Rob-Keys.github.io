@@ -167,7 +167,11 @@ export const PORTFOLIO_CONFIG = Object.freeze({
         enableDustParticles: true,
         dustParticleCount: 300,
         filmGrainAmplitude: 0.015,
-        vignetteIntensity: 0.15
+        vignetteIntensity: 0.15,
+        // Phase 6: whether the ceiling main spot and desk lamp cast shadows. The
+        // fitted main directional light always casts one regardless of tier.
+        lampShadowEnabled: true,
+        ceilingShadowEnabled: true
     }),
     camera: Object.freeze({
         fov: 75,
@@ -188,5 +192,43 @@ export const PORTFOLIO_CONFIG = Object.freeze({
         zoomDuration: 1.5,
         zoomDistance: 2,
         zoomEase: 'power2.inOut'
+    })
+});
+
+/**
+ * @typedef {{
+ *   maxPixelRatioDesktop: number, maxPixelRatioMobile: number,
+ *   postProcessResolutionScale: number, enableContactShadows: boolean,
+ *   enableDustParticles: boolean, dustParticleCount: number,
+ *   filmGrainAmplitude: number, vignetteIntensity: number,
+ *   lampShadowEnabled: boolean, ceilingShadowEnabled: boolean
+ * }} RenderingConfig
+ * @typedef {Partial<RenderingConfig>} RenderingTierOverrides
+ */
+
+/**
+ * Adaptive quality tiers (Phase 6). `PORTFOLIO_CONFIG.rendering` above is the
+ * High tier baseline; these are the overrides applied on top of it when
+ * `SceneManager.applyQualityTier()` steps a session down after a slow start
+ * (see the startup tier detection in `js/core/main.js`). Contact shadows and
+ * vignette aren't touched by any tier -- both are cheap regardless of device.
+ * @type {Readonly<Record<'medium' | 'low', RenderingTierOverrides>>}
+ */
+export const QUALITY_TIERS = Object.freeze({
+    medium: Object.freeze({
+        maxPixelRatioDesktop: 1.25,
+        maxPixelRatioMobile: 1.0,
+        enableDustParticles: false,
+        filmGrainAmplitude: 0,
+        lampShadowEnabled: false
+    }),
+    low: Object.freeze({
+        maxPixelRatioDesktop: 1.0,
+        maxPixelRatioMobile: 1.0,
+        postProcessResolutionScale: 0.25,
+        enableDustParticles: false,
+        filmGrainAmplitude: 0,
+        lampShadowEnabled: false,
+        ceilingShadowEnabled: false
     })
 });

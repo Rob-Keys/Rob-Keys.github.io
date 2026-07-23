@@ -17,6 +17,14 @@ export class WallObjectFactory {
         this.interactiveObjects = [];
         this._diploma = null; // Reference for post-init finalization
 
+        // Deferred-texture targets (Phase 5.3): the diploma frame and the vinyl
+        // covers are wall objects behind the initial camera, so their image loads
+        // are kept off the shared loadingManager entirely and only start after the
+        // loading screen is gone -- see loadDeferredTextures(), called post-reveal
+        // from main.js.
+        /** @type {{ material: THREE.MeshStandardMaterial, path: string, repeat?: { x: number, y: number } }[]} */
+        this._deferredTextures = [];
+
         // Use centralized origins from config
         this.origins = OBJECT_ORIGINS.wall;
     }
@@ -34,21 +42,19 @@ export class WallObjectFactory {
             cert: { x: 0, y: 0, z: 0.045 }
         };
 
-        // Load wood texture for frame
-        const textureLoader = new THREE.TextureLoader(this.loadingManager || undefined);
-        const woodTexture = textureLoader.load('assets/textures/wood_table_worn_diff_4k_1k.webp');
-        woodTexture.colorSpace = THREE.SRGBColorSpace;
-        woodTexture.wrapS = THREE.RepeatWrapping;
-        woodTexture.wrapT = THREE.RepeatWrapping;
-        woodTexture.repeat.set(2, 1);
-
-        // Frame with ornate border - Thicker and with wood texture
+        // Wood texture for frame loads post-reveal (Phase 5.3) -- the diploma sits
+        // behind the initial camera, so this shouldn't gate the loading screen.
+        // The frame's base color already reads as wood until the map arrives.
         const frameGeometry = createBeveledBox(1.3, 1.0, 0.08, 0.006, 3);
         const frameMaterial = new THREE.MeshStandardMaterial({
-            map: woodTexture,
             color: 0x8B5A2B,
             roughness: 0.6,
             metalness: 0.1
+        });
+        this._deferredTextures.push({
+            material: frameMaterial,
+            path: 'assets/textures/wood_table_worn_diff_4k_1k.webp',
+            repeat: { x: 2, y: 1 }
         });
         const frame = new THREE.Mesh(frameGeometry, frameMaterial);
         frame.castShadow = true;
@@ -361,9 +367,10 @@ export class WallObjectFactory {
 
         // Album cover geometry
         const coverGeometry = createBeveledBox(coverSize, coverSize, coverDepth, 0.004, 2);
-        
-        // Load all 4 album cover images
-        const textureLoader = new THREE.TextureLoader(this.loadingManager || undefined);
+
+        // Cover images load post-reveal (Phase 5.3) -- the vinyl wall is behind the
+        // initial camera, so gating the loading screen on 4 album-art images is
+        // wasted wait. A neutral placeholder color fills in until each arrives.
         const albumImages = [
             { path: 'assets/images/kendrick.webp', position: { x: -spacing/2, y: spacing/2 } }, // Top left
             { path: 'assets/images/kanye.webp', position: { x: spacing/2, y: spacing/2 } }, // Top right
@@ -372,16 +379,14 @@ export class WallObjectFactory {
         ];
 
         // Create each album cover
-        albumImages.forEach((album, _index) => {
-            const coverTexture = textureLoader.load(album.path);
-            coverTexture.colorSpace = THREE.SRGBColorSpace;
-            
+        albumImages.forEach((album) => {
             const coverMaterial = new THREE.MeshStandardMaterial({
-                map: coverTexture,
+                color: 0x2a2a2a,
                 roughness: 0.2,
                 metalness: 0.0
             });
-            
+            this._deferredTextures.push({ material: coverMaterial, path: album.path });
+
             const cover = new THREE.Mesh(coverGeometry, coverMaterial);
             cover.position.set(album.position.x, album.position.y, coverDepth);
             cover.castShadow = true;
@@ -399,5 +404,28 @@ export class WallObjectFactory {
 
     getInteractiveObjects() {
         return this.interactiveObjects;
+    }
+
+    /**
+     * Load the diploma frame and vinyl cover images (Phase 5.3). Deliberately not
+     * given `this.loadingManager`, and not called until after the loading screen
+     * hides -- these are wall objects behind the initial camera, so their loads
+     * shouldn't compete with the env map/floor textures for bandwidth on the
+     * critical path. Textures pop in individually as each request resolves.
+     */
+    loadDeferredTextures() {
+        const textureLoader = new THREE.TextureLoader();
+        for (const { material, path, repeat } of this._deferredTextures) {
+            const texture = textureLoader.load(path);
+            if (texture.colorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace;
+            else if (THREE.sRGBEncoding !== undefined) texture.encoding = THREE.sRGBEncoding;
+            if (repeat) {
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(repeat.x, repeat.y);
+            }
+            material.map = texture;
+            material.needsUpdate = true;
+        }
     }
 }

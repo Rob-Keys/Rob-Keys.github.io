@@ -48,10 +48,15 @@
 
 
 
-    <!-- Self-hosted, concatenated vendor bundle: three.js + OrbitControls + RGBELoader +
-         RectAreaLightUniformsLib + GSAP. Everything the scene needs before its first frame.
-         Post-processing (bloom/SSAO/outline) lives in vendor-postfx.js, lazy-loaded from
-         scene.js after the first render so it never blocks initial paint. -->
+    <!-- Self-hosted, concatenated + minified vendor bundle: three.js + OrbitControls +
+         RGBELoader + RectAreaLightUniformsLib + BufferGeometryUtils + GSAP. Everything
+         the scene needs before its first frame. Post-processing (bloom/FXAA/grade) lives
+         in vendor-postfx.js, lazy-loaded from scene.js after the first render so it never
+         blocks initial paint. -->
+    <link rel="preload" href="js/vendor/vendor-core.js" as="script">
+    <link rel="preload" href="assets/textures/env.hdr" as="fetch" crossorigin>
+    <link rel="preload" href="assets/textures/floor_nor.webp" as="image">
+    <link rel="preload" href="assets/textures/floor_rough.webp" as="image">
     <script defer src="js/vendor/vendor-core.js"></script>
 
     <!-- Modular application code - loads after dependencies -->

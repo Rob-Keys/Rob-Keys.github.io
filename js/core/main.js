@@ -16,6 +16,15 @@ import { createPerfMonitor } from '../systems/utils.js';
 const INTERACTION_TIMEOUT_MS = 500; // How long to keep rendering at full rate after the last change.
 const IDLE_FRAME_INTERVAL_MS = 1000 / 30; // Cadence for ambient-only frames once idle.
 
+// Adaptive quality tuning (Phase 6). Measures actual render() cost -- not the
+// idle-throttled frame cadence above, which is deliberately slow and would
+// otherwise look like a slow device. A device that needs to step down usually
+// needs it within the first couple of tiers, so this only ever steps down,
+// never back up.
+const QUALITY_SAMPLE_SIZE = 60; // render() calls averaged per tier evaluation.
+const QUALITY_FRAME_BUDGET_MS = 20; // ~50fps; above this, step down a tier.
+const QUALITY_TIER_ORDER = /** @type {const} */ (['high', 'medium', 'low']);
+
 class Portfolio3D {
     constructor() {
         /** @type {import('./scene.js').SceneManager | null} */ this.sceneManager = null;
@@ -36,6 +45,13 @@ class Portfolio3D {
         this._perfEnabled = new URLSearchParams(window.location.search).get('perf') === '1';
         /** @type {(() => void) | null} */
         this._perfUpdate = null;
+
+        // Adaptive quality tier detection (Phase 6). Runs for every session
+        // (unlike the perf monitor above), sampling real render() duration until
+        // either a tier proves fast enough or 'low' is reached.
+        /** @type {number[]} */
+        this._qualitySamples = [];
+        this._qualityEvalDone = false;
     }
 
     /**
@@ -119,6 +135,10 @@ class Portfolio3D {
         this.sceneManager.freezeShadowMap();
         this.hideLoadingScreen();
 
+        // Diploma frame + vinyl cover art (Phase 5.3): behind the initial camera,
+        // so their loads start now instead of gating the reveal above.
+        this.objectFactory.loadDeferredTextures();
+
         // Finalize objects that need post-render setup (e.g., light targeting)
         this.objectFactory.finalizeObjects();
 
@@ -126,6 +146,13 @@ class Portfolio3D {
         // Unlike the old OutlinePass this doesn't depend on the lazy-loaded postfx
         // bundle at all, so it no longer needs to wait on postFXReady.
         this.interactionManager.initHintOutline(interactiveObjects);
+
+        // Warm-up render (Phase 5.4): the hint-outline meshes above and the deferred
+        // diploma/vinyl materials above didn't exist (or didn't have a map yet) at the
+        // first forced render, so each needs its own shader variant compiled. Paying
+        // that cost here — still inside init(), before animate() starts — means it
+        // never lands on a frame the user is watching for a reaction to their input.
+        this.sceneManager?.render();
 
         if (this._perfEnabled && this.sceneManager.renderer) {
             this._perfUpdate = createPerfMonitor(this.sceneManager.renderer);
@@ -164,10 +191,43 @@ class Portfolio3D {
         this._lastRenderTime = now;
 
         this.updateAnimations();
+
+        const renderStart = this._qualityEvalDone ? 0 : performance.now();
         this.sceneManager?.render(this._bloomDirty);
         this._bloomDirty = false;
+        if (!this._qualityEvalDone) this._sampleQualityTier(performance.now() - renderStart);
 
         this._perfUpdate?.();
+    }
+
+    /**
+     * Startup adaptive-quality tier detection (Phase 6). Averages real render()
+     * duration over QUALITY_SAMPLE_SIZE calls; if the average is over budget,
+     * steps the scene down one tier and starts a fresh sample window for that
+     * tier. Stops evaluating once a tier is fast enough, or once 'low' -- the
+     * floor -- has been reached.
+     * @param {number} renderMs
+     */
+    _sampleQualityTier(renderMs) {
+        this._qualitySamples.push(renderMs);
+        if (this._qualitySamples.length < QUALITY_SAMPLE_SIZE) return;
+
+        const avg = this._qualitySamples.reduce((sum, t) => sum + t, 0) / this._qualitySamples.length;
+        this._qualitySamples.length = 0;
+
+        const currentTier = this.sceneManager?.qualityTier ?? 'high';
+        const currentIndex = QUALITY_TIER_ORDER.indexOf(currentTier);
+        const isLastTier = currentIndex >= QUALITY_TIER_ORDER.length - 1;
+
+        if (avg <= QUALITY_FRAME_BUDGET_MS || isLastTier) {
+            this._qualityEvalDone = true;
+            return;
+        }
+
+        // currentIndex + 1 is always 'medium' or 'low' here: isLastTier above
+        // already returned for currentIndex at the 'low' end of the order.
+        const nextTier = /** @type {'medium' | 'low'} */ (QUALITY_TIER_ORDER[currentIndex + 1]);
+        this.sceneManager?.applyQualityTier(nextTier);
     }
 
     /**
