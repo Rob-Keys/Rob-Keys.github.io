@@ -39,6 +39,7 @@ declare module 'three' {
         addPass(pass: object): void;
         render(): void;
         setSize(width: number, height: number): void;
+        setPixelRatio(pixelRatio: number): void;
     }
 
     class RenderPass {

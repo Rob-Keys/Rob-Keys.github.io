@@ -13,15 +13,16 @@ import { WallObjectFactory } from './wall-objects.js';
 export class ObjectFactory {
     /**
      * @param {THREE.LoadingManager | null} [loadingManager]
+     * @param {THREE.WebGLRenderer | null} [renderer]
      */
-    constructor(scene, lightingSystem = null, loadingManager = null) {
+    constructor(scene, lightingSystem = null, loadingManager = null, renderer = null) {
         this.scene = scene;
         this.lightingSystem = lightingSystem;
         this.interactiveObjects = [];
 
         // Initialize modular factories
         this.factories = {
-            furniture: new FurnitureFactory(scene),
+            furniture: new FurnitureFactory(scene, renderer),
             technology: new TechnologyFactory(scene, lightingSystem),
             shelf: new ShelfObjectFactory(scene),
             desk: new DeskObjectFactory(scene),
@@ -48,8 +49,8 @@ export class ObjectFactory {
         const objects = [
             // Furniture (non-interactive)
             { obj: furniture.createWall(), interactive: false },
-            // { obj: furniture.createCeiling(), interactive: false },
-            // { obj: furniture.createSideWalls(), interactive: false },
+            { obj: furniture.createCeiling(), interactive: false },
+            { obj: furniture.createSideWalls(), interactive: false },
             { obj: furniture.createDesk(), interactive: false },
             { obj: furniture.createWallShelf(), interactive: false },
             // Wall objects
@@ -77,12 +78,13 @@ export class ObjectFactory {
     }
 
     /**
-     * Finalize objects that need post-render setup (e.g., light targeting).
-     * Call this after the first render when world matrices are computed.
+     * Finalize objects that need post-render setup after the first render, when
+     * world matrices are computed. Currently a no-op: the diploma spotlight
+     * (P1-4, REALISM_PERF_PLAN.md) targets the cert mesh directly and stays
+     * aimed correctly without this step. Kept as a hook for future finalization
+     * needs -- see the call site in main.js for hint-outline ordering.
      */
-    finalizeObjects() {
-        this.factories.wall.finalizeDiplomaLight();
-    }
+    finalizeObjects() {}
 
     /**
      * Kick off the deferred (post-reveal) texture loads -- diploma frame wood

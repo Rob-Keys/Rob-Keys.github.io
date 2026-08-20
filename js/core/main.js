@@ -76,7 +76,8 @@ class Portfolio3D {
         this.objectFactory = new ObjectFactory(
             scene,
             /** @type {null | undefined} */ (this.sceneManager.lightingSystem),
-            this.sceneManager.loadingManager
+            this.sceneManager.loadingManager,
+            /** @type {THREE.WebGLRenderer} */ (this.sceneManager.renderer)
         );
         const interactiveObjects = await this.objectFactory.createAllObjects();
 
@@ -91,7 +92,8 @@ class Portfolio3D {
             /** @type {THREE.PerspectiveCamera} */ (camera),
             /** @type {import('three').OrbitControls} */ (controls),
             interactiveObjects, scene,
-            (bloomAffecting) => this.requestRender(bloomAffecting)
+            (bloomAffecting) => this.requestRender(bloomAffecting),
+            this.objectFactory.factories.technology.monitorRenderer
         );
 
         // OrbitControls fires 'change' on every user drag step and on each damping

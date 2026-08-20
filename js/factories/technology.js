@@ -6,14 +6,15 @@
 
 import {
     applyOrigin,
-    wrapText,
     createBeveledBox,
     createKeycapGeometry,
     createRoughnessVariationTexture,
     createScreenSmudgeTexture,
     addContactShadow
 } from '../systems/utils.js';
+import { applyKeycapLegends } from './keycap-legends.js';
 import { LIGHTING_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
+import { MonitorRenderer } from './monitor-renderer.js';
 
 export class TechnologyFactory {
     constructor(scene, lightingSystem = null) {
@@ -23,6 +24,13 @@ export class TechnologyFactory {
 
         // Use centralized origins from config
         this.origins = OBJECT_ORIGINS.technology;
+
+        // Renders the initial screen content (P2-4, REALISM_PERF_PLAN.md): the monitor
+        // used to hand-draw a chrome-less static page here, then swap to MonitorRenderer's
+        // full browser-window rendering on the first scroll tick, visibly changing the
+        // screen's design. Using the same renderer for the initial frame means there's
+        // one content source and no first-scroll swap.
+        this.monitorRenderer = new MonitorRenderer();
     }
 
     /**
@@ -48,78 +56,21 @@ export class TechnologyFactory {
             logo:        { x: 0,    y: -0.07, z: 0.02  }   // Logo on front
         };
 
-        // Create realistic screen content (white HTML-style content from start)
+        // Placeholder background shown for the first frame or two; the real page
+        // content (browser chrome + all sections) renders once, deferred below, so
+        // scene init isn't blocked by seven sections' worth of text layout.
         const canvas = document.createElement('canvas');
         canvas.width = 1024;
         canvas.height = 512;
         const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Failed to get 2D context for laptop canvas');
-
-        // Draw white background
+        if (!ctx) throw new Error('Failed to get 2D context for monitor canvas');
         ctx.fillStyle = '#f5f5f5';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Scale to fit 1280x560 content into 1024x512 (Standard Power of Two texture)
-        ctx.scale(1024/1280, 512/560);
-
         const texture = new THREE.CanvasTexture(canvas);
 
-        // Defer heavy text rendering to unblock initialization
         requestAnimationFrame(() => setTimeout(() => {
-            // Header (h1 style)
-            ctx.fillStyle = '#333333';
-            ctx.font = 'bold 54px Arial';
-            ctx.textAlign = 'left';
-            ctx.fillText('Rob Keys', 80, 100);
-
-            // Subtitle (p style)
-            ctx.font = '36px Arial';
-            ctx.fillStyle = '#444444';
-            ctx.fillText('Software Development Engineer @ Amazon Web Services', 80, 140);
-
-            // About This Site section
-            let currentY = 240;
-            ctx.font = 'bold 48px Arial';
-            ctx.fillStyle = '#333333';
-            ctx.fillText('About This Site', 80, currentY);
-            
-            currentY += 50;
-            ctx.font = '30px Arial';
-            ctx.fillStyle = '#444444';
-            currentY = wrapText(ctx, 'This interactive 3D portfolio features a scrollable main monitor (use your mouse wheel!), dynamic lighting that syncs with your local time of day, and various interactive objects on the desk.', 80, currentY, 1120, 40);
-
-            currentY += 50;
-            ctx.fillStyle = '#333333';
-            ctx.fillText('Clickable objects include:', 80, currentY);
-            
-            currentY += 50;
-            const clickables = [
-                'Monitor (Overview)',
-                'Laptop (Projects)',
-                'Notebook (Current Projects)',
-                'Diploma (Education)'
-            ];
-
-            clickables.forEach(item => {
-                ctx.beginPath();
-                ctx.arc(100, currentY - 10, 6, 0, Math.PI * 2);
-                ctx.fillStyle = '#333333';
-                ctx.fill();
-                ctx.fillText(item, 120, currentY);
-                currentY += 50;
-            });
-
-            // About section (h2 + p)
-            currentY += 80;
-            ctx.font = 'bold 60px Arial';
-            ctx.fillStyle = '#333333';
-            ctx.fillText('About Me', 80, currentY);
-
-            currentY += 50;
-            ctx.fillStyle = '#444444';
-            ctx.font = '32px Arial';
-            currentY = wrapText(ctx, 'Hi! I\'m a Software Development Engineer at Amazon Web Services with a passion for building scalable, impactful systems. I graduated from UVA with a B.S. in Computer Science, maintaining a 4.0 GPA while completing my degree in just three years.', 80, currentY, 1120, 40);
-
+            texture.image = this.monitorRenderer.createMonitorCanvas(0);
             texture.needsUpdate = true;
         }, 0));
 
@@ -473,14 +424,15 @@ export class TechnologyFactory {
                     y: offsets.keys.y + slopeOffset + 0.08,
                     z: keyZ,
                     scaleX: width * 0.9,
-                    scaleZ: keySpacing * 0.9
+                    scaleZ: keySpacing * 0.9,
+                    label: key
                 });
 
                 currentX -= width + 0.005;
             });
         });
 
-        // Add spacebar
+        // Add spacebar (blank — the label is what a real spacebar shows)
         const spacebarZ = offsets.keys.z + colOffset - 5 * keySpacing;
         const spacebarSlopeOffset = Math.sin(Math.PI / 36) * spacebarZ;
         keyTransforms.push({
@@ -488,15 +440,17 @@ export class TechnologyFactory {
             y: offsets.keys.y + spacebarSlopeOffset + 0.08,
             z: spacebarZ,
             scaleX: 1.5,
-            scaleZ: keySpacing * 0.9
+            scaleZ: keySpacing * 0.9,
+            label: ''
         });
 
-        // Add arrow keys
+        // Add arrow keys. The user sits on the group's -Z side, so their right
+        // runs along -X: the more negative X of the two side keys is the right arrow.
         const arrowKeys = [
-            { x: -0.5, z: colOffset - 5 * keySpacing },
-            { x: -0.5, z: colOffset - 4 * keySpacing },
-            { x: -0.39, z: colOffset - 5 * keySpacing },
-            { x: -0.61, z: colOffset - 5 * keySpacing }
+            { x: -0.5,  z: colOffset - 5 * keySpacing, label: '↓' },
+            { x: -0.5,  z: colOffset - 4 * keySpacing, label: '↑' },
+            { x: -0.39, z: colOffset - 5 * keySpacing, label: '←' },
+            { x: -0.61, z: colOffset - 5 * keySpacing, label: '→' }
         ];
 
         arrowKeys.forEach(arrow => {
@@ -507,14 +461,17 @@ export class TechnologyFactory {
                 y: offsets.keys.y + arrowSlopeOffset + 0.08,
                 z: arrowZ,
                 scaleX: keySpacing * 0.9,
-                scaleZ: keySpacing * 0.9
+                scaleZ: keySpacing * 0.9,
+                label: arrow.label
             });
         });
 
         // Create instanced mesh for all keycaps (single draw call).
         // Unit footprint with draft-angle taper and a shallow top dish; per-key
         // width/depth is applied via the instance matrix's non-uniform X/Z scale.
-        const keycapGeometry = createKeycapGeometry(1, 1, 0.04, 0.82, 0.14, 2);
+        // Cloned because the legend pass below adds a per-instance attribute, and
+        // createKeycapGeometry hands out cached geometries shared by dimension key.
+        const keycapGeometry = createKeycapGeometry(1, 1, 0.04, 0.82, 0.14, 2).clone();
         const keycapMaterial = new THREE.MeshStandardMaterial({
             color: 0xf0f0f0,
             roughness: 0.85,
@@ -543,6 +500,14 @@ export class TechnologyFactory {
         keycapInstances.instanceMatrix.needsUpdate = true;
         keycapInstances.castShadow = true;
         keycapInstances.receiveShadow = true;
+
+        // Legends are printed via a shared atlas sampled per instance, so the
+        // keyboard still renders in one draw call (P2-9, REALISM_PERF_PLAN.md).
+        applyKeycapLegends(keycapInstances, keyTransforms.map((transform) => ({
+            label: transform.label,
+            aspect: transform.scaleX / transform.scaleZ
+        })));
+
         group.add(keycapInstances);
 
         // Single LED indicator strip
@@ -864,16 +829,11 @@ export class TechnologyFactory {
         }
         screenLid.add(laptopGlareOverlay);
 
-        // RectAreaLight for laptop screen - even light from rectangular surface
-        // Width and height match the laptop screen dimensions
-        const laptopScreenLight = new THREE.RectAreaLight(0x8090c0, 2.5, 1.3, 0.8);
-        laptopScreenLight.position.set(0, 0.45, 0.05);
-        // Point forward from the screen surface
-        laptopScreenLight.lookAt(0, 0.2, 1);
-        screenLid.add(laptopScreenLight);
-
-        // Store light reference
-        group.userData.screenLight = laptopScreenLight;
+        // The laptop screen used to also carry a RectAreaLight for even rectangular
+        // illumination -- deleted (P1-4, REALISM_PERF_PLAN.md): the screen's emissive
+        // material plus bloom already sell the glow, and the bounce PointLight below
+        // provides the soft keyboard/desk fill a RectAreaLight would have added, at a
+        // fraction of the per-fragment cost.
 
         // Faint cool bounce light from the laptop screen onto nearby desk
         // surfaces (Phase 3.3 TODO, closed out here). Built as a child of

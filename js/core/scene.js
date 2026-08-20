@@ -6,7 +6,7 @@
 
 import { PORTFOLIO_CONFIG, QUALITY_TIERS, LIGHTING_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 import { LightingSystem } from '../systems/lighting.js';
-import { createDustParticles } from '../systems/utils.js';
+import { createDustParticles, isMobileDevice } from '../systems/utils.js';
 
 const BLOOM_LAYER = 1;
 
@@ -144,7 +144,7 @@ export class SceneManager {
      * @returns {number}
      */
     getMaxPixelRatio() {
-        const isMobile = window.innerWidth < 768;
+        const isMobile = isMobileDevice();
         const cap = isMobile
             ? this._renderingConfig.maxPixelRatioMobile
             : this._renderingConfig.maxPixelRatioDesktop;
@@ -171,9 +171,26 @@ export class SceneManager {
 
         if (this.bloomComposer) {
             const scale = this._renderingConfig.postProcessResolutionScale;
+            this.bloomComposer.setPixelRatio(renderer.getPixelRatio());
             this.bloomComposer.setSize(
                 Math.round(window.innerWidth * scale),
                 Math.round(window.innerHeight * scale)
+            );
+        }
+
+        // r128's EffectComposer caches the renderer's pixel ratio at construction time,
+        // so a pixel-ratio change above is invisible to the main composer until its
+        // render targets are resized explicitly (P0-1, REALISM_PERF_PLAN.md).
+        if (this.composer) {
+            this.composer.setPixelRatio(renderer.getPixelRatio());
+            this.composer.setSize(window.innerWidth, window.innerHeight);
+        }
+        if (this.fxaaPass) {
+            const pixelRatio = renderer.getPixelRatio();
+            const fxaaResolution = /** @type {THREE.Vector2} */ (this.fxaaPass.uniforms['resolution'].value);
+            fxaaResolution.set(
+                1 / (window.innerWidth * pixelRatio),
+                1 / (window.innerHeight * pixelRatio)
             );
         }
 
@@ -440,9 +457,15 @@ export class SceneManager {
         const floorNormal = textureLoader.load('assets/textures/floor_nor.webp');
         const floorRoughness = textureLoader.load('assets/textures/floor_rough.webp');
 
+        // Anisotropic filtering (P2-1, REALISM_PERF_PLAN.md): the floor is one of the
+        // largest surfaces in frame and is viewed at a grazing angle, where isotropic
+        // mip filtering blurs the wood grain into mush a few units from the camera.
+        const renderer = /** @type {THREE.WebGLRenderer} */ (this.renderer);
+        const maxAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
         for (const tex of [floorNormal, floorRoughness]) {
             tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
             tex.repeat.set(8, 8);
+            tex.anisotropy = maxAnisotropy;
         }
 
         const floorGeometry = new THREE.PlaneGeometry(50, 50);
@@ -477,8 +500,8 @@ export class SceneManager {
      * Disabled on mobile to preserve performance.
      */
     createDustParticlesEffect() {
-        // Skip dust on mobile (screen width < 768)
-        if (window.innerWidth < 768) return;
+        // Skip dust on real mobile/touch devices
+        if (isMobileDevice()) return;
 
         if (!PORTFOLIO_CONFIG.rendering.enableDustParticles) return;
         if (!this.scene) return;
@@ -524,11 +547,15 @@ export class SceneManager {
         const halfWidth = Math.round(window.innerWidth * scale);
         const halfHeight = Math.round(window.innerHeight * scale);
 
-        // Update composer sizes if available
+        // Update composer sizes if available. getMaxPixelRatio() can change across a
+        // resize (e.g. a mobile/desktop breakpoint crossing), so the composers' cached
+        // pixel ratio needs refreshing here too, not just in applyQualityTier() (P0-1).
         if (this.bloomComposer) {
+            this.bloomComposer.setPixelRatio(renderer.getPixelRatio());
             this.bloomComposer.setSize(halfWidth, halfHeight);
         }
         if (this.composer) {
+            this.composer.setPixelRatio(renderer.getPixelRatio());
             this.composer.setSize(window.innerWidth, window.innerHeight);
         }
         if (this.fxaaPass) {

@@ -4,7 +4,7 @@
  * Manages user interactions, raycasting, camera zoom, and UI panels.
  */
 
-import { PORTFOLIO_CONFIG, ZOOM_CONFIG } from '../config/config.js';
+import { PORTFOLIO_CONFIG, ZOOM_CONFIG, INTERACTION_CONFIG } from '../config/config.js';
 import { MonitorRenderer } from '../factories/monitor-renderer.js';
 
 export class InteractionManager {
@@ -17,8 +17,10 @@ export class InteractionManager {
      *   render-on-demand loop (js/core/main.js) that a frame is needed. Pass
      *   `bloomAffecting: true` when the change touches bloom-layer content or
      *   moves the camera; defaults to a no-op so this class works standalone.
+     * @param {MonitorRenderer} [monitorRenderer] - Shared monitor renderer used to
+     *   avoid retaining duplicate offscreen content canvases.
      */
-    constructor(camera, controls, interactiveObjects, scene, requestRender = () => {}) {
+    constructor(camera, controls, interactiveObjects, scene, requestRender = () => {}, monitorRenderer = new MonitorRenderer()) {
         this.camera = camera;
         this.controls = controls;
         this.interactiveObjects = interactiveObjects;
@@ -35,7 +37,6 @@ export class InteractionManager {
         this.monitorScrollOffset = 0;
         this.monitorMesh = null;
         this.hoveredObject = null;
-        this.hoverLight = null;
         this.lastTouchTime = 0;
         this.touchStartPosition = new THREE.Vector2();
 
@@ -44,22 +45,12 @@ export class InteractionManager {
         /** @type {THREE.MeshBasicMaterial | null} */ this.hintOutlineMaterial = null;
         this.hintActive = false;
         this.hintTimer = null;
-        this.HINT_DELAY = 5000;
+        this.HINT_DELAY = INTERACTION_CONFIG.hintDelay;
 
         // Monitor renderer for canvas content
-        this.monitorRenderer = new MonitorRenderer();
+        this.monitorRenderer = monitorRenderer;
 
         this.initEventListeners();
-        this.createHoverLight();
-    }
-
-    /**
-     * Create hover light for interactive highlighting
-     */
-    createHoverLight() {
-        this.hoverLight = new THREE.PointLight(0xffffff, 0, 3);
-        this.hoverLight.visible = false;
-        // Add to scene through a reference we'll set later
     }
 
     /**
@@ -118,68 +109,32 @@ export class InteractionManager {
         this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-        // Update hover light on interactive objects (only when not zoomed)
+        // Update cursor affordance on interactive objects (only when not zoomed).
+        // A hover-triggered light used to live here (see git history) but its
+        // `visible` flag was never flipped back to true after creation, so it never
+        // actually illuminated anything — it just forced a full bloom-composer
+        // re-render on every mousemove for zero visual effect (P0-4,
+        // REALISM_PERF_PLAN.md). The cursor swap is the only surviving affordance,
+        // and requestRender only fires on the object identity actually changing.
         if (!this.currentZoomedObject) {
             this.raycaster.setFromCamera(this.mouse, this.camera);
             const intersects = this.raycaster.intersectObjects(this.interactiveObjects, true);
 
+            /** @type {THREE.Object3D | null} */
+            let object = null;
             if (intersects.length > 0) {
-                /** @type {THREE.Object3D | null} */
-                let object = intersects[0].object;
+                object = intersects[0].object;
                 while (object && !this.interactiveObjects.includes(object)) {
                     object = object.parent;
                 }
-
-                if (object) {
-                    document.body.style.cursor = 'pointer';
-                    this.updateHoverLight(object, intersects[0].point);
-                }
-            } else {
-                document.body.style.cursor = 'default';
-                this.hideHoverLight();
-            }
-        }
-    }
-
-    /**
-     * Update hover light position and intensity
-     */
-    updateHoverLight(object, point) {
-        if (this.hoverLight) {
-            // Position light slightly above the hover point
-            this.hoverLight.position.copy(point);
-            this.hoverLight.position.y += 0.3;
-
-            // Animate light intensity
-            this.hoverLight.intensity = Math.min(1.0, this.hoverLight.intensity + 0.1);
-
-            // Add to scene if not already added
-            if (!this.hoverLight.parent && this.scene) {
-                this.scene.add(this.hoverLight);
             }
 
-            // Update hovered object tracking
+            document.body.style.cursor = object ? 'pointer' : 'default';
+
             if (this.hoveredObject !== object) {
                 this.hoveredObject = object;
+                this.requestRender(false);
             }
-
-            // The hover light is a normal (non-bloom-layer) light, but bloom-layer
-            // meshes stay in light layer 0 too, so its glow still reaches them.
-            this.requestRender(true);
-        }
-    }
-
-    /**
-     * Hide hover light with fade animation
-     */
-    hideHoverLight() {
-        if (this.hoverLight && this.hoverLight.intensity > 0) {
-            this.hoverLight.intensity = Math.max(0, this.hoverLight.intensity - 0.1);
-            if (this.hoverLight.intensity === 0) {
-                this.hoverLight.visible = false;
-                this.hoveredObject = null;
-            }
-            this.requestRender(true);
         }
     }
 
