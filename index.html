@@ -8,17 +8,20 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div id="canvas-container">
-        <div id="loading">
-            <div class="loading-content">
-                <p class="loading-eyebrow">Portfolio of</p>
-                <h1 class="loading-title" aria-label="Rob Keys">
-                    <span>R</span><span>o</span><span>b</span><span class="loading-space">&nbsp;</span><span>K</span><span>e</span><span>y</span><span>s</span>
-                </h1>
-                <div class="loading-track"><div class="loading-shimmer"></div></div>
-                <p class="loading-status">Setting up the desk</p>
-            </div>
+    <!-- Keep the boot UI outside the WebGL stacking context. This lets it paint
+         independently while the scene and its GPU resources are being created. -->
+    <div id="loading" role="status" aria-live="polite" aria-label="Loading portfolio">
+        <div class="loading-content">
+            <p class="loading-eyebrow">Portfolio of</p>
+            <h1 class="loading-title" aria-label="Rob Keys">
+                <span>R</span><span>o</span><span>b</span><span class="loading-space">&nbsp;</span><span>K</span><span>e</span><span>y</span><span>s</span>
+            </h1>
+            <div class="loading-track"><div class="loading-shimmer"></div></div>
+            <p class="loading-status">Setting up the desk</p>
         </div>
+    </div>
+
+    <div id="canvas-container">
     </div>
 
     <div id="info-panel">

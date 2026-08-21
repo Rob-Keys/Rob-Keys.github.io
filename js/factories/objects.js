@@ -72,7 +72,16 @@ export class ObjectFactory {
             { obj: desk.createDeskLamp(), interactive: false }
         ];
 
-        objects.forEach(({ obj, interactive }) => this.addToScene(obj, interactive));
+        // Object creation includes geometry generation and 2D canvas drawing.
+        // Yield between small batches so the boot screen can paint and animate
+        // instead of waiting behind one long main-thread task.
+        for (let i = 0; i < objects.length; i++) {
+            const { obj, interactive } = objects[i];
+            this.addToScene(obj, interactive);
+            if ((i + 1) % 3 === 0) {
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+            }
+        }
 
         return this.interactiveObjects;
     }

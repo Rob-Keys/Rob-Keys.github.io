@@ -261,6 +261,10 @@ class Portfolio3D {
 document.addEventListener('DOMContentLoaded', async () => {
     initOrientationDetection();
 
+    // Give the browser two compositor opportunities to commit the opaque boot
+    // screen before WebGL setup starts competing for the main thread/GPU.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
     const portfolio = new Portfolio3D();
     window._portfolio = portfolio;
     await portfolio.init();

@@ -10,15 +10,23 @@
 
 const LANDSCAPE_UNLOCK_CLASS = 'physical-landscape';
 const NEEDS_PERMISSION_CLASS = 'needs-orientation-permission';
-const GAMMA_LANDSCAPE_THRESHOLD = 45;
+const LANDSCAPE_AXIS_THRESHOLD = 45;
 
 /**
  * @param {DeviceOrientationEvent} event
  * @returns {boolean}
  */
 function isPhysicallyLandscape(event) {
-    if (event.gamma === null) return false;
-    return Math.abs(event.gamma) > GAMMA_LANDSCAPE_THRESHOLD;
+    const beta = event.beta;
+    const gamma = event.gamma;
+
+    if (beta === null && gamma === null) return false;
+
+    // Depending on the browser/device coordinate system, rotating a phone
+    // can move either beta or gamma. Checking only gamma misses the common
+    // case where beta moves from roughly +/-90 degrees to roughly 0 degrees.
+    return (gamma !== null && Math.abs(gamma) > LANDSCAPE_AXIS_THRESHOLD)
+        || (beta !== null && Math.abs(beta) < LANDSCAPE_AXIS_THRESHOLD);
 }
 
 /** @param {DeviceOrientationEvent} event */
@@ -28,6 +36,17 @@ function handleOrientation(event) {
 
 function attachOrientationListener() {
     window.addEventListener('deviceorientation', handleOrientation);
+
+    // These events cover normal browser orientation changes. The sensor
+    // listener above is still needed when the OS keeps the viewport locked in
+    // portrait, which is why this is a fallback rather than the only check.
+    const updateViewportOrientation = () => {
+        const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+        document.body.classList.toggle(LANDSCAPE_UNLOCK_CLASS, isLandscape);
+    };
+    window.addEventListener('orientationchange', updateViewportOrientation);
+    window.addEventListener('resize', updateViewportOrientation);
+    updateViewportOrientation();
 }
 
 /** iOS 13+ requires an explicit, gesture-triggered permission grant before
