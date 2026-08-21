@@ -7,7 +7,6 @@
 import { SceneManager } from './scene.js';
 import { ObjectFactory } from '../factories/objects.js';
 import { InteractionManager } from './interactions.js';
-import { initOrientationDetection } from '../systems/orientation.js';
 import { createPerfMonitor } from '../systems/utils.js';
 
 // Render-on-demand tuning (Phase 1). The scene is idle almost all the time —
@@ -259,8 +258,6 @@ class Portfolio3D {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    initOrientationDetection();
-
     // Give the browser two compositor opportunities to commit the opaque boot
     // screen before WebGL setup starts competing for the main thread/GPU.
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));

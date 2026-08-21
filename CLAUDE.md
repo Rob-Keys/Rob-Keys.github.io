@@ -152,9 +152,8 @@ Interactive objects get a hint outline (fades in after `HINT_DELAY` of no clicks
 
 ## Mobile
 
-- Portrait orientation shows a CSS overlay prompting the user to rotate to landscape (no JS needed -- pure media query)
-- No mobile-specific camera/controls adjustments; landscape mobile gets the same experience as desktop
-- The overlay is in `index.html` (`#rotate-overlay`) and styled in `css/styles.css`
+- Mobile works in both portrait and landscape orientations
+- No mobile-specific camera/controls adjustments; mobile gets the same experience as desktop
 
 ## Testing
 
