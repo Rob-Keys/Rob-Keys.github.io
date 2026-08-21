@@ -14,25 +14,27 @@ export { CONTENT_DATA, SHARED_CONTENT } from './content.js';
  * @typedef {{ distance: number, yOffset: number, targetYOffset: number, useRotation?: boolean }} ZoomSettings
  */
 
+// shadow.radius fields were removed here (P0-5, REALISM_PERF_PLAN.md): the renderer
+// uses THREE.PCFSoftShadowMap, and r128's PCF-soft shader path uses a fixed kernel
+// that ignores shadow.radius entirely. Every radius value that used to live here was
+// dead config nobody could actually tune.
 export const SHADOW_CONFIG = Object.freeze({
     main: Object.freeze({
         mapSize: 2048,
         near: 0.5,
         far: 25,
         bias: -0.0001,
-        normalBias: 0.02,
-        radius: 2
+        normalBias: 0.02
     }),
     mobile: Object.freeze({
-        mapSize: 2048
+        mapSize: 1024
     }),
     // Tight cone, small coverage area -- 1024 wastes no visible resolution
     // versus the 2048 used previously (Phase 3.3).
     lamp: Object.freeze({
         mapSize: 1024,
         bias: -0.0002,
-        normalBias: 0.02,
-        radius: 4
+        normalBias: 0.02
     }),
     ceiling: Object.freeze({
         mapSize: 1024
@@ -109,6 +111,12 @@ export const ZOOM_CONFIG = Object.freeze({
     default:  Object.freeze({ distance: 1.5, yOffset: 0,    targetYOffset: 0 })
 });
 
+export const INTERACTION_CONFIG = Object.freeze({
+    // Delay before the inflated-backface hint outline fades in on interactive
+    // objects, once the user has gone this long without clicking one.
+    hintDelay: 5000
+});
+
 /**
  * Object origin positions and rotations.
  * Centralized positioning data for all 3D objects in the scene.
@@ -167,7 +175,11 @@ export const PORTFOLIO_CONFIG = Object.freeze({
         enableDustParticles: true,
         dustParticleCount: 300,
         filmGrainAmplitude: 0.015,
-        vignetteIntensity: 0.15
+        vignetteIntensity: 0.15,
+        // Phase 6: whether the ceiling main spot and desk lamp cast shadows. The
+        // fitted main directional light always casts one regardless of tier.
+        lampShadowEnabled: true,
+        ceilingShadowEnabled: true
     }),
     camera: Object.freeze({
         fov: 75,
@@ -188,5 +200,43 @@ export const PORTFOLIO_CONFIG = Object.freeze({
         zoomDuration: 1.5,
         zoomDistance: 2,
         zoomEase: 'power2.inOut'
+    })
+});
+
+/**
+ * @typedef {{
+ *   maxPixelRatioDesktop: number, maxPixelRatioMobile: number,
+ *   postProcessResolutionScale: number, enableContactShadows: boolean,
+ *   enableDustParticles: boolean, dustParticleCount: number,
+ *   filmGrainAmplitude: number, vignetteIntensity: number,
+ *   lampShadowEnabled: boolean, ceilingShadowEnabled: boolean
+ * }} RenderingConfig
+ * @typedef {Partial<RenderingConfig>} RenderingTierOverrides
+ */
+
+/**
+ * Adaptive quality tiers (Phase 6). `PORTFOLIO_CONFIG.rendering` above is the
+ * High tier baseline; these are the overrides applied on top of it when
+ * `SceneManager.applyQualityTier()` steps a session down after a slow start
+ * (see the startup tier detection in `js/core/main.js`). Contact shadows and
+ * vignette aren't touched by any tier -- both are cheap regardless of device.
+ * @type {Readonly<Record<'medium' | 'low', RenderingTierOverrides>>}
+ */
+export const QUALITY_TIERS = Object.freeze({
+    medium: Object.freeze({
+        maxPixelRatioDesktop: 1.25,
+        maxPixelRatioMobile: 1.0,
+        enableDustParticles: false,
+        filmGrainAmplitude: 0,
+        lampShadowEnabled: false
+    }),
+    low: Object.freeze({
+        maxPixelRatioDesktop: 1.0,
+        maxPixelRatioMobile: 1.0,
+        postProcessResolutionScale: 0.25,
+        enableDustParticles: false,
+        filmGrainAmplitude: 0,
+        lampShadowEnabled: false,
+        ceilingShadowEnabled: false
     })
 });

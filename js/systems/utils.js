@@ -21,6 +21,18 @@ export function assert(condition, message) {
 }
 
 /**
+ * Detect a real mobile/touch device by input capability rather than viewport
+ * width. This site forces landscape on phones (#rotate-overlay), and a phone
+ * in landscape reports innerWidth in the 800-900px range — the same range as
+ * a narrow desktop window — so a `window.innerWidth < 768` check almost never
+ * fires on the devices it was written for (P0-2, REALISM_PERF_PLAN.md).
+ * @returns {boolean}
+ */
+export function isMobileDevice() {
+    return window.matchMedia('(pointer: coarse)').matches && navigator.maxTouchPoints > 0;
+}
+
+/**
  * Apply origin position and rotation to a group.
  * @param {THREE.Group} group
  * @param {{ x: number, y: number, z: number, rotationX: number, rotationY: number, rotationZ: number }} origin
@@ -205,13 +217,20 @@ export function createKeycapGeometry(width, depth, height, topScale = 0.82, beve
     const topShape = _roundedRectShape(topWidth, topDepth, topRadius);
 
     const divisions = Math.max(8, segments * 4);
-    const bottomPts = bottomShape.getSpacedPoints(divisions);
-    const topPts = topShape.getSpacedPoints(divisions);
+    // Shape points run counter-clockwise in the shape's own 2D frame, which turns
+    // clockwise once its y axis is mapped to +Z below — every triangle would face
+    // inward, culling the top and bottom caps and lighting the walls inside-out.
+    // Reversing both loops orients the whole shell outward.
+    const bottomPts = bottomShape.getSpacedPoints(divisions).reverse();
+    const topPts = topShape.getSpacedPoints(divisions).reverse();
 
     const halfH = height / 2;
     const dishDepth = height * 0.12;
     const positions = [];
     const uvs = [];
+    // 1 on the top face, 0 everywhere else. Legends are composited onto the top
+    // face only, and the sides share the same 0-1 UV range (see keycap-legends.js).
+    const legendMask = [];
 
     // Side walls (draft-angle taper from base to top)
     for (let i = 0; i < divisions; i++) {
@@ -226,6 +245,7 @@ export function createKeycapGeometry(width, depth, height, topScale = 0.82, beve
         );
         const u0 = i / divisions, u1 = (i + 1) / divisions;
         uvs.push(u0, 0, u1, 0, u1, 1, u0, 0, u1, 1, u0, 1);
+        legendMask.push(0, 0, 0, 0, 0, 0);
     }
 
     // Bottom cap (flat fan)
@@ -234,19 +254,29 @@ export function createKeycapGeometry(width, depth, height, topScale = 0.82, beve
         const b1 = bottomPts[(i + 1) % divisions];
         positions.push(0, -halfH, 0, b1.x, -halfH, b1.y, b0.x, -halfH, b0.y);
         uvs.push(0.5, 0.5, 0, 0, 0, 0);
+        legendMask.push(0, 0, 0);
     }
 
-    // Top cap (fan pulled down slightly at center for a shallow dish)
+    // Top cap (fan pulled down slightly at center for a shallow dish). UVs are a
+    // planar projection of the top face so a square legend cell lands square on
+    // it: u runs along -X and v along +Z, which is upright and correctly handed
+    // for a viewer sitting on the keycap's -Z side.
     for (let i = 0; i < divisions; i++) {
         const t0 = topPts[i];
         const t1 = topPts[(i + 1) % divisions];
         positions.push(0, halfH - dishDepth, 0, t0.x, halfH, t0.y, t1.x, halfH, t1.y);
-        uvs.push(0.5, 0.5, 0, 0, 1, 1);
+        uvs.push(
+            0.5, 0.5,
+            0.5 - t0.x / topWidth, 0.5 + t0.y / topDepth,
+            0.5 - t1.x / topWidth, 0.5 + t1.y / topDepth
+        );
+        legendMask.push(1, 1, 1);
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setAttribute('legendMask', new THREE.Float32BufferAttribute(legendMask, 1));
     geometry.computeVertexNormals();
 
     _keycapGeometryCache.set(key, geometry);

@@ -4,9 +4,9 @@
  * Handles Three.js scene, camera, renderer, and lighting setup.
  */
 
-import { PORTFOLIO_CONFIG, LIGHTING_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
+import { PORTFOLIO_CONFIG, QUALITY_TIERS, LIGHTING_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 import { LightingSystem } from '../systems/lighting.js';
-import { createDustParticles } from '../systems/utils.js';
+import { createDustParticles, isMobileDevice } from '../systems/utils.js';
 
 const BLOOM_LAYER = 1;
 
@@ -27,6 +27,15 @@ export class SceneManager {
         /** @type {unknown} */ this.lights = null;
         /** @type {Promise<void> | null} */ this.postFXReady = null;
         this.origins = OBJECT_ORIGINS.scene;
+
+        // Adaptive quality (Phase 6). 'high' is PORTFOLIO_CONFIG.rendering as-is;
+        // applyQualityTier() merges a QUALITY_TIERS entry on top and re-applies the
+        // affected runtime state. Kept as a plain (unfrozen) merged copy so it can
+        // be replaced wholesale on a tier change without fighting Object.freeze.
+        /** @type {'high' | 'medium' | 'low'} */
+        this.qualityTier = 'high';
+        /** @type {import('../config/config.js').RenderingConfig} */
+        this._renderingConfig = PORTFOLIO_CONFIG.rendering;
 
         // Shared across every loader that feeds a visible material (env map, floor,
         // diploma frame, vinyl covers) so the loading screen can stay up until all of
@@ -69,13 +78,14 @@ export class SceneManager {
     }
 
     /**
-     * Fetches the post-processing bundle (Pass/EffectComposer/UnrealBloomPass, plus
-     * SSAOPass/OutlinePass which the bundle still contains but this file no longer
-     * instantiates) and runs setupPostProcessing() once it's parsed. Kept as
-     * a separate lazy-loaded script (rather than bundled with vendor-core.js) so the
-     * initial scene can paint before it arrives. BufferGeometryUtils stays in
-     * vendor-core.js since the object factories call it synchronously while building
-     * the scene, well before this bundle would otherwise be ready.
+     * Fetches the post-processing bundle (Pass/EffectComposer/UnrealBloomPass) and
+     * runs setupPostProcessing() once it's parsed. Kept as a separate lazy-loaded
+     * script (rather than bundled with vendor-core.js) so the initial scene can
+     * paint before it arrives. BufferGeometryUtils stays in vendor-core.js since
+     * the object factories call it synchronously while building the scene, well
+     * before this bundle would otherwise be ready. SSAOPass/OutlinePass/SimplexNoise
+     * were stripped from the bundle entirely (Phase 5.1, PERFORMANCE_PLAN.md) since
+     * neither pass has been instantiated since Phase 2/4.
      * @returns {Promise<void>}
      */
     loadPostProcessing() {
@@ -134,11 +144,70 @@ export class SceneManager {
      * @returns {number}
      */
     getMaxPixelRatio() {
-        const isMobile = window.innerWidth < 768;
+        const isMobile = isMobileDevice();
         const cap = isMobile
-            ? PORTFOLIO_CONFIG.rendering.maxPixelRatioMobile
-            : PORTFOLIO_CONFIG.rendering.maxPixelRatioDesktop;
+            ? this._renderingConfig.maxPixelRatioMobile
+            : this._renderingConfig.maxPixelRatioDesktop;
         return Math.min(window.devicePixelRatio, cap);
+    }
+
+    /**
+     * Step the session down to a lower adaptive-quality tier (Phase 6). Called by
+     * the startup tier detection in main.js after averaging real render() cost
+     * over a sample window; never called to step back up, since a slow first few
+     * seconds usually means a slow device, not a transient hiccup. A no-op if
+     * already at `tierName` or beyond it, so it's safe to call from a loop that
+     * only ever asks to go one step lower than the current tier.
+     * @param {'medium' | 'low'} tierName
+     */
+    applyQualityTier(tierName) {
+        if (tierName === this.qualityTier) return;
+        const overrides = QUALITY_TIERS[tierName];
+        this.qualityTier = tierName;
+        this._renderingConfig = { ...PORTFOLIO_CONFIG.rendering, ...overrides };
+
+        const renderer = /** @type {THREE.WebGLRenderer} */ (this.renderer);
+        renderer.setPixelRatio(this.getMaxPixelRatio());
+
+        if (this.bloomComposer) {
+            const scale = this._renderingConfig.postProcessResolutionScale;
+            this.bloomComposer.setPixelRatio(renderer.getPixelRatio());
+            this.bloomComposer.setSize(
+                Math.round(window.innerWidth * scale),
+                Math.round(window.innerHeight * scale)
+            );
+        }
+
+        // r128's EffectComposer caches the renderer's pixel ratio at construction time,
+        // so a pixel-ratio change above is invisible to the main composer until its
+        // render targets are resized explicitly (P0-1, REALISM_PERF_PLAN.md).
+        if (this.composer) {
+            this.composer.setPixelRatio(renderer.getPixelRatio());
+            this.composer.setSize(window.innerWidth, window.innerHeight);
+        }
+        if (this.fxaaPass) {
+            const pixelRatio = renderer.getPixelRatio();
+            const fxaaResolution = /** @type {THREE.Vector2} */ (this.fxaaPass.uniforms['resolution'].value);
+            fxaaResolution.set(
+                1 / (window.innerWidth * pixelRatio),
+                1 / (window.innerHeight * pixelRatio)
+            );
+        }
+
+        if (this.dustCloud) this.dustCloud.visible = this._renderingConfig.enableDustParticles;
+
+        if (this.gradePass) {
+            this.gradePass.uniforms['grainAmplitude'].value = this._renderingConfig.filmGrainAmplitude;
+        }
+
+        // Toggling castShadow changes each material's shadow-sampling shader defines,
+        // forcing a one-time recompile on the next render -- an acceptable trade for
+        // a session already confirmed to be running slow. The fitted main directional
+        // light isn't touched here; it's the "single shadow map" every tier keeps.
+        const lights = /** @type {{ deskLamp?: THREE.Light, fill?: THREE.Light } | null} */ (this.lights);
+        if (lights?.deskLamp) lights.deskLamp.castShadow = this._renderingConfig.lampShadowEnabled;
+        if (lights?.fill) lights.fill.castShadow = this._renderingConfig.ceilingShadowEnabled;
+        if (renderer.shadowMap.autoUpdate === false) renderer.shadowMap.needsUpdate = true;
     }
 
     /**
@@ -234,7 +303,7 @@ export class SceneManager {
         // goes straight to screen.
         // Bloom is a blur by nature, so rendering its composer at half resolution and
         // letting the combine pass upsample it is free — no visible quality loss.
-        const scale = PORTFOLIO_CONFIG.rendering.postProcessResolutionScale;
+        const scale = this._renderingConfig.postProcessResolutionScale;
         const bloomWidth = Math.round(window.innerWidth * scale);
         const bloomHeight = Math.round(window.innerHeight * scale);
 
@@ -298,7 +367,7 @@ export class SceneManager {
                     baseTexture: { value: null },
                     bloomTexture: { value: this.bloomComposer.renderTarget2.texture },
                     time: { value: 0 },
-                    grainAmplitude: { value: PORTFOLIO_CONFIG.rendering.filmGrainAmplitude },
+                    grainAmplitude: { value: this._renderingConfig.filmGrainAmplitude },
                     vignetteIntensity: { value: PORTFOLIO_CONFIG.rendering.vignetteIntensity }
                 },
                 vertexShader: [
@@ -388,9 +457,15 @@ export class SceneManager {
         const floorNormal = textureLoader.load('assets/textures/floor_nor.webp');
         const floorRoughness = textureLoader.load('assets/textures/floor_rough.webp');
 
+        // Anisotropic filtering (P2-1, REALISM_PERF_PLAN.md): the floor is one of the
+        // largest surfaces in frame and is viewed at a grazing angle, where isotropic
+        // mip filtering blurs the wood grain into mush a few units from the camera.
+        const renderer = /** @type {THREE.WebGLRenderer} */ (this.renderer);
+        const maxAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
         for (const tex of [floorNormal, floorRoughness]) {
             tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
             tex.repeat.set(8, 8);
+            tex.anisotropy = maxAnisotropy;
         }
 
         const floorGeometry = new THREE.PlaneGeometry(50, 50);
@@ -425,8 +500,8 @@ export class SceneManager {
      * Disabled on mobile to preserve performance.
      */
     createDustParticlesEffect() {
-        // Skip dust on mobile (screen width < 768)
-        if (window.innerWidth < 768) return;
+        // Skip dust on real mobile/touch devices
+        if (isMobileDevice()) return;
 
         if (!PORTFOLIO_CONFIG.rendering.enableDustParticles) return;
         if (!this.scene) return;
@@ -468,15 +543,19 @@ export class SceneManager {
         renderer.setPixelRatio(this.getMaxPixelRatio());
         renderer.setSize(window.innerWidth, window.innerHeight);
 
-        const scale = PORTFOLIO_CONFIG.rendering.postProcessResolutionScale;
+        const scale = this._renderingConfig.postProcessResolutionScale;
         const halfWidth = Math.round(window.innerWidth * scale);
         const halfHeight = Math.round(window.innerHeight * scale);
 
-        // Update composer sizes if available
+        // Update composer sizes if available. getMaxPixelRatio() can change across a
+        // resize (e.g. a mobile/desktop breakpoint crossing), so the composers' cached
+        // pixel ratio needs refreshing here too, not just in applyQualityTier() (P0-1).
         if (this.bloomComposer) {
+            this.bloomComposer.setPixelRatio(renderer.getPixelRatio());
             this.bloomComposer.setSize(halfWidth, halfHeight);
         }
         if (this.composer) {
+            this.composer.setPixelRatio(renderer.getPixelRatio());
             this.composer.setSize(window.innerWidth, window.innerHeight);
         }
         if (this.fxaaPass) {

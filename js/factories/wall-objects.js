@@ -15,7 +15,14 @@ export class WallObjectFactory {
         this.scene = scene;
         this.loadingManager = loadingManager;
         this.interactiveObjects = [];
-        this._diploma = null; // Reference for post-init finalization
+
+        // Deferred-texture targets (Phase 5.3): the diploma frame and the vinyl
+        // covers are wall objects behind the initial camera, so their image loads
+        // are kept off the shared loadingManager entirely and only start after the
+        // loading screen is gone -- see loadDeferredTextures(), called post-reveal
+        // from main.js.
+        /** @type {{ material: THREE.MeshStandardMaterial, path: string, repeat?: { x: number, y: number } }[]} */
+        this._deferredTextures = [];
 
         // Use centralized origins from config
         this.origins = OBJECT_ORIGINS.wall;
@@ -34,21 +41,19 @@ export class WallObjectFactory {
             cert: { x: 0, y: 0, z: 0.045 }
         };
 
-        // Load wood texture for frame
-        const textureLoader = new THREE.TextureLoader(this.loadingManager || undefined);
-        const woodTexture = textureLoader.load('assets/textures/wood_table_worn_diff_4k_1k.webp');
-        woodTexture.colorSpace = THREE.SRGBColorSpace;
-        woodTexture.wrapS = THREE.RepeatWrapping;
-        woodTexture.wrapT = THREE.RepeatWrapping;
-        woodTexture.repeat.set(2, 1);
-
-        // Frame with ornate border - Thicker and with wood texture
+        // Wood texture for frame loads post-reveal (Phase 5.3) -- the diploma sits
+        // behind the initial camera, so this shouldn't gate the loading screen.
+        // The frame's base color already reads as wood until the map arrives.
         const frameGeometry = createBeveledBox(1.3, 1.0, 0.08, 0.006, 3);
         const frameMaterial = new THREE.MeshStandardMaterial({
-            map: woodTexture,
             color: 0x8B5A2B,
             roughness: 0.6,
             metalness: 0.1
+        });
+        this._deferredTextures.push({
+            material: frameMaterial,
+            path: 'assets/textures/wood_table_worn_diff_4k_1k.webp',
+            repeat: { x: 2, y: 1 }
         });
         const frame = new THREE.Mesh(frameGeometry, frameMaterial);
         frame.castShadow = true;
@@ -313,41 +318,23 @@ export class WallObjectFactory {
         lightGroup.position.set(0, 0.55, 0);
         group.add(lightGroup);
 
-        // The actual light source - RectAreaLight for rectangular strip light effect
-        // Position it at the housing location in world space relative to group
-        // Width matches the diploma width, height is thin strip
-        const artLight = new THREE.RectAreaLight(0xffeebb, 5.0, 1.1, 0.15);
-        // Position at housing location (lightGroup.y + housing.y, lightGroup.z + housing.z)
+        // The actual light source - a narrow SpotLight washing the diploma. This used
+        // to be a RectAreaLight, the most expensive light type to evaluate per
+        // fragment in a forward renderer; on a flat wall/frame at this distance the
+        // wash reads nearly identically as a tight spot cone, at a fraction of the
+        // cost (P1-4, REALISM_PERF_PLAN.md). `target` is the cert mesh itself --
+        // already in the scene graph as a child of this group -- so the spotlight
+        // stays aimed correctly without any post-render finalization step.
+        const artLight = new THREE.SpotLight(0xffeebb, 4.0, 1.5, Math.PI / 5, 0.55, 1);
         artLight.position.set(0, 0.55 + 0.05, 0.22);
-        // Use lookAt to point at the diploma center
-        artLight.lookAt(0, 0, 0.045);
+        artLight.target = cert; // cert is already a child of `group`, added above
         group.add(artLight);
 
         applyOrigin(group, origin, true); // Static object
         group.userData.name = 'diploma';
         group.userData.label = 'diploma - Education';
-        group.userData.artLight = artLight;
-        group.userData.lightTarget = cert; // Store target for light finalization
         this.interactiveObjects.push(group);
-        this._diploma = group; // Store reference for finalization
         return group;
-    }
-
-    /**
-     * Finalize diploma light direction after scene matrices are computed.
-     * Must be called after the diploma is added to the scene and rendered once.
-     */
-    finalizeDiplomaLight() {
-        const diploma = this._diploma;
-        if (!diploma?.userData.artLight) return;
-
-        diploma.updateMatrixWorld(true);
-        if (diploma.userData.lightTarget) {
-            const targetWorldPos = new THREE.Vector3();
-            diploma.userData.lightTarget.getWorldPosition(targetWorldPos);
-            diploma.userData.artLight.lookAt(targetWorldPos);
-        }
-        diploma.userData.artLight.rotation.x += 0.3;
     }
 
     createVinylRecord() {
@@ -361,9 +348,10 @@ export class WallObjectFactory {
 
         // Album cover geometry
         const coverGeometry = createBeveledBox(coverSize, coverSize, coverDepth, 0.004, 2);
-        
-        // Load all 4 album cover images
-        const textureLoader = new THREE.TextureLoader(this.loadingManager || undefined);
+
+        // Cover images load post-reveal (Phase 5.3) -- the vinyl wall is behind the
+        // initial camera, so gating the loading screen on 4 album-art images is
+        // wasted wait. A neutral placeholder color fills in until each arrives.
         const albumImages = [
             { path: 'assets/images/kendrick.webp', position: { x: -spacing/2, y: spacing/2 } }, // Top left
             { path: 'assets/images/kanye.webp', position: { x: spacing/2, y: spacing/2 } }, // Top right
@@ -371,18 +359,27 @@ export class WallObjectFactory {
             { path: 'assets/images/olivia_dean.webp', position: { x: spacing/2, y: -spacing/2 } } // Bottom right
         ];
 
+        // Sleeve edge/back material shared by every cover -- flat cardboard color, no
+        // art texture. ExtrudeGeometry groups the front/back caps under material
+        // index 0 and the extruded bevel + side walls under index 1; splitting the
+        // two here (P2-7, REALISM_PERF_PLAN.md) keeps the album art off the bevel,
+        // where its side UVs used to smear the artwork's edge pixels around the rim.
+        const coverSideMaterial = new THREE.MeshStandardMaterial({
+            color: 0x1c1c1c,
+            roughness: 0.6,
+            metalness: 0.0
+        });
+
         // Create each album cover
-        albumImages.forEach((album, _index) => {
-            const coverTexture = textureLoader.load(album.path);
-            coverTexture.colorSpace = THREE.SRGBColorSpace;
-            
-            const coverMaterial = new THREE.MeshStandardMaterial({
-                map: coverTexture,
+        albumImages.forEach((album) => {
+            const coverFrontMaterial = new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
                 roughness: 0.2,
                 metalness: 0.0
             });
-            
-            const cover = new THREE.Mesh(coverGeometry, coverMaterial);
+            this._deferredTextures.push({ material: coverFrontMaterial, path: album.path });
+
+            const cover = new THREE.Mesh(coverGeometry, [coverFrontMaterial, coverSideMaterial]);
             cover.position.set(album.position.x, album.position.y, coverDepth);
             cover.castShadow = true;
             cover.receiveShadow = true;
@@ -399,5 +396,28 @@ export class WallObjectFactory {
 
     getInteractiveObjects() {
         return this.interactiveObjects;
+    }
+
+    /**
+     * Load the diploma frame and vinyl cover images (Phase 5.3). Deliberately not
+     * given `this.loadingManager`, and not called until after the loading screen
+     * hides -- these are wall objects behind the initial camera, so their loads
+     * shouldn't compete with the env map/floor textures for bandwidth on the
+     * critical path. Textures pop in individually as each request resolves.
+     */
+    loadDeferredTextures() {
+        const textureLoader = new THREE.TextureLoader();
+        for (const { material, path, repeat } of this._deferredTextures) {
+            const texture = textureLoader.load(path);
+            if (texture.colorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace;
+            else if (THREE.sRGBEncoding !== undefined) texture.encoding = THREE.sRGBEncoding;
+            if (repeat) {
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(repeat.x, repeat.y);
+            }
+            material.map = texture;
+            material.needsUpdate = true;
+        }
     }
 }

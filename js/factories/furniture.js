@@ -18,15 +18,27 @@ const TEXTURE_CONFIG = {
     },
     wall: {
         basePath: 'assets/textures/plastered_wall_04_',
-        files: ['diff_4k.webp', 'nor_gl_4k.webp', 'rough_4k.webp'],
-        repeat: { x: 10, y: 4 },
+        // Re-exported at 1024px (P1-2, REALISM_PERF_PLAN.md): the 4K originals decoded
+        // to ~256 MB VRAM combined for a background wall viewed from 3+ units away,
+        // where 1K is indistinguishable. The wood set already used this `_4k_1k`
+        // naming for its own downsize.
+        files: ['diff_4k_1k.webp', 'nor_gl_4k_1k.webp', 'rough_4k_1k.webp'],
+        // The wall face is 50x8 units; repeat.x/repeat.y must match that 6.25:1
+        // aspect for square (undistorted) texels -- the old 10x4 (2.5:1) stretched
+        // every tile 2.5x horizontally.
+        repeat: { x: 25, y: 4 },
         placeholder: { diffuse: [180, 180, 180], normal: [128, 128, 255], roughness: [242, 242, 242] }
     }
 };
 
 export class FurnitureFactory {
-    constructor(scene) {
+    /**
+     * @param {THREE.Scene} scene
+     * @param {THREE.WebGLRenderer | null} [renderer]
+     */
+    constructor(scene, renderer = null) {
         this.scene = scene;
+        this._maxAnisotropy = renderer ? Math.min(8, renderer.capabilities.getMaxAnisotropy()) : 1;
 
         // Use centralized origins from config
         this.origins = OBJECT_ORIGINS.furniture;
@@ -69,6 +81,10 @@ export class FurnitureFactory {
                 texture.flipY = false;
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.RepeatWrapping;
+                // Anisotropic filtering (P2-1, REALISM_PERF_PLAN.md): wood/wall are the
+                // largest surfaces in frame, viewed at grazing angles where isotropic
+                // mip filtering blurs the texture a few units from the camera.
+                texture.anisotropy = this._maxAnisotropy;
                 this._textureCache.set(path, texture);
                 this._loadingPromises.delete(path);
                 resolve(texture);
@@ -111,8 +127,12 @@ export class FurnitureFactory {
      * @param {number} metalness
      * @param {boolean} [useRoughnessMap]
      * @param {number | null} [color]
+     * @param {number} [clearcoat] - A worn desk or shelf has no factory lacquer;
+     *   default to a matte 0 rather than the 0.4 that made worn oak read as a
+     *   glossy conference table (P2-8, REALISM_PERF_PLAN.md).
+     * @param {number} [clearcoatRoughness]
      */
-    _createTexturedMaterial(type, roughness, metalness, useRoughnessMap = false, color = null) {
+    _createTexturedMaterial(type, roughness, metalness, useRoughnessMap = false, color = null, clearcoat = 0, clearcoatRoughness = 0.3) {
         const state = this._textureState[type];
         const textures = state.loaded ? state.textures : this._placeholders[type];
 
@@ -127,8 +147,8 @@ export class FurnitureFactory {
 
         const material = new THREE.MeshPhysicalMaterial({
             ...matProps,
-            clearcoat: 0.4,
-            clearcoatRoughness: 0.3
+            clearcoat,
+            clearcoatRoughness
         });
 
         if (!state.loaded) {
@@ -149,10 +169,11 @@ export class FurnitureFactory {
             { x: 3.2, y: -0.625, z: 1.2 }
         ];
 
-        // Desk surface
+        // Desk surface. A thin worn-oil sheen (clearcoat 0.1), not the factory-lacquer
+        // 0.4 default -- a worn desk shouldn't read as a glossy conference table.
         const desk = new THREE.Mesh(
             createBeveledBox(7, 0.08, 3, 0.006, 3),
-            this._createTexturedMaterial('wood', 0.75, 0.0, true)
+            this._createTexturedMaterial('wood', 0.75, 0.0, true, null, 0.1, 0.5)
         );
         desk.position.set(0, 0.04, 0);
         desk.receiveShadow = true;
@@ -162,7 +183,7 @@ export class FurnitureFactory {
         // Edge trim
         const edge = new THREE.Mesh(
             new THREE.BoxGeometry(6.52, 0.02, 2.52),
-            this._createTexturedMaterial('wood', 0.7, 0.05)
+            this._createTexturedMaterial('wood', 0.7, 0.05, false, null, 0.1, 0.5)
         );
         edge.position.set(0, 0.08, 0);
         edge.castShadow = true;
@@ -170,7 +191,7 @@ export class FurnitureFactory {
 
         // Legs — merged into a single draw call
         const legGeometry = createBeveledBox(0.1, 1.25, 0.1, 0.005, 2);
-        const legMaterial = this._createTexturedMaterial('wood', 0.85, 0.02);
+        const legMaterial = this._createTexturedMaterial('wood', 0.85, 0.02, false, null, 0.1, 0.5);
         const legGeometries = legOffsets.map(offset => {
             const g = legGeometry.clone();
             g.translate(offset.x, offset.y, offset.z);
@@ -191,13 +212,10 @@ export class FurnitureFactory {
         const group = new THREE.Group();
 
         // Warm medium-gray tint keeps the bright plaster texture from blowing out.
-        // clearcoat=0: plaster has no clear-coat specular; the default 0.4 catches every
-        // light source and makes the wall appear blown-out white.
+        // clearcoat=0: plaster has no clear-coat specular.
         // envMapIntensity=0.04: outdoor HDRI values are 3-8x above 1.0; even at 0.04
         // the HDRI still contributes meaningful fill without dominating a matte interior wall.
-        const wallMat = this._createTexturedMaterial('wall', 0.95, 0.0, false, 0xf0e9d8);
-        wallMat.clearcoat = 0.0;
-        wallMat.clearcoatRoughness = 1.0;
+        const wallMat = this._createTexturedMaterial('wall', 0.95, 0.0, false, 0xf0e9d8, 0, 1.0);
         wallMat.envMapIntensity = 0.04;
         // Baked-in warm tint (Phase 3.1) replacing the backWallWash PointLight that used
         // to lift this wall out of pure black — a static emissive term costs nothing per
@@ -240,8 +258,12 @@ export class FurnitureFactory {
         ceiling.rotation.x = Math.PI / 2;
         ceiling.position.set(0, 7.5, -1.5);
         ceiling.receiveShadow = true;
-        ceiling.matrixAutoUpdate = false;
+        // Bake position/rotation into the matrix (via updateMatrixWorld) *before*
+        // freezing matrixAutoUpdate -- doing it in the other order leaves `.matrix`
+        // at its default identity, so the mesh renders at the origin with no
+        // rotation instead of where it was actually positioned.
         ceiling.updateMatrixWorld(true);
+        ceiling.matrixAutoUpdate = false;
         return ceiling;
     }
 

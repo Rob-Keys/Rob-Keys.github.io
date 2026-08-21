@@ -11,7 +11,7 @@ import {
     createRoughnessVariationTexture,
     addContactShadow
 } from '../systems/utils.js';
-import { SHADOW_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
+import { OBJECT_ORIGINS } from '../config/config.js';
 
 export class DeskObjectFactory {
     constructor(scene) {
@@ -290,22 +290,16 @@ export class DeskObjectFactory {
         mergedLines.castShadow = true;
         group.add(mergedLines);
 
-        // Steam wisps rising from coffee surface
-        const createSteamWisp = () => {
-            // Elongated plane for wispy steam appearance
+        // Steam wisps rising from coffee surface. Pooled (P2-6, REALISM_PERF_PLAN.md):
+        // a fixed-size unit plane is shared by every wisp, with per-wisp width/height
+        // baked into `scale` instead of unique geometry, so expiry can reset a wisp in
+        // place -- no per-expiry geometry/material allocation, and nothing to leak.
+        const steamGeometry = new THREE.PlaneGeometry(1, 1);
+        const resetWisp = (steam) => {
             const wispHeight = 0.04 + Math.random() * 0.06;
             const wispWidth = 0.015 + Math.random() * 0.02;
-            const steamGeometry = new THREE.PlaneGeometry(wispWidth, wispHeight);
-            const steamMaterial = new THREE.MeshBasicMaterial({
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.15 + Math.random() * 0.1,
-                side: THREE.DoubleSide,
-                depthWrite: false
-            });
-            const steam = new THREE.Mesh(steamGeometry, steamMaterial);
+            steam.scale.set(wispWidth, wispHeight, 1);
 
-            // Start from coffee surface area
             const startX = offsets.cup.x + (Math.random() - 0.5) * 0.15;
             const startZ = offsets.cup.z + (Math.random() - 0.5) * 0.15;
             steam.position.set(
@@ -314,35 +308,44 @@ export class DeskObjectFactory {
                 startZ
             );
 
-            // Random rotation for variety
             steam.rotation.y = Math.random() * Math.PI * 2;
             steam.rotation.z = (Math.random() - 0.5) * 0.3;
 
-            steam.userData = {
-                isSteam: true,
-                initialOpacity: steam.material.opacity,
-                velocity: {
-                    y: 0.0015 + Math.random() * 0.002,
-                    x: (Math.random() - 0.5) * 0.0006,
-                    z: (Math.random() - 0.5) * 0.0006
-                },
-                rotationSpeed: (Math.random() - 0.5) * 0.02,
-                scaleGrowth: 1.005 + Math.random() * 0.005,
-                lifetime: 100 + Math.random() * 100
-            };
+            const opacity = 0.15 + Math.random() * 0.1;
+            steam.material.opacity = opacity;
+
+            steam.userData.velocity.y = 0.0015 + Math.random() * 0.002;
+            steam.userData.velocity.x = (Math.random() - 0.5) * 0.0006;
+            steam.userData.velocity.z = (Math.random() - 0.5) * 0.0006;
+            steam.userData.rotationSpeed = (Math.random() - 0.5) * 0.02;
+            steam.userData.scaleGrowth = 1.005 + Math.random() * 0.005;
+            steam.userData.lifetime = 100 + Math.random() * 100;
+        };
+
+        const createSteamWisp = () => {
+            const steamMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const steam = new THREE.Mesh(steamGeometry, steamMaterial);
+            steam.userData = { isSteam: true, velocity: { x: 0, y: 0, z: 0 } };
+            resetWisp(steam);
             return steam;
         };
 
-        // Add initial steam particles
+        // Add initial steam particles and cache the pool -- avoids filtering
+        // `children` every animation tick to find them.
+        const steamParticles = [];
         for (let i = 0; i < 6; i++) {
             const steam = createSteamWisp();
             group.add(steam);
+            steamParticles.push(steam);
         }
 
         // Store steam animation function
         const animateSteamFunc = function() {
-            const steamParticles = this.children.filter(child => child.userData.isSteam);
-
             steamParticles.forEach((steam) => {
                 steam.position.y += steam.userData.velocity.y;
                 steam.position.x += steam.userData.velocity.x;
@@ -354,9 +357,7 @@ export class DeskObjectFactory {
                 }
 
                 if (steam.userData.lifetime <= 0) {
-                    this.remove(steam);
-                    const newSteam = createSteamWisp();
-                    this.add(newSteam);
+                    resetWisp(steam);
                 }
             });
         };
@@ -504,36 +505,15 @@ export class DeskObjectFactory {
         headGroup.rotation.z = neckAngleZ;
         group.add(headGroup);
 
-        // Main SpotLight aimed at the notebook for focused illumination
-        // Warm color temperature (2700K-ish) for realistic incandescent light
-        // Target the center of the notebook page (offset from origin to account for page center)
-        const notebookRelative = {
-            x: this.origins.notebook.x - origin.x + 0.5,  // Offset toward page center X
-            y: this.origins.notebook.y - origin.y,
-            z: this.origins.notebook.z - origin.z // Offset toward page center Z
-        };
-
-        // SpotLight aimed at the notebook - warm incandescent color
-        // Wider angle (PI/2.5 ~72°) with softer penumbra to cover entire notebook page
-        const spotLight = new THREE.SpotLight(0xffddaa, 0.8, 6, Math.PI / 2.5, 0.6, 2); // decay: 2 for physical falloff
-        spotLight.position.set(neckEndX, neckEndY - 0.05, neckEndZ);
-        spotLight.target.position.set(notebookRelative.x, notebookRelative.y, notebookRelative.z);
-        spotLight.castShadow = true;
-        spotLight.shadow.mapSize.width = SHADOW_CONFIG.lamp.mapSize;
-        spotLight.shadow.mapSize.height = SHADOW_CONFIG.lamp.mapSize;
-        spotLight.shadow.camera.near = 0.05;
-        spotLight.shadow.camera.far = 8;
-        spotLight.shadow.bias = SHADOW_CONFIG.lamp.bias;
-        spotLight.shadow.normalBias = SHADOW_CONFIG.lamp.normalBias;
-        spotLight.shadow.radius = SHADOW_CONFIG.lamp.radius; // Softer shadow edges
-        group.add(spotLight);
-        group.add(spotLight.target);
-
-        // Point light for warm ambient glow around the lamp - steep decay
-        // Increased distance for better ambient light spread
-        const warmFillLight = new THREE.PointLight(0xffcc88, 0.6, 1.5, 2);
-        warmFillLight.position.set(neckEndX, neckEndY, neckEndZ);
-        group.add(warmFillLight);
+        // The lamp's actual illumination -- a shadow-casting SpotLight plus a warm
+        // PointLight fill -- lives in LightingSystem.setupLights() (`deskLamp`,
+        // `lampShadeGlow`, `deskBounce`). This physical lamp used to carry its own
+        // second shadow-casting spotlight and fill light on top of that trio: five
+        // lights and two 1024 shadow maps modeling one lamp, and the quality-tier
+        // toggle (scene.js applyQualityTier) only ever reached lighting.js's
+        // `deskLamp`, so this duplicate kept casting a shadow even at low tier
+        // (P1-3, REALISM_PERF_PLAN.md). Deleted here; lighting.js's `deskLamp`
+        // target/angle was widened to cover the notebook page this used to aim at.
 
         // Switch on the base
         const switchGeometry = new THREE.CylinderGeometry(0.025, 0.025, 0.03, 8);
@@ -551,7 +531,7 @@ export class DeskObjectFactory {
         addContactShadow(group, 0.6, 0.6, -0.19);
 
         applyOrigin(group, origin, true); // Static object
-        group.userData = { name: 'lamp', label: 'Desk Lamp - Resume', deskLampLight: spotLight, warmFillLight: warmFillLight };
+        group.userData = { name: 'lamp', label: 'Desk Lamp - Resume' };
         this.interactiveObjects.push(group);
         return group;
     }

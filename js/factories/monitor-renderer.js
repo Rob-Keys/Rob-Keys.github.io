@@ -10,45 +10,124 @@
  */
 export class MonitorRenderer {
     constructor() {
-        this.canvas = null;
-        this.ctx = null;
+        // Reused output canvas: every scroll tick composites into this same
+        // canvas/context instead of allocating a new one (P1-5,
+        // REALISM_PERF_PLAN.md).
+        /** @type {HTMLCanvasElement | null} */ this.canvas = null;
+        /** @type {CanvasRenderingContext2D | null} */ this.ctx = null;
+
+        // Browser chrome and the full page content are each rendered exactly once,
+        // into their own offscreen canvases -- these are plain 2D bitmaps used only
+        // as drawImage sources, never uploaded to the GPU directly, so their
+        // (non-power-of-two) size is unconstrained. Every scroll tick then becomes
+        // two cheap raster blits into `this.canvas` instead of re-running every
+        // fillText/wrapText/path call for all seven content sections.
+        /** @type {HTMLCanvasElement | null} */ this.chromeCanvas = null;
+        /** @type {HTMLCanvasElement | null} */ this.contentCanvas = null;
+        this.chromeHeightLogical = 0;
+        this.chromeHeightDevice = 0;
+
+        this.deviceWidth = 1024;
+        this.deviceHeight = 512;
+        this.logicalWidth = 1280;
+        this.logicalVisibleHeight = 560;
     }
 
     /**
-     * Create canvas for monitor with scrollable content
-     * @param {number} scrollOffset - Current scroll position
+     * Render chrome + full content into their offscreen canvases once. Cheap to
+     * call repeatedly -- guarded by `this.canvas` -- so callers don't need to
+     * track build state themselves.
+     */
+    _build() {
+        if (this.canvas) return;
+
+        const scaleX = this.deviceWidth / this.logicalWidth;
+        const scaleY = this.deviceHeight / this.logicalVisibleHeight;
+
+        // Scratch context used only to measure logical layout heights (canvas
+        // dimensions don't constrain what 2D draw/measure calls can compute).
+        const scratch = document.createElement('canvas');
+        scratch.width = this.deviceWidth;
+        scratch.height = this.deviceHeight;
+        const scratchCtx = scratch.getContext('2d');
+        if (!scratchCtx) throw new Error('Failed to get 2D context for monitor canvas');
+        scratchCtx.scale(scaleX, scaleY);
+        this.chromeHeightLogical = this._renderBrowserChrome(scratchCtx);
+
+        // --- Chrome (static, rendered once) ---
+        this.chromeHeightDevice = Math.ceil(this.chromeHeightLogical * scaleY);
+        this.chromeCanvas = document.createElement('canvas');
+        this.chromeCanvas.width = this.deviceWidth;
+        this.chromeCanvas.height = this.chromeHeightDevice;
+        const chromeCtx = this.chromeCanvas.getContext('2d');
+        if (!chromeCtx) throw new Error('Failed to get 2D context for monitor canvas');
+        chromeCtx.scale(scaleX, scaleY);
+        this._renderBrowserChrome(chromeCtx);
+
+        // --- Full page content (tall canvas, rendered once) ---
+        scratchCtx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+        const contentHeightLogical = this._renderContent(scratchCtx);
+
+        const contentHeightDevice = Math.ceil(contentHeightLogical * scaleY) + 40; // bottom margin
+        this.contentCanvas = document.createElement('canvas');
+        this.contentCanvas.width = this.deviceWidth;
+        this.contentCanvas.height = contentHeightDevice;
+        const contentCtx = this.contentCanvas.getContext('2d');
+        if (!contentCtx) throw new Error('Failed to get 2D context for monitor canvas');
+        contentCtx.fillStyle = '#f5f5f5';
+        contentCtx.fillRect(0, 0, this.contentCanvas.width, this.contentCanvas.height);
+        contentCtx.scale(scaleX, scaleY);
+        this._renderContent(contentCtx);
+
+        // --- Reused output canvas ---
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = this.deviceWidth;
+        this.canvas.height = this.deviceHeight;
+        this.ctx = this.canvas.getContext('2d');
+        if (!this.ctx) throw new Error('Failed to get 2D context for monitor canvas');
+    }
+
+    /**
+     * Composite the current scroll position into the reused output canvas.
+     * @param {number} scrollOffset - Current scroll position (logical px)
      * @returns {HTMLCanvasElement} The rendered canvas
      */
     createMonitorCanvas(scrollOffset) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1024;
-        canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Failed to get 2D context for monitor canvas');
+        this._build();
 
-        // Draw white background
+        const { ctx, canvas, chromeCanvas, contentCanvas } = this;
+        if (!ctx || !canvas || !chromeCanvas || !contentCanvas) {
+            throw new Error('MonitorRenderer._build() did not initialize its canvases');
+        }
+
+        const scaleY = this.deviceHeight / this.logicalVisibleHeight;
+        const deviceScrollOffset = scrollOffset * scaleY;
+        const contentAreaHeight = this.deviceHeight - this.chromeHeightDevice;
+
         ctx.fillStyle = '#f5f5f5';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, this.deviceWidth, this.deviceHeight);
 
-        // Scale to fit 1280x560 content into 1024x512 (Standard Power of Two texture)
-        ctx.scale(1024/1280, 512/560);
+        // Static chrome, always at the top -- a raster blit, not a redraw.
+        ctx.drawImage(chromeCanvas, 0, 0);
 
-        const chromeHeight = this._renderBrowserChrome(ctx);
-        const contentHeight = 560 - chromeHeight;
-
-        // Clip page content to the area below the browser chrome
+        // Visible slice of the pre-rendered content, clipped to the area below chrome.
         ctx.save();
         ctx.beginPath();
-        ctx.rect(0, chromeHeight, 1280, contentHeight);
+        ctx.rect(0, this.chromeHeightDevice, this.deviceWidth, contentAreaHeight);
         ctx.clip();
-
-        ctx.translate(0, chromeHeight - scrollOffset);
-        this._renderContent(ctx);
-
+        ctx.drawImage(
+            contentCanvas,
+            0, deviceScrollOffset, this.deviceWidth, contentAreaHeight,
+            0, this.chromeHeightDevice, this.deviceWidth, contentAreaHeight
+        );
         ctx.restore();
 
-        // Add simple scrollbar indicator, confined to the content area
-        this._renderScrollbar(ctx, scrollOffset, chromeHeight, contentHeight);
+        // Scrollbar indicator redraws in logical coordinate space each tick (cheap:
+        // one fillRect), matching the original layout math.
+        ctx.save();
+        ctx.scale(this.deviceWidth / this.logicalWidth, scaleY);
+        this._renderScrollbar(ctx, scrollOffset, this.chromeHeightLogical, this.logicalVisibleHeight - this.chromeHeightLogical);
+        ctx.restore();
 
         return canvas;
     }
@@ -185,6 +264,7 @@ export class MonitorRenderer {
     /**
      * Render main content sections
      * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @returns {number} Final logical y position, used to size the content canvas
      */
     _renderContent(ctx) {
         // Header (h1 style)
@@ -224,7 +304,7 @@ export class MonitorRenderer {
 
         // Contact section
         currentY += 60;
-        this._renderContactSection(ctx, currentY);
+        return this._renderContactSection(ctx, currentY);
     }
 
     /**

@@ -5,6 +5,7 @@
  */
 
 import { SHADOW_CONFIG, LIGHTING_CONFIG } from '../config/config.js';
+import { isMobileDevice } from './utils.js';
 
 export class LightingSystem {
     /**
@@ -132,7 +133,7 @@ export class LightingSystem {
      * lives in the ambient/hemisphere day-night floors and a baked wall emissive tint.
      */
     setupLights() {
-        const isMobile = window.innerWidth < 768;
+        const isMobile = isMobileDevice();
         const shadowMapSize = isMobile ?
             SHADOW_CONFIG.mobile.mapSize :
             SHADOW_CONFIG.main.mapSize;
@@ -172,7 +173,6 @@ export class LightingSystem {
         mainLight.shadow.camera.bottom = -3;
         mainLight.shadow.bias = SHADOW_CONFIG.main.bias;
         mainLight.shadow.normalBias = SHADOW_CONFIG.main.normalBias;
-        mainLight.shadow.radius = SHADOW_CONFIG.main.radius;
         this.scene.add(mainLight);
         this.lights.main = mainLight;
 
@@ -208,7 +208,6 @@ export class LightingSystem {
         ceilingMain.shadow.mapSize.height = SHADOW_CONFIG.ceiling.mapSize;
         ceilingMain.shadow.bias = -0.0003;
         ceilingMain.shadow.normalBias = 0.02;
-        ceilingMain.shadow.radius = 3;
         this.scene.add(ceilingMain);
         this.scene.add(ceilingMain.target);
         this.lights.fill = ceilingMain;
@@ -223,18 +222,19 @@ export class LightingSystem {
         this.lights.fill2 = ceilingFill;
 
         // Desk lamp SpotLight — 2700K incandescent-equivalent warm amber.
-        // 2700K accurate hex: #FFA740. Tight cone (π/11 ≈ 16°) with soft penumbra 0.20.
-        // This is the hero accent light — its warm color against the cool monitor is the
-        // most visible "photographic realism" cue in the scene.
-        const deskLamp = new THREE.SpotLight(0xffa740, 8.0, 6, Math.PI / 11, 0.20, 2);
+        // 2700K accurate hex: #FFA740. Cone widened from the original π/11 (~16°) to
+        // π/8.5 (~21°) and retargeted onto the notebook page (was a factory-owned
+        // spotlight's job, now deleted -- see createDeskLamp, P1-3,
+        // REALISM_PERF_PLAN.md) while staying tight enough to read as the hero accent
+        // light against the cool monitor.
+        const deskLamp = new THREE.SpotLight(0xffa740, 8.0, 6, Math.PI / 8.5, 0.22, 2);
         deskLamp.position.set(2.5, 3.5, -1.1);
-        deskLamp.target.position.set(1.4, 0.94, 0.1);
+        deskLamp.target.position.set(1.9, 0.97, 0.35);
         deskLamp.castShadow = true;
         deskLamp.shadow.mapSize.width = SHADOW_CONFIG.lamp.mapSize;
         deskLamp.shadow.mapSize.height = SHADOW_CONFIG.lamp.mapSize;
         deskLamp.shadow.bias = SHADOW_CONFIG.lamp.bias;
         deskLamp.shadow.normalBias = SHADOW_CONFIG.lamp.normalBias;
-        deskLamp.shadow.radius = SHADOW_CONFIG.lamp.radius;
         this.scene.add(deskLamp);
         this.scene.add(deskLamp.target);
         this.lights.deskLamp = deskLamp;
@@ -247,9 +247,11 @@ export class LightingSystem {
 
         // Desk bounce — soft warm PointLight just above desk surface under the lamp cone.
         // Simulates light bouncing off the wood desktop and illuminating the undersides of
-        // the keyboard, mouse, and base of the monitor. Very local (distance 2).
-        const deskBounce = new THREE.PointLight(0xffcf90, 0.6, 2.5, 2);
-        deskBounce.position.set(1.6, 1.05, 0.0);
+        // the keyboard, mouse, and base of the monitor. Intensity/distance bumped slightly
+        // (was 0.6/2.5) to cover the lamp-base ambient glow the deleted factory
+        // warmFillLight used to provide (P1-3, REALISM_PERF_PLAN.md).
+        const deskBounce = new THREE.PointLight(0xffcf90, 0.75, 3, 2);
+        deskBounce.position.set(1.8, 1.05, -0.1);
         this.scene.add(deskBounce);
 
         // Monitor bounce — 6500K daylight-balanced screen glow.
@@ -514,6 +516,13 @@ export class LightingSystem {
      * Fit the main directional light's shadow camera frustum to the actual scene bounds,
      * replacing hand-tuned constants that risk clipping or wasting shadow-map resolution
      * as scene content changes. Call once after all objects have been added to the scene.
+     *
+     * Fitting to the *whole* scene (including the 50-unit wall and floor) spreads the
+     * 2048px shadow map across 50+ units of frustum — ~40 texels/unit, ~2.5x blockier
+     * than the hand-tuned frustum this replaced (20 units wide, ~102 texels/unit). The
+     * wall and floor only receive shadows near the desk anyway, so the fitted extents
+     * retain those original hand-tuned bounds as a minimum, while expanding when the
+     * scene content actually requires more coverage (P0-3, REALISM_PERF_PLAN.md).
      * @param {THREE.Scene} scene
      * @param {number} [margin] - Extra world-space padding added to the fitted frustum.
      */
@@ -536,10 +545,15 @@ export class LightingSystem {
         // orthographic frustum that still contains everything the light needs to shadow.
         const boxInLightSpace = sceneBox.clone().applyMatrix4(viewMatrixInverse);
 
-        shadowCamera.left = boxInLightSpace.min.x - margin;
-        shadowCamera.right = boxInLightSpace.max.x + margin;
-        shadowCamera.top = boxInLightSpace.max.y + margin;
-        shadowCamera.bottom = boxInLightSpace.min.y - margin;
+        // Original hand-tuned frustum extents (pre-fit) — preserve at least this much
+        // coverage, but expand beyond it whenever the actual scene requires more. The
+        // previous clamp could silently clip shadows from objects outside these bounds.
+        const HAND_TUNED = { left: -10, right: 10, top: 8, bottom: -3 };
+
+        shadowCamera.left = Math.min(boxInLightSpace.min.x - margin, HAND_TUNED.left);
+        shadowCamera.right = Math.max(boxInLightSpace.max.x + margin, HAND_TUNED.right);
+        shadowCamera.top = Math.max(boxInLightSpace.max.y + margin, HAND_TUNED.top);
+        shadowCamera.bottom = Math.min(boxInLightSpace.min.y - margin, HAND_TUNED.bottom);
         // Camera looks down -Z in its own space, so the near/far distances are the negated z range.
         shadowCamera.near = Math.max(0.1, -boxInLightSpace.max.z - margin);
         shadowCamera.far = -boxInLightSpace.min.z + margin;

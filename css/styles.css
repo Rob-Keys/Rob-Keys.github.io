@@ -32,6 +32,10 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    isolation: isolate;
+    contain: strict;
+    will-change: opacity;
+    pointer-events: auto;
     background:
         radial-gradient(ellipse 80% 60% at 50% 100%, rgba(255, 166, 87, 0.09), transparent 70%),
         radial-gradient(ellipse 90% 70% at 50% 40%, #14181f 0%, #0a0c10 100%);
@@ -42,6 +46,7 @@ body {
 #loading.loading-hidden {
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
 }
 
 .loading-content {
