@@ -22,10 +22,9 @@ export function assert(condition, message) {
 
 /**
  * Detect a real mobile/touch device by input capability rather than viewport
- * width. This site forces landscape on phones (#rotate-overlay), and a phone
- * in landscape reports innerWidth in the 800-900px range — the same range as
- * a narrow desktop window — so a `window.innerWidth < 768` check almost never
- * fires on the devices it was written for (P0-2, REALISM_PERF_PLAN.md).
+ * width. A phone in landscape reports innerWidth in the 800-900px range — the
+ * same range as a narrow desktop window — so a `window.innerWidth < 768`
+ * check can miss devices it was written for (P0-2, REALISM_PERF_PLAN.md).
  * @returns {boolean}
  */
 export function isMobileDevice() {
