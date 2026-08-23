@@ -14,7 +14,11 @@ import { createDustParticles, isMobileDevice } from '../systems/utils.js';
 import { WebGPUPostProcessing } from './postprocessing-webgpu.js';
 
 export class SceneManager {
-    constructor() {
+    /**
+     * @param {((status: string) => void) | null} [onLoadingStatus]
+     */
+    constructor(onLoadingStatus = null) {
+        this.onLoadingStatus = onLoadingStatus;
         /** @type {THREE.Scene | null} */ this.scene = null;
         /** @type {THREE.PerspectiveCamera | null} */ this.camera = null;
         /** @type {THREE.Points | null} */ this.dustCloud = null;
@@ -32,10 +36,22 @@ export class SceneManager {
         this._renderingConfig = PORTFOLIO_CONFIG.rendering;
 
         this.loadingManager = new THREE.LoadingManager();
+        this.loadingManager.onStart = () => {
+            this.onLoadingStatus?.('Importing assets');
+        };
+        this.loadingManager.onProgress = (_url, itemsLoaded, itemsTotal) => {
+            this.onLoadingStatus?.(`Importing assets · ${itemsLoaded} of ${itemsTotal}`);
+        };
         /** @type {Promise<void>} */
         this._assetsReady = new Promise((resolve, reject) => {
-            this.loadingManager.onLoad = () => resolve();
-            this.loadingManager.onError = (url) => reject(new Error(`Required portfolio asset failed to load: ${url}`));
+            this.loadingManager.onLoad = () => {
+                this.onLoadingStatus?.('Assets imported');
+                resolve();
+            };
+            this.loadingManager.onError = (url) => {
+                this.onLoadingStatus?.('Could not import an asset');
+                reject(new Error(`Required portfolio asset failed to load: ${url}`));
+            };
         });
     }
 

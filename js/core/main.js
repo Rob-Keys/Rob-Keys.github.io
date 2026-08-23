@@ -87,10 +87,12 @@ class Portfolio3D {
     }
 
     async init() {
-        this.sceneManager = new SceneManager();
+        this.updateLoadingStatus('Initializing the renderer');
+        this.sceneManager = new SceneManager((status) => this.updateLoadingStatus(status));
         const { scene: _scene, camera, controls } = await this.sceneManager.init();
         const scene = /** @type {Scene} */ (_scene);
 
+        this.updateLoadingStatus('Assembling the desk');
         // Pass lightingSystem to ObjectFactory for dynamic glare materials
         this.objectFactory = new ObjectFactory(
             scene,
@@ -98,11 +100,13 @@ class Portfolio3D {
         );
         const interactiveObjects = await this.objectFactory.createAllObjects();
 
+        this.updateLoadingStatus('Tuning the lighting');
         // Fit the sun's shadow frustum to actual scene bounds now that every object exists.
         this.sceneManager.lightingSystem?.fitMainShadowToScene(scene);
 
         // Wait for the env map, floor, diploma, and vinyl textures to actually finish
         // loading before revealing the scene, so nothing pops in after the fade.
+        this.updateLoadingStatus('Finishing asset imports');
         await this.sceneManager.waitForAssets();
 
         this.interactionManager = new InteractionManager(
@@ -146,8 +150,10 @@ class Portfolio3D {
 
         // Force full render while loading screen is visible (compiles shaders + uploads to GPU),
         // populating the shadow maps before we freeze them.
+        this.updateLoadingStatus('Rendering the scene');
         this.sceneManager.render();
         this.sceneManager.freezeShadowMap();
+        this.updateLoadingStatus('Opening the portfolio');
         this.hideLoadingScreen();
 
         // Diploma frame + vinyl cover art (Phase 5.3): behind the initial camera,
@@ -177,6 +183,17 @@ class Portfolio3D {
         }
 
         this.animate();
+    }
+
+    /**
+     * Update the loading screen with the current startup phase.
+     * @param {string} status
+     */
+    updateLoadingStatus(status) {
+        const statusElement = document.querySelector('.loading-status');
+        if (!statusElement || statusElement.textContent === status) return;
+        statusElement.textContent = status;
+        statusElement.setAttribute('aria-label', status);
     }
 
     /**
