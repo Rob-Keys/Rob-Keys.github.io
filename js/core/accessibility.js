@@ -10,6 +10,12 @@ export class SemanticPortfolioController {
         /** @type {HTMLDetailsElement | null} */ this.activeDetails = null;
         /** @type {HTMLElement | null} */ this.lastInvokingControl = null;
         /** @type {HTMLElement | null} */ this.portfolioStatus = document.getElementById('portfolio-status');
+        const accessibilityToggle = document.getElementById('accessibility-toggle');
+        /** @type {HTMLButtonElement | null} */ this.accessibilityToggle = accessibilityToggle instanceof HTMLButtonElement
+            ? accessibilityToggle
+            : null;
+        /** @type {HTMLElement | null} */ this.portfolioContent = document.getElementById('portfolio-content');
+        /** @type {HTMLElement | null} */ this.instructions = document.getElementById('instructions');
         this.init();
     }
 
@@ -40,12 +46,48 @@ export class SemanticPortfolioController {
             document.getElementById('instructions')?.setAttribute('hidden', '');
         });
 
+        this.accessibilityToggle?.addEventListener('click', () => {
+            this.setAccessibilityView(!document.body.classList.contains('accessibility-open'));
+        });
+
+        // Keep the skip link useful when the alternate view is hidden by the
+        // visual experience. Without JavaScript, its native anchor behavior
+        // still lands on the semantic portfolio below the scene.
+        document.querySelector('.skip-link')?.addEventListener('click', (event) => {
+            if (document.body.classList.contains('js-enabled')) {
+                event.preventDefault();
+                this.setAccessibilityView(true);
+            }
+        });
+
         document.addEventListener('keydown', (event) => {
             if (event.key !== 'Escape') return;
+            if (document.body.classList.contains('accessibility-open')) {
+                event.preventDefault();
+                this.setAccessibilityView(false);
+                return;
+            }
             if (!this.activeDetails?.open) return;
             event.preventDefault();
             this.closeDetails();
         });
+    }
+
+    /** @param {boolean} open */
+    setAccessibilityView(open) {
+        if (!this.accessibilityToggle) return;
+
+        document.body.classList.toggle('accessibility-open', open);
+        this.accessibilityToggle.setAttribute('aria-expanded', String(open));
+        this.accessibilityToggle.textContent = open ? 'Close accessible view' : 'Open accessible view';
+
+        if (open) {
+            this.instructions?.setAttribute('hidden', '');
+            this.portfolioContent?.focus({ preventScroll: true });
+            return;
+        }
+
+        this.accessibilityToggle.focus();
     }
 
     /** @param {(name: string, control: HTMLElement) => void} handler */

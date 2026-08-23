@@ -75,9 +75,13 @@ button {
     cursor: pointer;
 }
 
-/* The semantic page follows the full-screen visual scene in normal document
-   flow. It remains available to keyboard and screen-reader users without
-   obscuring the visual experience. */
+/* Keep the visual experience full-screen. JavaScript promotes the semantic
+   portfolio to an alternate view; before JavaScript runs, the semantic page
+   remains in normal document flow as the no-script fallback. */
+.js-enabled .semantic-portfolio {
+    display: none;
+}
+
 .semantic-portfolio {
     position: relative;
     z-index: 2;
@@ -86,6 +90,60 @@ button {
     padding: 64px max(24px, 5vw) 80px;
     color: #f4f1ec;
     background: #0a0c10;
+}
+
+.js-enabled.accessibility-open {
+    overflow: hidden;
+}
+
+.js-enabled.accessibility-open .semantic-portfolio,
+.js-enabled.no-webgl .semantic-portfolio {
+    display: block;
+}
+
+.js-enabled.accessibility-open .semantic-portfolio {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    height: 100vh;
+    margin-top: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-top: 96px;
+}
+
+#accessibility-toggle {
+    position: fixed;
+    top: 18px;
+    right: 24px;
+    z-index: 100;
+    min-height: 44px;
+    padding: 10px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    color: #ffffff;
+    background: rgba(10, 12, 16, 0.82);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+#accessibility-toggle:hover {
+    border-color: #ffc078;
+    background: rgba(28, 35, 46, 0.94);
+}
+
+.js-enabled.no-webgl #accessibility-toggle {
+    display: none;
+}
+
+.js-enabled.accessibility-open #canvas-container {
+    visibility: hidden;
+}
+
+.js-enabled.accessibility-open #instructions,
+.js-enabled.accessibility-open #look-around-hint {
+    display: none;
 }
 
 .portfolio-header,

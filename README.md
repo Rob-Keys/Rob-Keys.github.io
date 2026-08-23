@@ -31,9 +31,12 @@ npm run preview
 | Enter / Space | Open the focused portfolio topic |
 | Escape | Close details and restore focus |
 
-The semantic portfolio content is available below the 3D scene and remains
-fully usable when WebGL/WebGPU is unavailable. Use the dismissible interaction
-guide for a concise keyboard, pointer, touch, and fallback explanation.
+The visual portfolio stays full-screen on normal load. Use the **Open accessible
+view** control to switch to the semantic portfolio, which is fully usable with
+keyboard navigation and screen readers. It is also shown directly when
+WebGL/WebGPU is unavailable, and remains available without JavaScript.
+The dismissible interaction guide explains the keyboard, pointer, touch, and
+fallback paths.
 
 ## Interactive Objects
 

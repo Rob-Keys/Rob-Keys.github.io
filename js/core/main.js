@@ -10,6 +10,11 @@ import { InteractionManager } from './interactions.js';
 import { SemanticPortfolioController } from './accessibility.js';
 import { createPerfMonitor, isMobileDevice } from '../systems/utils.js';
 
+// The semantic portfolio is an alternate view once the visual experience is
+// running. Leaving this class off until the module executes preserves the
+// semantic page as a no-JavaScript fallback.
+document.body.classList.add('js-enabled');
+
 /** @typedef {import('three/webgpu').Object3D} Object3D */
 /** @typedef {import('three/webgpu').Scene} Scene */
 /** @typedef {import('three/webgpu').PerspectiveCamera} PerspectiveCamera */

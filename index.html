@@ -10,6 +10,10 @@
 <body>
     <a class="skip-link" href="#portfolio-content">Skip to portfolio content</a>
 
+    <button id="accessibility-toggle" type="button" aria-controls="portfolio-content" aria-expanded="false">
+        Open accessible view
+    </button>
+
     <!-- Keep the boot UI outside the WebGL stacking context. This lets it paint
          independently while the scene and its GPU resources are being created. -->
     <div id="loading" role="status" aria-live="polite" aria-atomic="true" aria-label="Loading portfolio">
