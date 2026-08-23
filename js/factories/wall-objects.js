@@ -15,6 +15,7 @@ export class WallObjectFactory {
         // shared loadingManager and start after the loading screen is gone.
         /** @type {{ material: THREE.MeshStandardMaterial, path: string, repeat?: { x: number, y: number } }[]} */
         this._deferredTextures = [];
+        this._deferredTexturesLoaded = false;
 
         // Use centralized origins from config
         this.origins = OBJECT_ORIGINS.wall;
@@ -158,13 +159,25 @@ export class WallObjectFactory {
         const group = new THREE.Group();
         const origin = this.origins.vinyl;
 
-        // Album cover size and spacing
-        const coverSize = 0.35;
-        const spacing = 0.36; // Space between covers (reduced for tighter grid)
-        const coverDepth = 0.01;
+        // The wall display is a tight gallery grid of physical record sleeves.
+        // Dimensions are kept in the factory's unscaled local space and enlarged
+        // once at the root, so every small detail shares the same scene scale.
+        const coverSize = 0.34;
+        const spacing = 0.37;
+        const coverDepth = 0.028;
+        const printSize = 0.302;
+        // The sleeve bevel projects past its nominal half-depth, so the printed
+        // face sits just proud of that bevel rather than z-fighting with it.
+        const printZ = 0.056;
 
-        // Album cover geometry
-        const coverGeometry = createBeveledBox(coverSize, coverSize, coverDepth, 0.004, 2);
+        // A substantial rounded cardboard sleeve gives the display a visible edge
+        // at an oblique camera angle and a soft, continuous shadow on the plaster.
+        const coverGeometry = createBeveledBox(coverSize, coverSize, coverDepth, 0.006, 3);
+        // Keep the image-bearing face planar. ExtrudeGeometry is ideal for the
+        // sleeve silhouette, but its cap UV generator is not a reliable square
+        // projection for artwork.
+        const printGeometry = new THREE.PlaneGeometry(printSize, printSize);
+        const paperEdgeGeometry = createBeveledBox(printSize + 0.006, printSize + 0.006, 0.0014, 0.001, 2);
 
         // Cover images load post-reveal (Phase 5.3) -- the vinyl wall is behind the
         // initial camera, so gating the loading screen on 4 album-art images is
@@ -176,31 +189,53 @@ export class WallObjectFactory {
             { path: 'assets/images/olivia_dean.webp', position: { x: spacing/2, y: -spacing/2 } } // Bottom right
         ];
 
-        // Sleeve edge/back material shared by every cover -- flat cardboard color, no
-        // art texture. ExtrudeGeometry groups the front/back caps under material
-        // index 0 and the extruded bevel + side walls under index 1; splitting the
-        // two here keeps the album art off the bevel,
-        // where its side UVs used to smear the artwork's edge pixels around the rim.
-        const coverSideMaterial = new THREE.MeshStandardMaterial({
-            color: 0x1c1c1c,
-            roughness: 0.6,
+        // Sleeve edge/back material is shared by all four covers. The front print
+        // is deliberately a separate mesh: ExtrudeGeometry's cap UVs are not
+        // stable enough for album art, while Plane/box UVs stay crisp and square.
+        const sleeveMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x171719,
+            roughness: 0.82,
+            metalness: 0.0,
+            clearcoat: 0.06,
+            clearcoatRoughness: 0.72,
+            envMapIntensity: 0.28
+        });
+        const paperEdgeMaterial = new THREE.MeshStandardMaterial({
+            color: 0xb9b3a8,
+            roughness: 0.86,
             metalness: 0.0
         });
 
-        // Create each album cover
+        // Create each album cover. The tiny paper edge remains visible around the
+        // art so the image reads as a printed insert rather than a lit decal.
         albumImages.forEach((album) => {
-            const coverFrontMaterial = new THREE.MeshStandardMaterial({
-                color: 0x2a2a2a,
-                roughness: 0.2,
-                metalness: 0.0
-            });
-            this._deferredTextures.push({ material: coverFrontMaterial, path: album.path });
-
-            const cover = new THREE.Mesh(coverGeometry, [coverFrontMaterial, coverSideMaterial]);
-            cover.position.set(album.position.x, album.position.y, coverDepth);
+            const cover = new THREE.Mesh(coverGeometry, sleeveMaterial);
+            cover.position.set(album.position.x, album.position.y, 0.028);
             cover.castShadow = true;
             cover.receiveShadow = true;
             group.add(cover);
+
+            const paperEdge = new THREE.Mesh(paperEdgeGeometry, paperEdgeMaterial);
+            paperEdge.position.set(album.position.x, album.position.y, printZ - 0.002);
+            paperEdge.castShadow = false;
+            paperEdge.receiveShadow = true;
+            group.add(paperEdge);
+
+            const coverArtMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                roughness: 0.2,
+                metalness: 0.0
+            });
+            coverArtMaterial.clearcoat = 0.12;
+            coverArtMaterial.clearcoatRoughness = 0.32;
+            this._deferredTextures.push({ material: coverArtMaterial, path: album.path });
+
+            const coverArt = new THREE.Mesh(printGeometry, coverArtMaterial);
+            coverArt.position.set(album.position.x, album.position.y, printZ);
+            coverArt.castShadow = false;
+            coverArt.receiveShadow = true;
+            coverArt.renderOrder = 1;
+            group.add(coverArt);
         });
 
         group.scale.set(4, 4, 4); // Must set scale before freezing matrix
@@ -215,18 +250,21 @@ export class WallObjectFactory {
      * individually as each request resolves without blocking the critical path.
      */
     loadDeferredTextures() {
+        if (this._deferredTexturesLoaded) return;
+        this._deferredTexturesLoaded = true;
         const textureLoader = new THREE.TextureLoader();
         for (const { material, path, repeat } of this._deferredTextures) {
-            const texture = textureLoader.load(path);
-            if (texture.colorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace;
-            texture.colorSpace = THREE.SRGBColorSpace;
-            if (repeat) {
-                texture.wrapS = THREE.RepeatWrapping;
-                texture.wrapT = THREE.RepeatWrapping;
-                texture.repeat.set(repeat.x, repeat.y);
-            }
-            material.map = texture;
-            material.needsUpdate = true;
+            textureLoader.load(path, (texture) => {
+                texture.colorSpace = THREE.SRGBColorSpace;
+                texture.anisotropy = 8;
+                if (repeat) {
+                    texture.wrapS = THREE.RepeatWrapping;
+                    texture.wrapT = THREE.RepeatWrapping;
+                    texture.repeat.set(repeat.x, repeat.y);
+                }
+                material.map = texture;
+                material.needsUpdate = true;
+            });
         }
     }
 }

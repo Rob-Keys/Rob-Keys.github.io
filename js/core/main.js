@@ -104,8 +104,9 @@ class Portfolio3D {
         // Fit the sun's shadow frustum to actual scene bounds now that every object exists.
         this.sceneManager.lightingSystem?.fitMainShadowToScene(scene);
 
-        // Wait for the env map, floor, diploma, and vinyl textures to actually finish
-        // loading before revealing the scene, so nothing pops in after the fade.
+        // Wait for the critical environment, floor, and furniture textures before
+        // revealing the scene. Wall art is intentionally deferred until after the
+        // fade because it sits outside the initial camera composition.
         this.updateLoadingStatus('Finishing asset imports');
         await this.sceneManager.waitForAssets();
 
