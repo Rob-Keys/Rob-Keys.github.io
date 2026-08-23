@@ -883,15 +883,17 @@ export class TechnologyFactory {
         group.add(screen);
 
         // Time update function
-        let lastTimeString = '';
+        let lastMinuteKey = -1;
+        const timeFormatter = new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit' });
         
         /** @returns {boolean} True when the clock face was actually redrawn. */
         const updateTime = () => {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const nowMs = Date.now();
+            const minuteKey = Math.floor(nowMs / 60000);
 
-            if (timeString === lastTimeString) return false;
-            lastTimeString = timeString;
+            if (minuteKey === lastMinuteKey) return false;
+            lastMinuteKey = minuteKey;
+            const timeString = timeFormatter.format(new Date(minuteKey * 60000));
 
             ctx.fillStyle = '#050505';
             ctx.fillRect(0, 0, canvas.width, canvas.height);

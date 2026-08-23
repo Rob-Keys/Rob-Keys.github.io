@@ -167,6 +167,8 @@ export const PORTFOLIO_CONFIG = Object.freeze({
         // Bloom is inherently blurred, so rendering it at a fraction of canvas
         // resolution and letting the combine pass upsample it is free.
         postProcessResolutionScale: 0.5,
+        enableBloom: true,
+        simpleGlare: false,
         // Phase 3 features
         enableContactShadows: true,
         enableDustParticles: true,
@@ -203,7 +205,8 @@ export const PORTFOLIO_CONFIG = Object.freeze({
 /**
  * @typedef {{
  *   maxPixelRatioDesktop: number, maxPixelRatioMobile: number,
- *   postProcessResolutionScale: number, enableContactShadows: boolean,
+ *   postProcessResolutionScale: number, enableBloom: boolean, simpleGlare: boolean,
+ *   enableContactShadows: boolean,
  *   enableDustParticles: boolean, dustParticleCount: number,
  *   filmGrainAmplitude: number, vignetteIntensity: number,
  *   lampShadowEnabled: boolean, ceilingShadowEnabled: boolean
@@ -231,6 +234,8 @@ export const QUALITY_TIERS = Object.freeze({
         maxPixelRatioDesktop: 1.0,
         maxPixelRatioMobile: 1.0,
         postProcessResolutionScale: 0.25,
+        enableBloom: false,
+        simpleGlare: true,
         enableDustParticles: false,
         filmGrainAmplitude: 0,
         lampShadowEnabled: false,

@@ -35,6 +35,7 @@ export class WebGPUPostProcessing {
         this.pipeline = new THREE.RenderPipeline(renderer);
         this.grainAmplitude = uniform(renderingConfig.filmGrainAmplitude);
         this.vignetteIntensity = uniform(renderingConfig.vignetteIntensity);
+        this.bloomEnabled = renderingConfig.enableBloom !== false;
 
         const scenePass = pass(scene, camera);
         scenePass.setMRT(mrt({ output, emissive }));
@@ -60,9 +61,31 @@ export class WebGPUPostProcessing {
             this.vignetteIntensity.mul(centeredUv.dot(centeredUv)).mul(2)
         );
 
+        this.sceneColor = sceneColor;
+        this.colorWithBloom = colorWithBloom;
+        this.grainNoise = grainNoise;
+        this.vignette = vignette;
+        this._updateOutputNode();
+    }
+
+    /**
+     * Enable or skip the bloom branch. The scene pass keeps its MRT definition
+     * stable for the initial shader compilation; when disabled, the emissive
+     * attachment is no longer consumed and the multi-pass bloom graph is not
+     * executed by the final pipeline.
+     * @param {boolean} enabled
+     */
+    setBloomEnabled(enabled) {
+        if (this.bloomEnabled === enabled) return;
+        this.bloomEnabled = enabled;
+        this._updateOutputNode();
+    }
+
+    _updateOutputNode() {
+        const color = this.bloomEnabled ? this.colorWithBloom : this.sceneColor;
         this.pipeline.outputNode = vec4(
-            colorWithBloom.rgb.add(grainNoise).mul(vignette),
-            colorWithBloom.a
+            color.rgb.add(this.grainNoise).mul(this.vignette),
+            color.a
         );
         this.pipeline.needsUpdate = true;
     }

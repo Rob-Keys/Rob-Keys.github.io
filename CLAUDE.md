@@ -6,37 +6,39 @@ remain usable without WebGL/WebGPU.
 
 ## Dev Server
 
-No build step. Serve with any static HTTP server. Use `npx http-server` with an absolute path — `python3 -m http.server` fails in environments where the shell's working directory is unavailable (e.g. Claude Code preview server):
+Install dependencies and use Vite for local development:
 ```
-npx http-server /Users/robkeys/Documents/code/Personal/rob_website/3D-personal-site -p 8000 --cors
+npm install
+npm run dev
 ```
-Open `http://localhost:8000`. Must use a server (ES6 modules require it).
+
+Create a production bundle with `npm run build` and serve it locally with
+`npm run preview`. Vite resolves the Three.js and GSAP packages from
+`node_modules`; the deployed site no longer uses a browser import map.
 
 ### Claude Code preview server
 
-Use `.claude/launch.json` at the repo root with `npx` and an absolute path argument:
+Use `.claude/launch.json` at the repo root with the package script:
 ```json
 {
   "version": "0.0.1",
   "configurations": [
     {
       "name": "3D Personal Site",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["http-server", "/Users/robkeys/Documents/code/Personal/rob_website/3D-personal-site", "-p", "8000", "--cors"],
-      "port": 8000
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--host", "127.0.0.1"],
+      "port": 5173
     }
   ]
 }
 ```
-Do not use `python3 -m http.server` or `bash -c "cd ... &&"` — both fail because pyenv's shell init calls `getcwd` before the `cd` runs.
-
 ## Visual Verification
 
 After making changes, use the in-app browser tools to see the result:
 
 ```
 preview_start { name: "3D Personal Site" }   // starts the server
-navigate { url: "http://localhost:8000" }     // reload after edits
+navigate { url: "http://localhost:5173" }     // reload after edits
 computer { action: "screenshot" }             // capture what's visible
 ```
 
@@ -62,7 +64,10 @@ npm run lint         # eslint js/ only
 
 ## Dependencies
 
-Runtime dependencies are loaded through the import map in `index.html` from the versions declared in `package.json`. The application uses Three.js 0.185's `WebGPURenderer` with its WebGL2 backend fallback, TSL nodes for post-processing and glare, and the modern `three/addons/` modules.
+Runtime dependencies are bundled by Vite 8 from the versions declared in
+`package.json`. The application uses Three.js 0.185's `WebGPURenderer` with
+its WebGL2 backend fallback, TSL nodes for post-processing and glare, and the
+modern `three/addons/` modules.
 
 ## File Structure
 

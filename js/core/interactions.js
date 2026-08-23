@@ -40,6 +40,9 @@ export class InteractionManager {
         this.hoveredObject = null;
         this.lastTouchTime = 0;
         this.touchStartPosition = new THREE.Vector2();
+        this.canvas = null;
+        this._pointerInsideCanvas = false;
+        this._hoverRaycastScheduled = false;
 
         // Hint glow state -- outlines appear after 5s without clicking an object
         /** @type {THREE.Group | null} */ this.hintOutlineGroup = null;
@@ -65,13 +68,21 @@ export class InteractionManager {
      * Initialize all event listeners
      */
     initEventListeners() {
-        window.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        const canvas = document.getElementById('canvas-container')?.querySelector('canvas');
+        if (canvas instanceof HTMLCanvasElement) {
+            this.canvas = canvas;
+            canvas.addEventListener('pointerenter', () => {
+                this._pointerInsideCanvas = true;
+            });
+            canvas.addEventListener('pointermove', (e) => this.onMouseMove(e));
+            canvas.addEventListener('pointerleave', () => this.onPointerLeave());
+        }
         window.addEventListener('click', (e) => this.onMouseClick(e));
         window.addEventListener('wheel', (e) => this.onMouseWheel(e));
         
         // Add touch listeners for better mobile support
-        window.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
-        window.addEventListener('touchend', (e) => this.onTouchEnd(e), { passive: false });
+        window.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: true });
+        window.addEventListener('touchend', (e) => this.onTouchEnd(e), { passive: true });
 
         // Keep the original camera shortcut when no semantic detail is open.
         document.addEventListener('keydown', (e) => {
@@ -137,9 +148,23 @@ export class InteractionManager {
      * Handle mouse movement for hover effects
      */
     onMouseMove(event) {
+        this._pointerInsideCanvas = true;
         // Update mouse position
         this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        if (this._hoverRaycastScheduled) return;
+        this._hoverRaycastScheduled = true;
+        window.requestAnimationFrame(() => {
+            this._hoverRaycastScheduled = false;
+            if (!this._pointerInsideCanvas || this.currentZoomedObject) return;
+
+            this.updateHoveredObject();
+        });
+    }
+
+    updateHoveredObject() {
+        if (!this._pointerInsideCanvas || this.currentZoomedObject) return;
 
         // Update cursor affordance on interactive objects (only when not zoomed).
         // A hover-triggered light used to live here (see git history) but its
@@ -167,6 +192,15 @@ export class InteractionManager {
                 this.hoveredObject = object;
                 this.requestRender();
             }
+        }
+    }
+
+    onPointerLeave() {
+        this._pointerInsideCanvas = false;
+        document.body.style.cursor = 'default';
+        if (this.hoveredObject !== null) {
+            this.hoveredObject = null;
+            this.requestRender();
         }
     }
 

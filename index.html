@@ -169,30 +169,11 @@
         <span class="look-around-arrow look-around-arrow-right" aria-hidden="true">→</span>
     </div>
 
-    <link rel="preload" href="assets/textures/env.hdr" as="fetch" crossorigin>
-    <link rel="preload" href="assets/textures/floor_nor.webp" as="image">
-    <link rel="preload" href="assets/textures/floor_rough.webp" as="image">
-    <link rel="preload" href="assets/textures/wood_table_worn_diff_4k_1k.webp" as="image">
-    <link rel="preload" href="assets/textures/wood_table_worn_nor_gl_4k_1k.webp" as="image">
-    <link rel="preload" href="assets/textures/wood_table_worn_rough_4k_1k.webp" as="image">
-
-    <!-- The deployed site is intentionally build-free. The import map uses the
-         same npm packages declared in package.json while keeping the runtime
-         files deployable as static assets. -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-            "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.webgpu.js",
-            "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.tsl.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/",
-            "three/": "https://cdn.jsdelivr.net/npm/three@0.185.1/",
-            "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.15.0/index.js"
-        }
-    }
-    </script>
+    <link rel="preload" href="/assets/textures/env.hdr" as="fetch" crossorigin>
+    <link rel="preload" href="/assets/textures/floor_nor.webp" as="image">
+    <link rel="preload" href="/assets/textures/floor_rough.webp" as="image">
 
     <!-- Modular application code -->
-    <script type="module" src="js/core/main.js?v=7"></script>
+    <script type="module" src="js/core/main.js"></script>
 </body>
 </html>

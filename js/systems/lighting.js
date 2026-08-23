@@ -298,35 +298,53 @@ export class LightingSystem {
         const glareSharpnessNode = uniform(glareSharpness);
         const fresnelPowerNode = uniform(fresnelPower);
 
-        const viewDirection = normalize(cameraPosition.sub(positionWorld));
-        const normal = normalize(normalWorld);
-        const fresnel = pow(float(1).sub(max(dot(viewDirection, normal), 0)), fresnelPowerNode);
-        let glareColor = vec3(0);
-
-        for (let i = 0; i < positionNodes.length; i++) {
-            const lightDirection = normalize(positionNodes[i].sub(positionWorld));
-            const halfDirection = normalize(lightDirection.add(viewDirection));
-            const specular = pow(max(dot(normal, halfDirection), 0), glareSharpnessNode.mul(10));
-            const distance = length(positionNodes[i].sub(positionWorld));
-            const attenuation = float(1).div(
-                float(1).add(float(0.05).mul(distance)).add(float(0.01).mul(distance.mul(distance)))
-            );
-            glareColor = glareColor.add(
-                colorNodes[i].mul(specular).mul(intensityNodes[i]).mul(attenuation)
-            );
-        }
-
         const material = new THREE.NodeMaterial();
         material.transparent = true;
         material.depthWrite = false;
         material.blending = THREE.AdditiveBlending;
         material.side = THREE.FrontSide;
-        material.colorNode = glareColor.add(vec3(0.9, 0.95, 1.0).mul(fresnel).mul(0.05));
-        material.opacityNode = length(glareColor).mul(glareIntensityNode).add(fresnel.mul(0.08)).clamp(0, 0.7);
+
+        const rebuildNodes = (simple) => {
+            const viewDirection = normalize(cameraPosition.sub(positionWorld));
+            const normal = normalize(normalWorld);
+            const fresnel = pow(float(1).sub(max(dot(viewDirection, normal), 0)), fresnelPowerNode);
+            let glareColor = vec3(0);
+
+            // The high tier retains the four-source screen highlight. Lower tiers
+            // use the dominant desk-lamp highlight plus fresnel, avoiding three
+            // additional distance/normalize/specular evaluations per fragment.
+            const lightIndexes = simple ? [1] : [0, 1, 2, 3];
+            for (const i of lightIndexes) {
+                const lightDirection = normalize(positionNodes[i].sub(positionWorld));
+                const halfDirection = normalize(lightDirection.add(viewDirection));
+                const specular = pow(max(dot(normal, halfDirection), 0), glareSharpnessNode.mul(10));
+                const distance = length(positionNodes[i].sub(positionWorld));
+                const attenuation = float(1).div(
+                    float(1).add(float(0.05).mul(distance)).add(float(0.01).mul(distance.mul(distance)))
+                );
+                glareColor = glareColor.add(
+                    colorNodes[i].mul(specular).mul(intensityNodes[i]).mul(attenuation)
+                );
+            }
+
+            material.colorNode = glareColor.add(vec3(0.9, 0.95, 1.0).mul(fresnel).mul(0.05));
+            material.opacityNode = length(glareColor).mul(glareIntensityNode).add(fresnel.mul(0.08)).clamp(0, 0.7);
+            material.needsUpdate = true;
+        };
+
+        material.userData.setSimpleGlare = rebuildNodes;
+        rebuildNodes(false);
 
         material.userData.lightIntensityNode = intensityNodes[0];
         this.glareMaterials.push(material);
         return material;
+    }
+
+    /** @param {boolean} simple */
+    setSimpleGlare(simple) {
+        for (const material of this.glareMaterials) {
+            material.userData.setSimpleGlare?.(simple);
+        }
     }
 
     /**

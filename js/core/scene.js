@@ -98,6 +98,8 @@ export class SceneManager {
         renderer.setSize(window.innerWidth, window.innerHeight);
         this.postProcessing?.setResolutionScale(this._renderingConfig.postProcessResolutionScale);
         this.postProcessing?.setGrainAmplitude(this._renderingConfig.filmGrainAmplitude);
+        this.postProcessing?.setBloomEnabled(this._renderingConfig.enableBloom);
+        this.lightingSystem?.setSimpleGlare(this._renderingConfig.simpleGlare);
         if (this.dustCloud) this.dustCloud.visible = this._renderingConfig.enableDustParticles;
 
         const lights = /** @type {{ deskLamp?: THREE.Light, fill?: THREE.Light } | null} */ (this.lights);

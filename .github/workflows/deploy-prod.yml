@@ -28,6 +28,13 @@ jobs:
           fetch-depth: 0
           path: source
 
+      - name: Install dependencies and build
+        working-directory: source
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+
       - name: Build trimmed prod worktree
         working-directory: source
         run: |
@@ -39,17 +46,13 @@ jobs:
           git fetch origin prod
           git worktree add -B prod /tmp/prod-worktree origin/prod
 
-          # Wipe the worktree down to bare .git, then repopulate with only
-          # the files the three.js site needs to run (see CLAUDE.md "File
-          # Structure" -- everything else is dev tooling/docs) plus
-          # wrangler.jsonc, which Cloudflare Workers Builds reads from this
-          # branch on every push and must not be dropped.
+          # Wipe the worktree down to bare .git, then repopulate with the
+          # production build plus wrangler.jsonc, which Cloudflare Workers
+          # Builds reads from this branch on every push and must not be dropped.
           find /tmp/prod-worktree -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
-          cp index.html favicon.ico lost.html wrangler.jsonc /tmp/prod-worktree/
-          cp -r css /tmp/prod-worktree/
-          cp -r js /tmp/prod-worktree/
-          cp -r assets /tmp/prod-worktree/
+          cp -r dist/. /tmp/prod-worktree/
+          cp wrangler.jsonc /tmp/prod-worktree/
 
       - name: Commit and push if changed
         working-directory: /tmp/prod-worktree

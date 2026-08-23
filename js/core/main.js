@@ -47,6 +47,7 @@ class Portfolio3D {
         this._lastRenderTime = 0;
         this._lastLoopTime = 0;
         this._animationLoopActive = false;
+        this._ambientTimer = null;
 
         // Dev-only frame profiler (Phase 0), enabled via `?perf=1`. Created in
         // init() once the renderer exists.
@@ -77,6 +78,7 @@ class Portfolio3D {
     requestRender() {
         this._lastInteractionTime = performance.now();
         this._hasUserActivity = true;
+        if (!this._animationLoopActive && !document.hidden) this.animate();
     }
 
     async init() {
@@ -122,6 +124,10 @@ class Portfolio3D {
             if (document.hidden) {
                 this.sceneManager?.renderer?.setAnimationLoop(null);
                 this._animationLoopActive = false;
+                if (this._ambientTimer !== null) {
+                    window.clearTimeout(this._ambientTimer);
+                    this._ambientTimer = null;
+                }
             } else if (!this._animationLoopActive) {
                 this.animate();
             }
@@ -262,8 +268,22 @@ class Portfolio3D {
     animate() {
         const renderer = this.sceneManager?.renderer;
         if (!renderer || this._animationLoopActive) return;
+        if (this._ambientTimer !== null) {
+            window.clearTimeout(this._ambientTimer);
+            this._ambientTimer = null;
+        }
         this._animationLoopActive = true;
         renderer.setAnimationLoop(() => this.renderFrame());
+    }
+
+    /** @param {number} delay */
+    scheduleAmbientFrame(delay) {
+        if (document.hidden || this._ambientTimer !== null) return;
+        this._ambientTimer = window.setTimeout(() => {
+            this._ambientTimer = null;
+            if (document.hidden) return;
+            this.renderFrame();
+        }, delay);
     }
 
     renderFrame() {
@@ -279,7 +299,12 @@ class Portfolio3D {
         if (!this._qualityEvalDone && this._hasUserActivity && interacting && loopInterval > 0 && loopInterval < 1000) {
             this._qualityFrameIntervals.push(loopInterval);
         }
-        if (now - this._lastRenderTime < frameInterval) return;
+        if (now - this._lastRenderTime < frameInterval) {
+            if (!this._animationLoopActive && !document.hidden) {
+                this.scheduleAmbientFrame(frameInterval - (now - this._lastRenderTime));
+            }
+            return;
+        }
         this._lastRenderTime = now;
 
         this.updateAnimations();
@@ -289,6 +314,16 @@ class Portfolio3D {
         if (!this._qualityEvalDone) this._sampleQualityTier(performance.now() - renderStart);
 
         this._perfUpdate?.();
+
+        // Keep the display-rate loop only for interaction. Ambient motion uses
+        // a timer at the already-selected cadence once the camera settles.
+        if (idleDuration >= INTERACTION_TIMEOUT_MS && this._animationLoopActive) {
+            this.sceneManager?.renderer?.setAnimationLoop(null);
+            this._animationLoopActive = false;
+            this.scheduleAmbientFrame(frameInterval || IDLE_FRAME_INTERVAL_MS);
+        } else if (!this._animationLoopActive && !document.hidden) {
+            this.scheduleAmbientFrame(frameInterval || IDLE_FRAME_INTERVAL_MS);
+        }
     }
 
     /**

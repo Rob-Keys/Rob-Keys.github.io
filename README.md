@@ -4,15 +4,21 @@ An interactive 3D portfolio built with Three.js. A desk environment where each o
 
 ## Quick Start
 
-No build step. Requires a local HTTP server (ES6 modules won't load from `file://`).
+Install dependencies and start the Vite development server:
 
 ```bash
-npx http-server /path/to/3D-personal-site -p 8000 --cors
+npm install
+npm run dev
 ```
 
-Open `http://localhost:8000`.
+Open the URL printed by Vite, normally `http://localhost:5173`.
 
-> Use `npx http-server` with an absolute path — `python3 -m http.server` fails in some environments where the shell's working directory is unavailable.
+Create and preview the production bundle with:
+
+```bash
+npm run build
+npm run preview
+```
 
 ## Controls
 
@@ -73,7 +79,9 @@ monitor-specific canvas copy lives in `js/config/content.js`; scene settings
 
 ## Deployment
 
-`prod` is a separate branch with an unrelated commit history — it holds only the files the site serves at runtime (`index.html`, `favicon.ico`, `lost.html`, `css/`, `js/`, `assets/`), no source tooling, docs, or config. Cloudflare Pages watches `prod` and rebuilds on every push to it.
+`prod` is a separate branch with an unrelated commit history — it holds only
+the Vite production output plus `wrangler.jsonc`. Cloudflare Pages watches
+`prod` and rebuilds on every push to it.
 
 There's no pull-request step. To publish:
 
@@ -81,15 +89,18 @@ There's no pull-request step. To publish:
 2. Go to the **Actions** tab → **Deploy to prod** → **Run workflow**.
 3. Optionally override the `ref` input (defaults to `main`).
 
-The workflow (`.github/workflows/deploy-prod.yml`) checks out that ref, copies just the runtime files into a `prod` worktree, and commits/pushes straight to `prod` if anything changed.
+The workflow (`.github/workflows/deploy-prod.yml`) checks out that ref, runs
+`npm ci` and `npm run build`, copies `dist/` into a `prod` worktree, and
+commits/pushes straight to `prod` if anything changed.
 
 ## Dependencies
 
-Browser modules are loaded through the import map in `index.html`; the matching
-packages in `package.json` are development-time dependencies for type checking:
+The production site is bundled by Vite 8 using the matching packages in
+`package.json`:
 
 - Three.js 0.185.1 with `WebGPURenderer`, TSL, and WebGPU-compatible addons
 - GSAP 3.15.0
+- Vite 8 with its Rolldown production bundler
 - `npm run check` for type checking and linting
 
 ## Accessibility verification
@@ -101,7 +112,9 @@ fail to confirm the semantic portfolio remains available. Use a screen reader
 to confirm the landmarks, topic names, detail heading, live status, and focus
 restoration.
 
-The site remains build-free for deployment. WebGPU post-processing uses TSL MRT bloom plus a procedural grain/vignette composite; the semantic fallback in `index.html` is revealed if both GPU backends fail.
+WebGPU post-processing uses TSL MRT bloom plus a procedural grain/vignette
+composite; the semantic fallback in `index.html` is revealed if both GPU
+backends fail.
 
 ## License
 
