@@ -69,17 +69,27 @@ export class ShelfObjectFactory {
         // distinct font per book -- uniform width/height/typography was the
         // biggest tell that these were props rather than a real shelf (Phase 5.2).
         const books = [
-            { color: 0x8B0000, width: 0.075, height: 0.42, title: 'CLEAN CODE', author: 'R. Martin', font: 'Georgia, serif' },
-            { color: 0x1e3a8a, width: 0.09,  height: 0.46, title: 'THE PRAGMATIC PROGRAMMER', author: 'Hunt & Thomas', font: 'Arial, sans-serif' },
-            { color: 0x1a472a, width: 0.06,  height: 0.38, title: 'DESIGNING DATA-INTENSIVE APPS', author: 'M. Kleppmann', font: '"Courier New", monospace' },
-            { color: 0x4a3c2a, width: 0.07,  height: 0.44, title: 'STRUCTURE AND INTERPRETATION', author: 'Abelson & Sussman', font: 'Georgia, serif' },
-            { color: 0x6b1f1f, width: 0.055, height: 0.40, title: 'THE MYTHICAL MAN-MONTH', author: 'F. Brooks', font: 'Arial, sans-serif' },
-            { color: 0x2a2a4a, width: 0.08,  height: 0.36, title: 'CRACKING THE CODING INTERVIEW', author: 'G. McDowell', font: '"Courier New", monospace' },
-            { color: 0x3a5a3a, width: 0.065, height: 0.43, title: 'REFACTORING', author: 'M. Fowler', font: 'Georgia, serif' }
+            { color: 0x8B0000, width: 0.115, height: 0.56, title: 'CLEAN CODE', author: 'R. Martin', font: 'Georgia, serif' },
+            { color: 0x1e3a8a, width: 0.135, height: 0.62, title: 'THE PRAGMATIC PROGRAMMER', author: 'Hunt & Thomas', font: 'Arial, sans-serif' },
+            { color: 0x1a472a, width: 0.095, height: 0.52, title: 'DESIGNING DATA-INTENSIVE APPS', author: 'M. Kleppmann', font: '"Courier New", monospace' },
+            { color: 0x4a3c2a, width: 0.105, height: 0.58, title: 'STRUCTURE AND INTERPRETATION', author: 'Abelson & Sussman', font: 'Georgia, serif' },
+            { color: 0x6b1f1f, width: 0.09,  height: 0.54, title: 'THE MYTHICAL MAN-MONTH', author: 'F. Brooks', font: 'Arial, sans-serif' },
+            { color: 0x2a2a4a, width: 0.12,  height: 0.50, title: 'CRACKING THE CODING INTERVIEW', author: 'G. McDowell', font: '"Courier New", monospace' },
+            { color: 0x3a5a3a, width: 0.10,  height: 0.57, title: 'REFACTORING', author: 'M. Fowler', font: 'Georgia, serif' }
         ];
 
-        const bookDepth = 0.25;
+        const bookDepth = 0.30;
         const bookGrainTexture = createPaperGrainNormalTexture();
+        const bookGeometry = createBeveledBox(1, 1, 1, 0.018, 2);
+        const bookMaterial = new THREE.MeshStandardMaterial({
+            roughness: 0.72,
+            normalMap: bookGrainTexture,
+            normalScale: new THREE.Vector2(0.10, 0.10),
+            vertexColors: true
+        });
+        const bookBodies = new THREE.InstancedMesh(bookGeometry, bookMaterial, books.length);
+        bookBodies.castShadow = true;
+        bookBodies.receiveShadow = true;
 
         // Deterministic per-book jitter (not Math.random) so lean/offset stays
         // stable across reloads instead of reshuffling the shelf every visit.
@@ -88,30 +98,31 @@ export class ShelfObjectFactory {
             return x - Math.floor(x); // 0..1
         };
 
-        let cursorX = -0.95;
+        let cursorX = -0.52;
+        const bodyMatrix = new THREE.Matrix4();
+        const bodyPosition = new THREE.Vector3();
+        const bodyScale = new THREE.Vector3();
+        const bodyQuaternion = new THREE.Quaternion();
+        const bodyColor = new THREE.Color();
+        const bookAxis = new THREE.Vector3(0, 0, 1);
+        const bookTransforms = [];
         books.forEach((data, index) => {
-            const bodyGeometry = createBeveledBox(data.width, data.height, bookDepth, 0.004, 2);
-            const bodyMaterial = new THREE.MeshStandardMaterial({
-                color: data.color,
-                roughness: 0.7,
-                normalMap: bookGrainTexture,
-                normalScale: new THREE.Vector2(0.12, 0.12)
-            });
-            const book = new THREE.Mesh(bodyGeometry, bodyMaterial);
-
             const lean = (jitter(index * 3.1) - 0.5) * 0.09; // slight random lean
             const depthOffset = (jitter(index * 5.7) - 0.5) * 0.03; // slight random depth stagger
-            book.position.set(cursorX + data.width / 2, data.height / 2 + 0.08, 0.15 + depthOffset);
-            book.rotation.z = lean;
-            book.castShadow = true;
-            book.receiveShadow = true;
-            group.add(book);
+            bodyPosition.set(cursorX + data.width / 2, data.height / 2, 0.15 + depthOffset);
+            bodyQuaternion.setFromAxisAngle(bookAxis, lean);
+            bodyScale.set(data.width, data.height, bookDepth);
+            bodyMatrix.compose(bodyPosition, bodyQuaternion, bodyScale);
+            bookBodies.setMatrixAt(index, bodyMatrix);
+            bodyColor.setHex(data.color);
+            bookBodies.setColorAt(index, bodyColor);
+            bookTransforms.push({ position: bodyPosition.clone(), quaternion: bodyQuaternion.clone() });
 
             // Spine label -- a thin plane sitting just proud of the spine's
             // front cap so the title/author text never z-fights the cover.
             const spineTexture = createBookSpineTexture(data.title, data.author, data.font, '#f0e8d8');
             const spinePlane = new THREE.Mesh(
-                new THREE.PlaneGeometry(data.width * 0.86, data.height * 0.9),
+                new THREE.PlaneGeometry(1, 1),
                 new THREE.MeshStandardMaterial({
                     map: spineTexture,
                     transparent: true,
@@ -119,12 +130,17 @@ export class ShelfObjectFactory {
                     metalness: 0.0
                 })
             );
-            spinePlane.position.set(0, 0, bookDepth / 2 + 0.01);
+            spinePlane.position.set(bodyPosition.x, bodyPosition.y, bodyPosition.z + bookDepth / 2 + 0.008);
+            spinePlane.quaternion.copy(bodyQuaternion);
+            spinePlane.scale.set(data.width * 0.86, data.height * 0.9, 1);
             spinePlane.castShadow = false;
-            book.add(spinePlane);
+            group.add(spinePlane);
 
             cursorX += data.width + 0.012;
         });
+        bookBodies.instanceMatrix.needsUpdate = true;
+        if (bookBodies.instanceColor) bookBodies.instanceColor.needsUpdate = true;
+        group.add(bookBodies);
 
         // Exposed page block: a shared unit-cube geometry instanced once per
         // book, non-uniformly scaled per instance so every book's visible page
@@ -135,21 +151,17 @@ export class ShelfObjectFactory {
         pageBlock.castShadow = true;
         pageBlock.receiveShadow = true;
 
-        cursorX = -0.95;
-        const pageThickness = 0.012;
+        const pageThickness = 0.018;
         const matrix = new THREE.Matrix4();
+        const pagePosition = new THREE.Vector3();
+        const pageScale = new THREE.Vector3();
         books.forEach((data, index) => {
-            const depthOffset = (jitter(index * 5.7) - 0.5) * 0.03;
-            const x = cursorX + data.width / 2;
-            const y = data.height + 0.08 - pageThickness / 2;
-            const z = 0.15 + depthOffset;
-            matrix.compose(
-                new THREE.Vector3(x, y, z),
-                new THREE.Quaternion(),
-                new THREE.Vector3(data.width * 0.94, pageThickness, bookDepth * 0.9)
-            );
+            const transform = bookTransforms[index];
+            pagePosition.copy(transform.position);
+            pagePosition.y += data.height / 2 - pageThickness / 2;
+            pageScale.set(data.width * 0.94, pageThickness, bookDepth * 0.9);
+            matrix.compose(pagePosition, transform.quaternion, pageScale);
             pageBlock.setMatrixAt(index, matrix);
-            cursorX += data.width + 0.012;
         });
         pageBlock.instanceMatrix.needsUpdate = true;
         group.add(pageBlock);
@@ -172,11 +184,13 @@ export class ShelfObjectFactory {
         };
 
         // === MATERIALS ===
-        const potMaterial = new THREE.MeshStandardMaterial({
+        const potMaterial = new THREE.MeshPhysicalMaterial({
             color: 0xc4713f,  // Terracotta orange
-            roughness: 0.8,
+            roughness: 0.88,
             roughnessMap: createRoughnessVariationTexture(),
-            metalness: 0.0
+            metalness: 0.0,
+            clearcoat: 0.05,
+            clearcoatRoughness: 0.85
         });
         const rimMaterial = new THREE.MeshStandardMaterial({
             color: 0xb8623a,  // Slightly darker rim
@@ -200,17 +214,17 @@ export class ShelfObjectFactory {
         });
 
         // === TERRACOTTA POT ===
-        const potGeometry = new THREE.CylinderGeometry(0.22, 0.16, 0.26, 16);
+        const potGeometry = new THREE.CylinderGeometry(0.21, 0.16, 0.28, 20);
         const pot = new THREE.Mesh(potGeometry, potMaterial);
-        pot.position.y = 0.13;  // Half height, sitting on shelf
+        pot.position.y = 0.14;  // Half height, sitting on shelf
         pot.castShadow = true;
         pot.receiveShadow = true;
         group.add(pot);
 
         // Decorative rim at top of pot
-        const rimGeometry = new THREE.TorusGeometry(0.22, 0.018, 8, 24);
+        const rimGeometry = new THREE.TorusGeometry(0.21, 0.019, 8, 24);
         const rim = new THREE.Mesh(rimGeometry, rimMaterial);
-        rim.position.y = 0.26;
+        rim.position.y = 0.28;
         rim.rotation.x = Math.PI / 2;
         rim.castShadow = true;
         group.add(rim);
@@ -219,7 +233,7 @@ export class ShelfObjectFactory {
         const soilGeometry = new THREE.SphereGeometry(0.19, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
         soilGeometry.scale(1, 0.25, 1);  // Flatten to mound shape
         const soil = new THREE.Mesh(soilGeometry, soilMaterial);
-        soil.position.y = 0.26;  // At pot rim level
+        soil.position.y = 0.28;  // At pot rim level
         soil.castShadow = true;
         group.add(soil);
 
@@ -543,7 +557,7 @@ export class ShelfObjectFactory {
         const createLeafInstancedMesh = (instances, isNewGrowth) => {
             if (instances.length === 0) return null;
             const material = new THREE.MeshStandardMaterial({
-                roughness: isNewGrowth ? 0.55 : 0.72,
+                roughness: isNewGrowth ? 0.52 : 0.68,
                 metalness: isNewGrowth ? 0.08 : 0.05,
                 side: THREE.DoubleSide,
                 vertexColors: true
@@ -584,9 +598,9 @@ export class ShelfObjectFactory {
         const group = new THREE.Group();
         const origin = this.origins.tidbyt;
 
-        const bodyWidth = 0.32;
-        const bodyHeight = 0.2;
-        const bodyDepth = 0.06;
+        const bodyWidth = 0.42;
+        const bodyHeight = 0.26;
+        const bodyDepth = 0.09;
 
         const bodyMaterial = new THREE.MeshStandardMaterial({
             color: 0x5a4632,
@@ -626,19 +640,29 @@ export class ShelfObjectFactory {
         matrixTexture.minFilter = THREE.NearestFilter;
         if (matrixTexture.colorSpace !== undefined) matrixTexture.colorSpace = THREE.SRGBColorSpace;
 
+        const screenWidth = bodyWidth * 0.82;
+        const screenHeight = bodyHeight * 0.68;
+        const bezel = new THREE.Mesh(
+            new THREE.BoxGeometry(screenWidth + 0.028, screenHeight + 0.028, 0.008),
+            new THREE.MeshStandardMaterial({ color: 0x12100e, roughness: 0.42, metalness: 0.1 })
+        );
+        bezel.position.set(0, bodyHeight / 2, bodyDepth / 2 + 0.003);
+        bezel.castShadow = false;
+        group.add(bezel);
+
         const screenMaterial = new THREE.MeshStandardMaterial({
             map: matrixTexture,
             emissive: 0xffffff,
             emissiveMap: matrixTexture,
-            emissiveIntensity: 1.4,
-            roughness: 0.4,
+            emissiveIntensity: 2.0,
+            roughness: 0.32,
             metalness: 0.0
         });
         const screen = new THREE.Mesh(
-            new THREE.PlaneGeometry(bodyWidth * 0.85, bodyHeight * 0.72),
+            new THREE.PlaneGeometry(screenWidth, screenHeight),
             screenMaterial
         );
-        screen.position.set(0, bodyHeight / 2, bodyDepth / 2 + 0.001);
+        screen.position.set(0, bodyHeight / 2, bodyDepth / 2 + 0.009);
         screen.layers.enable(1); // Bloom layer -- LEDs should glow like the monitor/lamp
         group.add(screen);
 
