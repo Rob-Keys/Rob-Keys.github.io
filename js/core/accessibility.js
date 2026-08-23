@@ -15,7 +15,6 @@ export class SemanticPortfolioController {
             ? accessibilityToggle
             : null;
         /** @type {HTMLElement | null} */ this.portfolioContent = document.getElementById('portfolio-content');
-        /** @type {HTMLElement | null} */ this.instructions = document.getElementById('instructions');
         this.init();
     }
 
@@ -40,10 +39,6 @@ export class SemanticPortfolioController {
                     this.lastInvokingControl = element;
                 }
             });
-        });
-
-        document.getElementById('dismiss-instructions')?.addEventListener('click', () => {
-            document.getElementById('instructions')?.setAttribute('hidden', '');
         });
 
         this.accessibilityToggle?.addEventListener('click', () => {
@@ -82,7 +77,6 @@ export class SemanticPortfolioController {
         this.accessibilityToggle.textContent = open ? 'Close accessible view' : 'Open accessible view';
 
         if (open) {
-            this.instructions?.setAttribute('hidden', '');
             this.portfolioContent?.focus({ preventScroll: true });
             return;
         }

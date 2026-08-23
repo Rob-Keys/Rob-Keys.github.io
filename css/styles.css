@@ -141,7 +141,6 @@ button {
     visibility: hidden;
 }
 
-.js-enabled.accessibility-open #instructions,
 .js-enabled.accessibility-open #look-around-hint {
     display: none;
 }
@@ -185,20 +184,6 @@ button {
     margin-bottom: 18px;
     color: #ffffff;
     font-size: clamp(1.4rem, 3vw, 2rem);
-}
-
-#dismiss-instructions {
-    min-width: 44px;
-    min-height: 44px;
-    border: 1px solid #677284;
-    border-radius: 6px;
-    color: #ffffff;
-    background: #18202b;
-}
-
-#dismiss-instructions:hover {
-    border-color: #ffc078;
-    background: #273444;
 }
 
 #portfolio-items > h2 {
@@ -271,7 +256,6 @@ body.no-webgl .semantic-portfolio {
     margin-top: 0;
 }
 
-body.no-webgl #instructions,
 body.no-webgl #look-around-hint {
     display: none;
 }
@@ -432,46 +416,6 @@ body.no-webgl #look-around-hint {
     75%, 100% { content: '...'; }
 }
 
-/* === INSTRUCTIONS === */
-#instructions {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    width: min(720px, calc(100vw - 32px));
-    padding: 16px 20px;
-    border-radius: 10px;
-    font-size: 16px;
-    z-index: 10;
-    animation: fadeIn 2s ease;
-    pointer-events: auto;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
-}
-
-#instructions[hidden] {
-    display: none;
-}
-
-#instructions h2 {
-    margin-bottom: 6px;
-    color: #ffffff;
-    font-size: 1rem;
-}
-
-#instructions p {
-    color: #ffffff;
-    line-height: 1.5;
-}
-
-#dismiss-instructions {
-    margin-top: 12px;
-    padding: 8px 14px;
-    border-color: #9ba7b8;
-    background: #202b39;
-}
-
 /* === MOBILE LOOK-AROUND HINT === */
 #look-around-hint {
     position: fixed;
@@ -570,30 +514,10 @@ body.no-webgl #look-around-hint {
     }
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-
-
 /* === RESPONSIVE DESIGN === */
 @media (max-width: 768px) {
     .semantic-portfolio {
         padding-right: 18px;
         padding-left: 18px;
-    }
-
-    #instructions {
-        font-size: 14px;
-        padding: 10px 20px;
-        bottom: 20px;
-    }
-}
-
-@media (max-width: 480px) {
-    #instructions {
-        font-size: 12px;
-        padding: 8px 15px;
     }
 }

@@ -221,7 +221,6 @@ class Portfolio3D {
             canvasContainer.hidden = true;
             canvasContainer.setAttribute('aria-hidden', 'true');
         }
-        document.getElementById('instructions')?.setAttribute('hidden', '');
         this.markPortfolioReady();
 
         const fallback = document.getElementById('non-webgl-fallback');
