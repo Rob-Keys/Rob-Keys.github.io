@@ -28,165 +28,251 @@ export class DeskObjectFactory {
         const group = new THREE.Group();
         const origin = this.origins.notebook;
 
-        const offsets = {
-            cover:   { x: 0,    y: -0.17, z: 0 },
-            binding: { x: -0.42, y: -0.12, z: 0 }
-        };
+        // The notebook is an open spread rather than a single closed cover. Keeping
+        // the dimensions here makes the physical proportions easy to tune as one unit.
+        const pageWidth = 0.78;
+        const pageDepth = 1.08;
+        const gutter = 0.055;
+        const pageCenters = [-((pageWidth + gutter) / 2), (pageWidth + gutter) / 2];
+        const coverWidth = pageWidth + 0.09;
+        const coverY = -0.17;
+        const pageThickness = 0.005;
+        const pageCount = 8;
+        const pageStep = 0.004;
+        const pageY = coverY + 0.026;
+        const topPageY = pageY + pageCount * pageStep;
 
-        const coverGeometry = createBeveledBox(0.9, 0.04, 1.2, 0.006, 2);
         const coverMaterial = new THREE.MeshStandardMaterial({
-            color: 0x2c3e50,
-            roughness: 0.7,
+            color: 0x263849,
+            roughness: 0.76,
             roughnessMap: createRoughnessVariationTexture(),
-            metalness: 0.1
+            metalness: 0.04
         });
-        const cover = new THREE.Mesh(coverGeometry, coverMaterial);
-        cover.position.set(offsets.cover.x, offsets.cover.y, offsets.cover.z);
-        cover.castShadow = true;
-        cover.receiveShadow = true;
-        group.add(cover);
-
-        // Create canvas for handwritten text
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 700; // Approx aspect ratio of 0.54/0.74
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Failed to get 2D context for notebook canvas');
-
-        // Paper background
-        ctx.fillStyle = '#f8f4e8';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Blue lines
-        ctx.strokeStyle = '#aaccff';
-        ctx.lineWidth = 2;
-        const lineHeight = 50;
-        const topMargin = 80;
-        
-        for (let y = topMargin; y < canvas.height; y += lineHeight) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(canvas.width, y);
-            ctx.stroke();
-        }
-
-        // Red margin line
-        ctx.strokeStyle = '#ffcccc';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(70, 0);
-        ctx.lineTo(70, canvas.height);
-        ctx.stroke();
-
-        // Handwritten text
-        ctx.font = 'bold 28px "Segoe Print", "Ink Free", "Bradley Hand", "Comic Sans MS", cursive';
-        ctx.fillStyle = '#1a1a4a'; // Dark blue ink
-        ctx.textBaseline = 'bottom';
-
-        const textLines = [
-            "Personal Projects:",
-            "",
-            "SweetHopeBakeryy - Bakery site for sister: written in PHP and then migrated to JS",
-            "",
-            "Tidbyt - Unique clock app for physical 'Tidbyt' pixel display, in custom language",
-            "",
-            "Variety - Contributed to OSS Linux wallpaper manager",
-        ];
-
-        let currentY = topMargin + lineHeight; 
-        const textX = 85;
-        const maxWidth = 380;
-
-        textLines.forEach(text => {
-            const words = text.split(' ');
-            let line = '';
-            
-            for (let n = 0; n < words.length; n++) {
-                const testLine = line + words[n] + ' ';
-                const metrics = ctx.measureText(testLine);
-                const testWidth = metrics.width;
-                if (testWidth > maxWidth && n > 0) {
-                    ctx.fillText(line, textX, currentY - 10);
-                    line = words[n] + ' ';
-                    currentY += lineHeight;
-                } else {
-                    line = testLine;
-                }
-            }
-            ctx.fillText(line, textX, currentY - 10);
-            currentY += lineHeight;
-        });
-
-        const pageTexture = new THREE.CanvasTexture(canvas);
-        if (pageTexture.colorSpace !== undefined) pageTexture.colorSpace = THREE.SRGBColorSpace;
-        pageTexture.colorSpace = THREE.SRGBColorSpace;
-
-        // Bottom 7 pages — merged into a single draw call (identical material)
         const paperGrainTexture = createPaperGrainNormalTexture();
         const plainPageMaterial = new THREE.MeshStandardMaterial({
-            color: 0xf8f4e8,
-            roughness: 0.95,
+            color: 0xf4efe2,
+            roughness: 0.96,
             metalness: 0.0,
             normalMap: paperGrainTexture,
-            normalScale: new THREE.Vector2(0.15, 0.15)
+            normalScale: new THREE.Vector2(0.12, 0.12)
         });
-        const pageBaseGeometry = new THREE.BoxGeometry(0.81, 0.006, 1.11);
-        const bottomPageGeometries = [];
-        for (let i = 0; i < 7; i++) {
-            const pg = pageBaseGeometry.clone();
-            pg.translate(
-                offsets.cover.x + 0.015,
-                offsets.cover.y + 0.025 + (i * 0.006),
-                offsets.cover.z
-            );
-            bottomPageGeometries.push(pg);
+        const spineMaterial = new THREE.MeshStandardMaterial({
+            color: 0x17222a,
+            roughness: 0.86,
+            metalness: 0.02
+        });
+
+        // Subtle paper lines and blue-black ink keep the pages legible at close zoom
+        // without turning the notebook into a flat UI card.
+        const createPageTexture = (side) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 900;
+            canvas.height = 1240;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('Failed to get 2D context for notebook page');
+
+            const paper = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            paper.addColorStop(0, '#faf6ea');
+            paper.addColorStop(0.55, '#f3eddf');
+            paper.addColorStop(1, '#e9e0cf');
+            ctx.fillStyle = paper;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const topMargin = 150;
+            const lineHeight = 78;
+            ctx.strokeStyle = 'rgba(137, 171, 190, 0.46)';
+            ctx.lineWidth = 2;
+            for (let y = topMargin; y < canvas.height - 24; y += lineHeight) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = 'rgba(190, 111, 111, 0.44)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(112, 0);
+            ctx.lineTo(112, canvas.height);
+            ctx.stroke();
+
+            // The fold-side shading is deliberately painted into the paper texture,
+            // while the actual gutter remains real geometry and casts a shadow.
+            const foldX = side === 'left' ? canvas.width - 42 : 42;
+            const foldGradient = ctx.createLinearGradient(foldX - 38, 0, foldX + 38, 0);
+            foldGradient.addColorStop(0, 'rgba(85, 67, 48, 0)');
+            foldGradient.addColorStop(0.5, 'rgba(85, 67, 48, 0.10)');
+            foldGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = foldGradient;
+            ctx.fillRect(foldX - 38, 0, 76, canvas.height);
+
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillStyle = '#202f43';
+            ctx.font = 'italic 34px "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive';
+            ctx.fillText(side === 'left' ? 'notes / ideas' : 'personal projects', 145, 113);
+
+            ctx.strokeStyle = 'rgba(32, 47, 67, 0.72)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(145, 126);
+            ctx.lineTo(side === 'left' ? 360 : 480, 126);
+            ctx.stroke();
+
+            ctx.fillStyle = '#1d2b3c';
+            ctx.font = '34px "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive';
+
+            const drawWrapped = (text, x, y, maxWidth, step) => {
+                const words = text.split(' ');
+                let line = '';
+                let currentY = y;
+                for (const word of words) {
+                    const candidate = line ? `${line} ${word}` : word;
+                    if (ctx.measureText(candidate).width > maxWidth && line) {
+                        ctx.fillText(line, x, currentY);
+                        currentY += step;
+                        line = word;
+                    } else {
+                        line = candidate;
+                    }
+                }
+                if (line) {
+                    ctx.fillText(line, x, currentY);
+                    currentY += step;
+                }
+                return currentY;
+            };
+
+            const writeSection = (label, body, y) => {
+                ctx.font = 'bold 36px "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive';
+                ctx.fillText(label, 145, y);
+                ctx.font = '34px "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive';
+                return drawWrapped(body, 145, y + 54, 660, 62) + 34;
+            };
+
+            let currentY = 224;
+            if (side === 'left') {
+                currentY = writeSection('SweetHope Bakery', 'helped my sister move the bakery site from PHP to JS — keep the warm, homemade feeling in every tiny detail.', currentY);
+                currentY = writeSection('little experiments', 'build the small version first, then make it feel good. that is usually where the best ideas hide.', currentY);
+                writeSection('next up', 'a gentler project page, with less noise and more room for the work to speak.', currentY);
+            } else {
+                currentY = writeSection('Tidbyt', 'a unique clock app for the physical pixel display, written in its custom language.', currentY);
+                currentY = writeSection('Variety', 'contributed to an open-source Linux wallpaper manager. learned a lot about making useful tools feel simple.', currentY);
+                writeSection('remember', 'ship the thoughtful version.', currentY);
+            }
+
+            // A few imperfect marks make the page feel handled, not typeset.
+            ctx.strokeStyle = 'rgba(29, 43, 60, 0.58)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(150, 1085);
+            ctx.lineTo(174, 1108);
+            ctx.lineTo(218, 1062);
+            ctx.stroke();
+            ctx.font = 'italic 27px "Segoe Print", "Bradley Hand", cursive';
+            ctx.fillText(side === 'left' ? 'keep making things' : '— rk', 600, 1138);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.colorSpace = THREE.SRGBColorSpace;
+            texture.anisotropy = 4;
+            return texture;
+        };
+
+        const pageTextures = [createPageTexture('left'), createPageTexture('right')];
+
+        // Separate cover boards make the spread feel like a real bound book. The
+        // center cloth strip sits below the pages and remains visible in the gutter.
+        const coverGeometry = createBeveledBox(coverWidth, 0.04, pageDepth + 0.08, 0.012, 3);
+        pageCenters.forEach((x) => {
+            const cover = new THREE.Mesh(coverGeometry, coverMaterial);
+            cover.position.set(x, coverY, 0);
+            cover.castShadow = true;
+            cover.receiveShadow = true;
+            group.add(cover);
+        });
+
+        const spine = new THREE.Mesh(
+            createBeveledBox(gutter + 0.035, 0.052, pageDepth + 0.06, 0.014, 3),
+            spineMaterial
+        );
+        spine.position.set(0, coverY + 0.018, 0);
+        spine.castShadow = true;
+        spine.receiveShadow = true;
+        group.add(spine);
+
+        const pageGeometry = new THREE.BoxGeometry(pageWidth, pageThickness, pageDepth);
+        /** @type {THREE.BufferGeometry[][]} */
+        const stackGeometries = [[], []];
+        for (let i = 0; i < pageCount; i++) {
+            pageCenters.forEach((x, sideIndex) => {
+                const page = pageGeometry.clone();
+                page.translate(x, pageY + (i * pageStep), 0);
+                stackGeometries[sideIndex].push(page);
+            });
         }
-        const mergedPages = new THREE.Mesh(
-            BufferGeometryUtils.mergeGeometries(bottomPageGeometries),
-            plainPageMaterial
-        );
-        mergedPages.castShadow = true;
-        mergedPages.receiveShadow = true;
-        group.add(mergedPages);
+        stackGeometries.forEach((geometries) => {
+            const pageStack = new THREE.Mesh(
+                BufferGeometryUtils.mergeGeometries(geometries),
+                plainPageMaterial
+            );
+            pageStack.castShadow = true;
+            pageStack.receiveShadow = true;
+            group.add(pageStack);
+        });
 
-        // Top page with text texture
-        const topPageGeometry = new THREE.BoxGeometry(0.81, 0.006, 1.11);
-        const textMat = new THREE.MeshStandardMaterial({
-            map: pageTexture,
-            roughness: 0.95,
+        pageCenters.forEach((x, sideIndex) => {
+            const textMaterial = new THREE.MeshStandardMaterial({
+                map: pageTextures[sideIndex],
+                roughness: 0.96,
+                metalness: 0.0,
+                color: 0xffffff,
+                normalMap: paperGrainTexture,
+                normalScale: new THREE.Vector2(0.12, 0.12)
+            });
+            const topPage = new THREE.Mesh(pageGeometry, [
+                plainPageMaterial, plainPageMaterial,
+                textMaterial, plainPageMaterial,
+                plainPageMaterial, plainPageMaterial
+            ]);
+            topPage.position.set(x, topPageY, 0);
+            topPage.castShadow = true;
+            topPage.receiveShadow = true;
+            group.add(topPage);
+        });
+
+        // A slightly darker page block at each outer edge makes the individual
+        // sheets read in profile when the camera is near the desk surface.
+        const pageEdgeMaterial = new THREE.MeshStandardMaterial({
+            color: 0xd8cfbe,
+            roughness: 0.98,
             metalness: 0.0,
-            color: 0xffffff,
             normalMap: paperGrainTexture,
-            normalScale: new THREE.Vector2(0.15, 0.15)
+            normalScale: new THREE.Vector2(0.08, 0.08)
         });
-        const topPage = new THREE.Mesh(topPageGeometry, [
-            plainPageMaterial, plainPageMaterial,
-            textMat, plainPageMaterial,
-            plainPageMaterial, plainPageMaterial
-        ]);
-        topPage.position.set(
-            offsets.cover.x + 0.015,
-            offsets.cover.y + 0.025 + (7 * 0.006),
-            offsets.cover.z
-        );
-        topPage.castShadow = true;
-        topPage.receiveShadow = true;
-        group.add(topPage);
+        const pageBlockHeight = (topPageY - pageY) + pageThickness;
+        pageCenters.forEach((x) => {
+            const outerEdge = x + Math.sign(x) * (pageWidth / 2 - 0.004);
+            const pageBlock = new THREE.Mesh(
+                new THREE.BoxGeometry(0.008, pageBlockHeight, pageDepth * 0.94),
+                pageEdgeMaterial
+            );
+            pageBlock.position.set(outerEdge, pageY + (pageBlockHeight / 2) - 0.002, 0);
+            pageBlock.castShadow = true;
+            pageBlock.receiveShadow = true;
+            group.add(pageBlock);
+        });
 
-        const bindingGeometry = new THREE.BoxGeometry(0.06, 0.08, 1.17);
-        const bindingMaterial = new THREE.MeshStandardMaterial({
-            color: 0x1a1a1a,
-            roughness: 0.8,
-            metalness: 0.0
-        });
-        const binding = new THREE.Mesh(bindingGeometry, bindingMaterial);
-        binding.position.set(offsets.binding.x, offsets.binding.y, offsets.binding.z);
-        binding.castShadow = true;
-        binding.receiveShadow = true;
-        group.add(binding);
+        // Paper-colored inner edges hide the hard box seam while preserving a dark
+        // cloth reveal in the center, like a notebook opened on a desk.
+        const gutterShadow = new THREE.Mesh(
+            new THREE.BoxGeometry(gutter * 0.72, 0.008, pageDepth * 0.94),
+            new THREE.MeshStandardMaterial({ color: 0x7c6d5b, roughness: 0.95 })
+        );
+        gutterShadow.position.set(0, topPageY + 0.004, 0);
+        gutterShadow.castShadow = true;
+        group.add(gutterShadow);
 
         // Contact shadow for realistic grounding (Phase 3.1)
-        addContactShadow(group, 1.0, 1.3, -0.19);
+        addContactShadow(group, 1.9, 1.35, -0.19);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'notebook', label: 'Notebook - Personal Projects' };
