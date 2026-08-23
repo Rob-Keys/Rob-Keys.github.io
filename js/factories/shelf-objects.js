@@ -4,6 +4,8 @@
  * Handles books, plants, and other items that sit on shelves
  */
 
+import * as THREE from 'three/webgpu';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import {
     addContactShadow,
     applyOrigin,
@@ -51,10 +53,7 @@ function createBookSpineTexture(title, author, font, textColor) {
 }
 
 export class ShelfObjectFactory {
-    constructor(scene) {
-        this.scene = scene;
-        this.interactiveObjects = [];
-
+    constructor() {
         // Use centralized origins from config
         this.origins = OBJECT_ORIGINS.shelf;
     }
@@ -157,7 +156,6 @@ export class ShelfObjectFactory {
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'books', label: 'Books - Knowledge Base' };
-        this.interactiveObjects.push(group);
         return group;
     }
 
@@ -167,7 +165,7 @@ export class ShelfObjectFactory {
 
         // Deterministic per-leaf jitter (not Math.random) so the plant's shape stays
         // stable across reloads instead of reshuffling on every page load (P1-1,
-        // REALISM_PERF_PLAN.md), matching the pattern already used for the books.
+        // matching the pattern already used for the books.
         const jitter = (seed) => {
             const x = Math.sin(seed * 12.9898) * 43758.5453;
             return x - Math.floor(x); // 0..1
@@ -228,7 +226,7 @@ export class ShelfObjectFactory {
         // === HEART-SHAPED LEAF GEOMETRY ===
         // Built once at unit scale and reused across every instance; per-leaf size
         // is applied via the instance matrix's uniform scale instead of baking a
-        // unique geometry per leaf (P1-1, REALISM_PERF_PLAN.md). The curvature below
+        // unique geometry per leaf. The curvature below
         // is a function of local (unit-scale) coordinates, so a uniform post-scale
         // reproduces exactly what baking `scale` into w/h/curveFactor used to produce.
         const createHeartLeaf = () => {
@@ -431,7 +429,7 @@ export class ShelfObjectFactory {
         // draw calls below; the 56 leaves are collected as instance transforms for
         // two InstancedMeshes (regular vs. new-growth). This replaces what used to
         // be ~127 individual meshes/materials -- roughly half the scene's draw calls
-        // -- with ~4 (P1-1, REALISM_PERF_PLAN.md).
+        // -- with ~4.
         const vineGeometries = [];
         const nodeGeometries = [];
         /** @type {{ matrix: THREE.Matrix4, isNewGrowth: boolean, variation: number }[]} */
@@ -519,7 +517,7 @@ export class ShelfObjectFactory {
 
         // One merged mesh for all 11 vine tubes (same material already)
         const vine = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries(vineGeometries),
+            BufferGeometryUtils.mergeGeometries(vineGeometries),
             vineMaterial
         );
         vine.castShadow = true;
@@ -527,7 +525,7 @@ export class ShelfObjectFactory {
 
         // One merged mesh for all 56 vine nodes
         const nodes = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries(nodeGeometries),
+            BufferGeometryUtils.mergeGeometries(nodeGeometries),
             nodeMaterial
         );
         nodes.castShadow = true;
@@ -573,7 +571,6 @@ export class ShelfObjectFactory {
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'shelfPlant', label: 'Pothos - Work-Life Balance' };
-        this.interactiveObjects.push(group);
         return group;
     }
 
@@ -649,11 +646,6 @@ export class ShelfObjectFactory {
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'tidbyt', label: 'Tidbyt - Daily Dashboard' };
-        this.interactiveObjects.push(group);
         return group;
-    }
-
-    getInteractiveObjects() {
-        return this.interactiveObjects;
     }
 }

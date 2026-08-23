@@ -2,11 +2,8 @@
 /**
  * Configuration file for portfolio settings.
  * Contains technical configuration: shadows, lighting, materials, colors, zoom, and scene settings.
- * For content data (text displayed in the portfolio), see content.js.
+ * Monitor copy is rendered from the small canvas-specific source in content.js.
  */
-
-// Re-export content data for backward compatibility
-export { CONTENT_DATA, SHARED_CONTENT } from './content.js';
 
 /**
  * @typedef {{ x: number, y: number, z: number, rotationX: number, rotationY: number, rotationZ: number }} Origin
@@ -14,8 +11,8 @@ export { CONTENT_DATA, SHARED_CONTENT } from './content.js';
  * @typedef {{ distance: number, yOffset: number, targetYOffset: number, useRotation?: boolean }} ZoomSettings
  */
 
-// shadow.radius fields were removed here (P0-5, REALISM_PERF_PLAN.md): the renderer
-// uses THREE.PCFSoftShadowMap, and r128's PCF-soft shader path uses a fixed kernel
+// shadow.radius fields were removed here: the renderer
+// uses THREE.PCFSoftShadowMap; keep the value centralized for backend parity
 // that ignores shadow.radius entirely. Every radius value that used to live here was
 // dead config nobody could actually tune.
 export const SHADOW_CONFIG = Object.freeze({

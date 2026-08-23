@@ -4,6 +4,8 @@
  * Handles monitor, keyboard, mouse, laptop, and other tech items
  */
 
+import * as THREE from 'three/webgpu';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import {
     applyOrigin,
     createBeveledBox,
@@ -17,15 +19,12 @@ import { LIGHTING_CONFIG, OBJECT_ORIGINS } from '../config/config.js';
 import { MonitorRenderer } from './monitor-renderer.js';
 
 export class TechnologyFactory {
-    constructor(scene, lightingSystem = null) {
-        this.scene = scene;
+    constructor(lightingSystem = null) {
         this.lightingSystem = lightingSystem;
-        this.interactiveObjects = [];
-
         // Use centralized origins from config
         this.origins = OBJECT_ORIGINS.technology;
 
-        // Renders the initial screen content (P2-4, REALISM_PERF_PLAN.md): the monitor
+        // Renders the initial screen content: the monitor
         // used to hand-draw a chrome-less static page here, then swap to MonitorRenderer's
         // full browser-window rendering on the first scroll tick, visibly changing the
         // screen's design. Using the same renderer for the initial frame means there's
@@ -56,30 +55,13 @@ export class TechnologyFactory {
             logo:        { x: 0,    y: -0.07, z: 0.02  }   // Logo on front
         };
 
-        // Placeholder background shown for the first frame or two; the real page
-        // content (browser chrome + all sections) renders once, deferred below, so
-        // scene init isn't blocked by seven sections' worth of text layout.
-        const canvas = document.createElement('canvas');
-        canvas.width = 1024;
-        canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Failed to get 2D context for monitor canvas');
-        ctx.fillStyle = '#f5f5f5';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Render the same browser-window content used for scrolling before the
+        // monitor enters the scene. This removes the first-frame/first-scroll design
+        // swap and leaves MonitorRenderer as the single content source (P2-4).
+        const texture = new THREE.CanvasTexture(this.monitorRenderer.createMonitorCanvas(0));
 
-        const texture = new THREE.CanvasTexture(canvas);
-
-        requestAnimationFrame(() => setTimeout(() => {
-            texture.image = this.monitorRenderer.createMonitorCanvas(0);
-            texture.needsUpdate = true;
-        }, 0));
-
-        // Set color space for correct color representation (compatible with r128+)
-        if (texture.colorSpace !== undefined) {
-            texture.colorSpace = THREE.SRGBColorSpace;
-        } else if (THREE.sRGBEncoding !== undefined) {
-            texture.encoding = THREE.sRGBEncoding;
-        }
+        // Canvas pixels represent display colors, so keep the texture in sRGB.
+        texture.colorSpace = THREE.SRGBColorSpace;
         
         texture.anisotropy = 16;
         texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -155,12 +137,10 @@ export class TechnologyFactory {
         }
         group.add(glareOverlay);
 
-        // RectAreaLight to simulate even light from the rectangular screen surface
-        // Width and height match the screen dimensions
-        const screenLight = new THREE.RectAreaLight(0xd0e0ff, 3.0, 3.2, 1.4);
+        // A point-based screen bounce keeps the same cool desk illumination
+        // without requiring WebGPU's optional LTC lookup textures.
+        const screenLight = new THREE.PointLight(0xd0e0ff, 0.85, 4.5, 2);
         screenLight.position.set(offsets.screen.x, offsets.screen.y, offsets.screen.z + 0.05);
-        // Point forward (away from screen surface)
-        screenLight.lookAt(offsets.screen.x, offsets.screen.y, offsets.screen.z + 2);
         group.add(screenLight);
 
         // Store light reference for external access
@@ -223,7 +203,7 @@ export class TechnologyFactory {
             buttonGeometries.push(bg);
         }
         const mergedButtons = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries(buttonGeometries),
+            BufferGeometryUtils.mergeGeometries(buttonGeometries),
             buttonMaterial
         );
         mergedButtons.castShadow = true;
@@ -256,7 +236,7 @@ export class TechnologyFactory {
         const lowerJointGeo = jointGeometry.clone();
         lowerJointGeo.translate(offsets.lowerJoint.x, offsets.lowerJoint.y, offsets.lowerJoint.z);
         const mergedJoints = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries([upperJointGeo, lowerJointGeo]),
+            BufferGeometryUtils.mergeGeometries([upperJointGeo, lowerJointGeo]),
             jointMaterial
         );
         mergedJoints.castShadow = true;
@@ -313,7 +293,7 @@ export class TechnologyFactory {
             return fg;
         });
         const mergedFeet = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries(footGeometries),
+            BufferGeometryUtils.mergeGeometries(footGeometries),
             footMaterial
         );
         mergedFeet.castShadow = true;
@@ -334,7 +314,6 @@ export class TechnologyFactory {
         applyOrigin(group, origin, true); // Static object
         group.userData.name = 'monitor';
         group.userData.label = 'Monitor - About Me';
-        this.interactiveObjects.push(group);
         return group;
     }
 
@@ -502,7 +481,7 @@ export class TechnologyFactory {
         keycapInstances.receiveShadow = true;
 
         // Legends are printed via a shared atlas sampled per instance, so the
-        // keyboard still renders in one draw call (P2-9, REALISM_PERF_PLAN.md).
+        // keyboard still renders in one draw call.
         applyKeycapLegends(keycapInstances, keyTransforms.map((transform) => ({
             label: transform.label,
             aspect: transform.scaleX / transform.scaleZ
@@ -533,7 +512,6 @@ export class TechnologyFactory {
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'keyboard', label: 'Keyboard - My Skills' };
-        this.interactiveObjects.push(group);
         return group;
     }
 
@@ -632,7 +610,6 @@ export class TechnologyFactory {
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'mouse', label: 'Mouse - Navigation & Tools' };
-        this.interactiveObjects.push(group);
         return group;
     }
 
@@ -685,7 +662,7 @@ export class TechnologyFactory {
         laptopKeyGeometries.push(spaceGeo);
 
         const mergedLaptopKeys = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries(laptopKeyGeometries),
+            BufferGeometryUtils.mergeGeometries(laptopKeyGeometries),
             keyMaterial
         );
         mergedLaptopKeys.castShadow = true;
@@ -777,12 +754,8 @@ export class TechnologyFactory {
             texture.needsUpdate = true;
         }, 0));
 
-        // Set color space for correct color representation (compatible with r128+)
-        if (texture.colorSpace !== undefined) {
-            texture.colorSpace = THREE.SRGBColorSpace;
-        } else if (THREE.sRGBEncoding !== undefined) {
-            texture.encoding = THREE.sRGBEncoding;
-        }
+        // Canvas pixels represent display colors, so keep the texture in sRGB.
+        texture.colorSpace = THREE.SRGBColorSpace;
 
         // Display screen on the lid with moderate emissive glow
         const screenGeometry = new THREE.PlaneGeometry(1.3, 0.8);
@@ -830,7 +803,7 @@ export class TechnologyFactory {
         screenLid.add(laptopGlareOverlay);
 
         // The laptop screen used to also carry a RectAreaLight for even rectangular
-        // illumination -- deleted (P1-4, REALISM_PERF_PLAN.md): the screen's emissive
+        // illumination -- deleted: the screen's emissive
         // material plus bloom already sell the glow, and the bounce PointLight below
         // provides the soft keyboard/desk fill a RectAreaLight would have added, at a
         // fraction of the per-fragment cost.
@@ -869,7 +842,6 @@ export class TechnologyFactory {
         }
 
         group.userData = { name: 'laptop', label: 'Laptop - Work Experience' };
-        this.interactiveObjects.push(group);
         return group;
     }
 
@@ -899,7 +871,7 @@ export class TechnologyFactory {
 
         const texture = new THREE.CanvasTexture(canvas);
         if (texture.colorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace;
-        else if (THREE.sRGBEncoding !== undefined) texture.encoding = THREE.sRGBEncoding;
+        texture.colorSpace = THREE.SRGBColorSpace;
 
         const screenGeometry = new THREE.PlaneGeometry(0.6, 0.3);
         const screenMaterial = new THREE.MeshBasicMaterial({
@@ -940,11 +912,6 @@ export class TechnologyFactory {
 
         applyOrigin(group, origin);
         group.userData = { name: 'clock', label: 'Digital Clock', updateTime };
-        this.interactiveObjects.push(group);
         return group;
-    }
-
-    getInteractiveObjects() {
-        return this.interactiveObjects;
     }
 }

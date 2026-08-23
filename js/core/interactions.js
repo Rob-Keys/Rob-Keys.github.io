@@ -4,23 +4,24 @@
  * Manages user interactions, raycasting, camera zoom, and UI panels.
  */
 
+import * as THREE from 'three/webgpu';
+import { gsap } from 'gsap';
 import { PORTFOLIO_CONFIG, ZOOM_CONFIG, INTERACTION_CONFIG } from '../config/config.js';
 import { MonitorRenderer } from '../factories/monitor-renderer.js';
 
 export class InteractionManager {
     /**
      * @param {THREE.Camera} camera
-     * @param {import('three').OrbitControls} controls
+     * @param {import('three/addons/controls/OrbitControls.js').OrbitControls} controls
      * @param {THREE.Object3D[]} interactiveObjects
      * @param {THREE.Scene} scene
-     * @param {(bloomAffecting?: boolean) => void} [requestRender] - Notifies the
-     *   render-on-demand loop (js/core/main.js) that a frame is needed. Pass
-     *   `bloomAffecting: true` when the change touches bloom-layer content or
-     *   moves the camera; defaults to a no-op so this class works standalone.
+     * @param {() => void} [requestRender] - Notifies the render-on-demand loop
+     *   that user input occurred.
      * @param {MonitorRenderer} [monitorRenderer] - Shared monitor renderer used to
      *   avoid retaining duplicate offscreen content canvases.
+     * @param {import('./accessibility.js').SemanticPortfolioController} [semanticPortfolio]
      */
-    constructor(camera, controls, interactiveObjects, scene, requestRender = () => {}, monitorRenderer = new MonitorRenderer()) {
+    constructor(camera, controls, interactiveObjects, scene, requestRender = () => {}, monitorRenderer = new MonitorRenderer(), semanticPortfolio = undefined) {
         this.camera = camera;
         this.controls = controls;
         this.interactiveObjects = interactiveObjects;
@@ -47,10 +48,17 @@ export class InteractionManager {
         this.hintTimer = null;
         this.HINT_DELAY = INTERACTION_CONFIG.hintDelay;
 
+        this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        this.semanticPortfolio = semanticPortfolio;
+
         // Monitor renderer for canvas content
         this.monitorRenderer = monitorRenderer;
 
         this.initEventListeners();
+        this.semanticPortfolio?.setActivationHandler((name, control) => this.activateObjectByName(name, control));
+        this.semanticPortfolio?.setCloseHandler(() => {
+            if (this.currentZoomedObject) this.resetCamera();
+        });
     }
 
     /**
@@ -65,21 +73,45 @@ export class InteractionManager {
         window.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
         window.addEventListener('touchend', (e) => this.onTouchEnd(e), { passive: false });
 
-        // Close panel with Escape key
+        // Keep the original camera shortcut when no semantic detail is open.
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.currentZoomedObject) {
+            if (e.key === 'Escape' && !e.defaultPrevented && this.currentZoomedObject) {
                 this.resetCamera();
             }
         });
+
+    }
+
+    /** @param {string} name @param {HTMLElement} [control] */
+    activateObjectByName(name, control) {
+        const object = this.interactiveObjects.find(item => item.userData?.name === name) || null;
+        if (object) this.activateObject(object, control);
+        else this.semanticPortfolio?.openDetails(name, control);
+    }
+
+    /** @param {THREE.Object3D} object @param {HTMLElement} [control] */
+    activateObject(object, control = undefined) {
+        this.hideHint();
+        this.startHintTimer();
+
+        if (this.currentZoomedObject && object === this.currentZoomedObject) {
+            this.resetCamera();
+        } else {
+            this.zoomToObject(object);
+        }
+
+        this.semanticPortfolio?.openDetails(object.userData.name, control);
     }
 
     onTouchStart(event) {
+        if (event.target instanceof Element && !document.getElementById('canvas-container')?.contains(event.target)) return;
         if (event.touches.length > 0) {
             this.touchStartPosition.set(event.touches[0].clientX, event.touches[0].clientY);
         }
     }
 
     onTouchEnd(event) {
+        if (event.target instanceof Element && !document.getElementById('canvas-container')?.contains(event.target)) return;
         if (event.changedTouches.length > 0) {
             const touch = event.changedTouches[0];
             const dx = touch.clientX - this.touchStartPosition.x;
@@ -112,9 +144,9 @@ export class InteractionManager {
         // Update cursor affordance on interactive objects (only when not zoomed).
         // A hover-triggered light used to live here (see git history) but its
         // `visible` flag was never flipped back to true after creation, so it never
-        // actually illuminated anything — it just forced a full bloom-composer
+        // actually illuminated anything — it just forced a full post-processing
         // re-render on every mousemove for zero visual effect (P0-4,
-        // REALISM_PERF_PLAN.md). The cursor swap is the only surviving affordance,
+        // The cursor swap is the only surviving affordance,
         // and requestRender only fires on the object identity actually changing.
         if (!this.currentZoomedObject) {
             this.raycaster.setFromCamera(this.mouse, this.camera);
@@ -133,7 +165,7 @@ export class InteractionManager {
 
             if (this.hoveredObject !== object) {
                 this.hoveredObject = object;
-                this.requestRender(false);
+                this.requestRender();
             }
         }
     }
@@ -142,6 +174,9 @@ export class InteractionManager {
      * Handle mouse clicks on objects
      */
     onMouseClick(event) {
+        const canvasContainer = document.getElementById('canvas-container');
+        if (event.type === 'click' && event.target instanceof Element && !canvasContainer?.contains(event.target)) return;
+
         // Ignore native click events if we just handled a touch tap
         if (event.type === 'click' && Date.now() - this.lastTouchTime < 500) return;
 
@@ -161,23 +196,7 @@ export class InteractionManager {
             }
 
             if (clickedObject) {
-                // Hide hint outlines and restart the timer
-                this.hideHint();
-                this.startHintTimer();
-
-                // If already zoomed, either zoom to new object or reset if clicking same object
-                if (this.currentZoomedObject) {
-                    if (clickedObject === this.currentZoomedObject) {
-                        // Clicking on the same object - zoom out
-                        this.resetCamera();
-                    } else {
-                        // Clicking on different object - zoom to it
-                        this.zoomToObject(clickedObject);
-                    }
-                } else {
-                    // Not zoomed, zoom to clicked object
-                    this.zoomToObject(clickedObject);
-                }
+                this.activateObject(clickedObject);
             }
 
 
@@ -242,7 +261,7 @@ export class InteractionManager {
             z: objectPosition.z + offsetZ
         };
 
-        const duration = PORTFOLIO_CONFIG.animation.zoomDuration;
+        const duration = this.reducedMotion ? 0 : PORTFOLIO_CONFIG.animation.zoomDuration;
         const ease = PORTFOLIO_CONFIG.animation.zoomEase;
 
         // Animate camera
@@ -252,7 +271,7 @@ export class InteractionManager {
             z: zoomPosition.z,
             duration: duration,
             ease: ease,
-            onUpdate: () => this.requestRender(true)
+            onUpdate: () => this.requestRender()
         });
 
         gsap.to(this.controls.target, {
@@ -271,7 +290,7 @@ export class InteractionManager {
      */
     resetCamera() {
         if (this.currentZoomedObject) {
-            const duration = PORTFOLIO_CONFIG.animation.zoomDuration;
+            const duration = this.reducedMotion ? 0 : PORTFOLIO_CONFIG.animation.zoomDuration;
             const ease = PORTFOLIO_CONFIG.animation.zoomEase;
 
             // Animate camera back to original position
@@ -281,7 +300,7 @@ export class InteractionManager {
                 z: this.originalCameraPosition.z,
                 duration: duration,
                 ease: ease,
-                onUpdate: () => this.requestRender(true)
+                onUpdate: () => this.requestRender()
             });
 
             gsap.to(this.controls.target, {
@@ -303,6 +322,8 @@ export class InteractionManager {
      * Handle mouse wheel for scrolling monitor content
      */
     onMouseWheel(event) {
+        if (event.target instanceof Element && !document.getElementById('canvas-container')?.contains(event.target)) return;
+
         let shouldScroll = false;
 
         if (this.currentZoomedObject && this.currentZoomedObject.userData.name === 'monitor') {
@@ -335,7 +356,7 @@ export class InteractionManager {
 
             // Update monitor texture
             this.updateMonitorTexture();
-            this.requestRender(true); // Monitor screen is on the bloom layer
+            this.requestRender();
         }
     }
 
@@ -372,7 +393,7 @@ export class InteractionManager {
                 texture.magFilter = THREE.LinearFilter;
                 texture.generateMipmaps = true;
                 if (texture.colorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace;
-                else if (THREE.sRGBEncoding !== undefined) texture.encoding = THREE.sRGBEncoding;
+                texture.colorSpace = THREE.SRGBColorSpace;
                 targetMaterial.map = texture;
                 targetMaterial.emissiveMap = texture;
                 targetMaterial.needsUpdate = true;
@@ -440,6 +461,7 @@ export class InteractionManager {
      * Start or restart the hint timer
      */
     startHintTimer() {
+        if (this.reducedMotion) return;
         if (this.hintTimer) {
             clearTimeout(this.hintTimer);
         }
@@ -460,7 +482,7 @@ export class InteractionManager {
             opacity: 0.6,
             duration: 2.0,
             ease: 'power1.out',
-            onUpdate: () => this.requestRender(false)
+            onUpdate: () => this.requestRender()
         });
     }
 
@@ -474,7 +496,7 @@ export class InteractionManager {
             opacity: 0,
             duration: 1.0,
             ease: 'power1.in',
-            onUpdate: () => this.requestRender(false),
+            onUpdate: () => this.requestRender(),
             onComplete: () => {
                 /** @type {THREE.Group} */ (this.hintOutlineGroup).visible = false;
                 this.hintActive = false;

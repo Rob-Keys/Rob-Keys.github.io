@@ -5,6 +5,8 @@
  * Separated from interactions for clear separation of concerns
  */
 
+import { MONITOR_CONTENT } from '../config/content.js';
+
 /**
  * MonitorRenderer handles all canvas-based rendering for the monitor screen
  */
@@ -12,7 +14,7 @@ export class MonitorRenderer {
     constructor() {
         // Reused output canvas: every scroll tick composites into this same
         // canvas/context instead of allocating a new one (P1-5,
-        // REALISM_PERF_PLAN.md).
+        // This keeps the monitor's initial content consistent with scrolling.
         /** @type {HTMLCanvasElement | null} */ this.canvas = null;
         /** @type {CanvasRenderingContext2D | null} */ this.ctx = null;
 
@@ -359,7 +361,7 @@ export class MonitorRenderer {
         currentY += 50;
         ctx.fillStyle = '#444444';
         ctx.font = '32px Arial';
-        currentY = this._wrapText(ctx, 'Hi! I\'m a Software Development Engineer at Amazon Web Services with a passion for building scalable, impactful systems. I graduated from UVA with a B.S. in Computer Science, maintaining a 4.0 GPA while completing my degree in just three years.', 80, currentY, 1120, 40);
+        currentY = this._wrapText(ctx, `Hi! I'm a ${MONITOR_CONTENT.profileSummary.toLowerCase()} I graduated from UVA with a B.S. in Computer Science, maintaining a 4.0 GPA while completing my degree in just three years.`, 80, currentY, 1120, 40);
 
         return currentY;
     }
@@ -383,11 +385,7 @@ export class MonitorRenderer {
         ctx.fillText('B.S. Computer Science', 80, currentY);
 
         currentY += 40;
-        const eduDetails = [
-            'GPA: 4.0',
-            'Graduated in 3 years',
-            'NCAE-Certified Cybersecurity Focal Path'
-        ];
+        const eduDetails = MONITOR_CONTENT.educationBullets;
 
         eduDetails.forEach(item => {
             ctx.beginPath();
@@ -443,7 +441,7 @@ export class MonitorRenderer {
 
         currentY += 60;
         ctx.font = 'bold 40px Arial';
-        ctx.fillText('Amazon Web Services', 80, currentY);
+        ctx.fillText(MONITOR_CONTENT.company, 80, currentY);
 
         currentY += 50;
         ctx.font = '32px Arial';

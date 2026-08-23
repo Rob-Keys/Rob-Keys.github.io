@@ -4,18 +4,13 @@
  * Handles diploma, and other wall-mounted items
  */
 
+import * as THREE from 'three/webgpu';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { applyOrigin, createBeveledBox } from '../systems/utils.js';
 import { OBJECT_ORIGINS } from '../config/config.js';
 
 export class WallObjectFactory {
-    /**
-     * @param {THREE.LoadingManager | null} [loadingManager]
-     */
-    constructor(scene, loadingManager = null) {
-        this.scene = scene;
-        this.loadingManager = loadingManager;
-        this.interactiveObjects = [];
-
+    constructor() {
         // Deferred-texture targets (Phase 5.3): the diploma frame and the vinyl
         // covers are wall objects behind the initial camera, so their image loads
         // are kept off the shared loadingManager entirely and only start after the
@@ -260,11 +255,8 @@ export class WallObjectFactory {
         cert.position.set(offsets.cert.x, offsets.cert.y, offsets.cert.z);
         group.add(cert);
 
-        // Glass pane over the diploma. r128 predates Three.js's transmission/refraction
-        // shader chunk (transmission is a no-op on this revision — confirmed via
-        // THREE.ShaderChunk.transmission_pars_fragment being undefined), so real
-        // transmission glass isn't available here; alpha-blended + clearcoat is the
-        // period-correct glass technique for this renderer.
+        // Glass pane over the diploma. Keep a transparent physical approximation so
+        // the material behaves consistently across WebGPU and WebGL2 backends.
         const glassGeometry = new THREE.PlaneGeometry(1.16, 0.86);
         const glassMaterial = new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
@@ -308,7 +300,7 @@ export class WallObjectFactory {
         brassGeometries.push(housingGeo);
 
         const mergedBrass = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries(brassGeometries),
+            BufferGeometryUtils.mergeGeometries(brassGeometries),
             brassMaterial
         );
         mergedBrass.castShadow = true;
@@ -322,7 +314,7 @@ export class WallObjectFactory {
         // to be a RectAreaLight, the most expensive light type to evaluate per
         // fragment in a forward renderer; on a flat wall/frame at this distance the
         // wash reads nearly identically as a tight spot cone, at a fraction of the
-        // cost (P1-4, REALISM_PERF_PLAN.md). `target` is the cert mesh itself --
+        // cost. `target` is the cert mesh itself --
         // already in the scene graph as a child of this group -- so the spotlight
         // stays aimed correctly without any post-render finalization step.
         const artLight = new THREE.SpotLight(0xffeebb, 4.0, 1.5, Math.PI / 5, 0.55, 1);
@@ -333,7 +325,6 @@ export class WallObjectFactory {
         applyOrigin(group, origin, true); // Static object
         group.userData.name = 'diploma';
         group.userData.label = 'diploma - Education';
-        this.interactiveObjects.push(group);
         return group;
     }
 
@@ -362,7 +353,7 @@ export class WallObjectFactory {
         // Sleeve edge/back material shared by every cover -- flat cardboard color, no
         // art texture. ExtrudeGeometry groups the front/back caps under material
         // index 0 and the extruded bevel + side walls under index 1; splitting the
-        // two here (P2-7, REALISM_PERF_PLAN.md) keeps the album art off the bevel,
+        // two here keeps the album art off the bevel,
         // where its side UVs used to smear the artwork's edge pixels around the rim.
         const coverSideMaterial = new THREE.MeshStandardMaterial({
             color: 0x1c1c1c,
@@ -390,12 +381,7 @@ export class WallObjectFactory {
         applyOrigin(group, origin, true); // Static object
         group.userData.name = 'vinyl';
         group.userData.label = 'vinyl - Music & Creativity';
-        this.interactiveObjects.push(group);
         return group;
-    }
-
-    getInteractiveObjects() {
-        return this.interactiveObjects;
     }
 
     /**
@@ -410,7 +396,7 @@ export class WallObjectFactory {
         for (const { material, path, repeat } of this._deferredTextures) {
             const texture = textureLoader.load(path);
             if (texture.colorSpace !== undefined) texture.colorSpace = THREE.SRGBColorSpace;
-            else if (THREE.sRGBEncoding !== undefined) texture.encoding = THREE.sRGBEncoding;
+            texture.colorSpace = THREE.SRGBColorSpace;
             if (repeat) {
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.RepeatWrapping;

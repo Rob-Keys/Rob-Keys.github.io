@@ -5,6 +5,8 @@
  * Uses progressive texture loading for fast initial render
  */
 
+import * as THREE from 'three/webgpu';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { createSolidTexture, applyOrigin, createBeveledBox } from '../systems/utils.js';
 import { OBJECT_ORIGINS } from '../config/config.js';
 
@@ -18,7 +20,7 @@ const TEXTURE_CONFIG = {
     },
     wall: {
         basePath: 'assets/textures/plastered_wall_04_',
-        // Re-exported at 1024px (P1-2, REALISM_PERF_PLAN.md): the 4K originals decoded
+        // Re-exported at 1024px: the 4K originals decoded
         // to ~256 MB VRAM combined for a background wall viewed from 3+ units away,
         // where 1K is indistinguishable. The wood set already used this `_4k_1k`
         // naming for its own downsize.
@@ -33,12 +35,12 @@ const TEXTURE_CONFIG = {
 
 export class FurnitureFactory {
     /**
-     * @param {THREE.Scene} scene
-     * @param {THREE.WebGLRenderer | null} [renderer]
      */
-    constructor(scene, renderer = null) {
-        this.scene = scene;
-        this._maxAnisotropy = renderer ? Math.min(8, renderer.capabilities.getMaxAnisotropy()) : 1;
+    constructor() {
+        // WebGPURenderer does not expose a stable `getMaxAnisotropy()` during
+        // backend initialization. Three clamps this portable cap at texture
+        // upload, including on lower-capability WebGL fallbacks.
+        this._maxAnisotropy = 8;
 
         // Use centralized origins from config
         this.origins = OBJECT_ORIGINS.furniture;
@@ -66,7 +68,7 @@ export class FurnitureFactory {
         }
     }
 
-    _loadTexture(path) {
+    _loadTexture(path, useColorSpace = false) {
         if (this._textureCache.has(path)) {
             return Promise.resolve(this._textureCache.get(path));
         }
@@ -77,11 +79,11 @@ export class FurnitureFactory {
         const promise = new Promise((resolve, reject) => {
             const loader = new THREE.TextureLoader();
             loader.load(path, (texture) => {
-                texture.encoding = THREE.sRGBEncoding;
+                if (useColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
                 texture.flipY = false;
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.RepeatWrapping;
-                // Anisotropic filtering (P2-1, REALISM_PERF_PLAN.md): wood/wall are the
+                // Anisotropic filtering: wood/wall are the
                 // largest surfaces in frame, viewed at grazing angles where isotropic
                 // mip filtering blurs the texture a few units from the camera.
                 texture.anisotropy = this._maxAnisotropy;
@@ -103,7 +105,7 @@ export class FurnitureFactory {
         this._loadingPromises.set(type, Promise.resolve());
 
         requestAnimationFrame(() => setTimeout(() => {
-            Promise.all(config.files.map(f => this._loadTexture(config.basePath + f)))
+            Promise.all(config.files.map((f, index) => this._loadTexture(config.basePath + f, index === 0)))
                 .then(([diffuse, normal, roughness]) => {
                     [diffuse, normal, roughness].forEach(t => t.repeat.set(config.repeat.x, config.repeat.y));
 
@@ -129,7 +131,7 @@ export class FurnitureFactory {
      * @param {number | null} [color]
      * @param {number} [clearcoat] - A worn desk or shelf has no factory lacquer;
      *   default to a matte 0 rather than the 0.4 that made worn oak read as a
-     *   glossy conference table (P2-8, REALISM_PERF_PLAN.md).
+     *   glossy conference table.
      * @param {number} [clearcoatRoughness]
      */
     _createTexturedMaterial(type, roughness, metalness, useRoughnessMap = false, color = null, clearcoat = 0, clearcoatRoughness = 0.3) {
@@ -198,7 +200,7 @@ export class FurnitureFactory {
             return g;
         });
         const mergedLegs = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries(legGeometries),
+            BufferGeometryUtils.mergeGeometries(legGeometries),
             legMaterial
         );
         mergedLegs.castShadow = true;
@@ -231,6 +233,7 @@ export class FurnitureFactory {
         wall.position.set(0, 3.5, -3.5);
         wall.receiveShadow = true;
         group.add(wall);
+        group.userData.excludeFromShadowFit = true;
 
         const baseboard = new THREE.Mesh(
             new THREE.BoxGeometry(50, 0.5, 0.32),
@@ -258,6 +261,7 @@ export class FurnitureFactory {
         ceiling.rotation.x = Math.PI / 2;
         ceiling.position.set(0, 7.5, -1.5);
         ceiling.receiveShadow = true;
+        ceiling.userData.excludeFromShadowFit = true;
         // Bake position/rotation into the matrix (via updateMatrixWorld) *before*
         // freezing matrixAutoUpdate -- doing it in the other order leaves `.matrix`
         // at its default identity, so the mesh renders at the origin with no
@@ -302,6 +306,7 @@ export class FurnitureFactory {
         group.updateMatrixWorld(true);
         group.matrixAutoUpdate = false;
         group.traverse(child => { child.matrixAutoUpdate = false; });
+        group.userData.excludeFromShadowFit = true;
         return group;
     }
 
@@ -352,14 +357,14 @@ export class FurnitureFactory {
         bracketGeometries.push(centerBracketGeo);
 
         const mergedBrackets = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries(bracketGeometries),
+            BufferGeometryUtils.mergeGeometries(bracketGeometries),
             bracketMaterial
         );
         mergedBrackets.castShadow = true;
         group.add(mergedBrackets);
 
         const mergedScrews = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries(screwGeometries),
+            BufferGeometryUtils.mergeGeometries(screwGeometries),
             screwMaterial
         );
         mergedScrews.castShadow = true;

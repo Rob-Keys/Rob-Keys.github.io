@@ -4,6 +4,8 @@
  * Handles coffee mugs, desk lamps, notebooks, and other items that sit on the desk
  */
 
+import * as THREE from 'three/webgpu';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import {
     applyOrigin,
     createBeveledBox,
@@ -14,10 +16,7 @@ import {
 import { OBJECT_ORIGINS } from '../config/config.js';
 
 export class DeskObjectFactory {
-    constructor(scene) {
-        this.scene = scene;
-        this.interactiveObjects = [];
-
+    constructor() {
         // Use centralized origins from config
         this.origins = OBJECT_ORIGINS.desk;
     }
@@ -119,7 +118,7 @@ export class DeskObjectFactory {
 
         const pageTexture = new THREE.CanvasTexture(canvas);
         if (pageTexture.colorSpace !== undefined) pageTexture.colorSpace = THREE.SRGBColorSpace;
-        else if (THREE.sRGBEncoding !== undefined) pageTexture.encoding = THREE.sRGBEncoding;
+        pageTexture.colorSpace = THREE.SRGBColorSpace;
 
         // Bottom 7 pages — merged into a single draw call (identical material)
         const paperGrainTexture = createPaperGrainNormalTexture();
@@ -142,7 +141,7 @@ export class DeskObjectFactory {
             bottomPageGeometries.push(pg);
         }
         const mergedPages = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries(bottomPageGeometries),
+            BufferGeometryUtils.mergeGeometries(bottomPageGeometries),
             plainPageMaterial
         );
         mergedPages.castShadow = true;
@@ -190,7 +189,6 @@ export class DeskObjectFactory {
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'notebook', label: 'Notebook - Personal Projects' };
-        this.interactiveObjects.push(group);
         return group;
     }
 
@@ -284,13 +282,13 @@ export class DeskObjectFactory {
             lineGeometries.push(lineGeometry);
         }
         const mergedLines = new THREE.Mesh(
-            THREE.BufferGeometryUtils.mergeBufferGeometries(lineGeometries),
+            BufferGeometryUtils.mergeGeometries(lineGeometries),
             lineMaterial
         );
         mergedLines.castShadow = true;
         group.add(mergedLines);
 
-        // Steam wisps rising from coffee surface. Pooled (P2-6, REALISM_PERF_PLAN.md):
+        // Steam wisps rising from coffee surface. Pooled:
         // a fixed-size unit plane is shared by every wisp, with per-wisp width/height
         // baked into `scale` instead of unique geometry, so expiry can reset a wisp in
         // place -- no per-expiry geometry/material allocation, and nothing to leak.
@@ -367,7 +365,6 @@ export class DeskObjectFactory {
 
         applyOrigin(group, origin);
         group.userData = { name: 'coffee', label: 'Starbucks - What Drives Me', animateSteam: animateSteamFunc };
-        this.interactiveObjects.push(group);
         return group;
     }
 
@@ -512,7 +509,7 @@ export class DeskObjectFactory {
         // lights and two 1024 shadow maps modeling one lamp, and the quality-tier
         // toggle (scene.js applyQualityTier) only ever reached lighting.js's
         // `deskLamp`, so this duplicate kept casting a shadow even at low tier
-        // (P1-3, REALISM_PERF_PLAN.md). Deleted here; lighting.js's `deskLamp`
+        // Deleted here; lighting.js's `deskLamp`
         // target/angle was widened to cover the notebook page this used to aim at.
 
         // Switch on the base
@@ -532,11 +529,6 @@ export class DeskObjectFactory {
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'lamp', label: 'Desk Lamp - Resume' };
-        this.interactiveObjects.push(group);
         return group;
-    }
-
-    getInteractiveObjects() {
-        return this.interactiveObjects;
     }
 }

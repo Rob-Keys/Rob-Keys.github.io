@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Keycap legends for the instanced keyboard (P2-9, REALISM_PERF_PLAN.md).
+ * Keycap legends for the instanced keyboard.
  *
  * Every keycap is one instance of a single InstancedMesh, so legends can't be
  * separate meshes or per-key materials without giving up that single draw call.
@@ -9,6 +9,7 @@
  * patch composites that cell over the keycap's top face.
  */
 
+import * as THREE from 'three/webgpu';
 import { assert, createCanvasTexture } from '../systems/utils.js';
 
 /** Atlas cell edge in pixels; one cell holds one key's legend. */

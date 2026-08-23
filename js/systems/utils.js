@@ -3,6 +3,7 @@
  * Shared utilities for 3D scene object creation.
  */
 
+import * as THREE from 'three/webgpu';
 import { PORTFOLIO_CONFIG } from '../config/config.js';
 
 // Contact shadow planes sit slightly below the object's true resting point
@@ -24,7 +25,7 @@ export function assert(condition, message) {
  * Detect a real mobile/touch device by input capability rather than viewport
  * width. A phone in landscape reports innerWidth in the 800-900px range — the
  * same range as a narrow desktop window — so a `window.innerWidth < 768`
- * check can miss devices it was written for (P0-2, REALISM_PERF_PLAN.md).
+ * check can miss devices it was written for.
  * @returns {boolean}
  */
 export function isMobileDevice() {
@@ -292,8 +293,7 @@ export function createKeycapGeometry(width, depth, height, topScale = 0.82, beve
 export function createSolidTexture(r, g, b) {
     const data = new Uint8Array([r, g, b, 255]);
     const texture = new THREE.DataTexture(data, 1, 1, THREE.RGBAFormat);
-    // @ts-ignore — r128 uses numeric encoding constants; newer Three.js uses colorSpace strings
-    texture.encoding = THREE.sRGBEncoding;
+    texture.colorSpace = THREE.SRGBColorSpace;
     texture.needsUpdate = true;
     return texture;
 }
@@ -504,7 +504,7 @@ export function addContactShadow(group, width, depth, groundY) {
  * frame-time average plus renderer.info counters to a small corner canvas —
  * exempt from the no-HTML-overlay rule since it's a debug view, not portfolio
  * content (see CLAUDE.md Phase 0 baseline measurement).
- * @param {THREE.WebGLRenderer} renderer
+ * @param {THREE.Renderer} renderer
  * @returns {() => void} Call once per rendered frame to refresh the readout.
  */
 export function createPerfMonitor(renderer) {

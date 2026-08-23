@@ -4,6 +4,9 @@
  * Handles all lighting concerns: environment maps, lights, shadows, glare, and day/night cycle
  */
 
+import * as THREE from 'three/webgpu';
+import { cameraPosition, dot, float, length, max, normalize, normalWorld, pow, positionWorld, uniform, vec3 } from 'three/tsl';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import { SHADOW_CONFIG, LIGHTING_CONFIG } from '../config/config.js';
 import { isMobileDevice } from './utils.js';
 
@@ -36,9 +39,7 @@ export class LightingSystem {
         };
 
         /** @type {THREE.Texture | null} */ this.envMap = null;
-        /** @type {THREE.Light[]} */ this.emissiveLights = [];
-
-        // Glare materials that need camera updates
+        // Glare materials whose window-light intensity changes with time
         this.glareMaterials = [];
 
         // Day/night cycle cached colors (avoid GC)
@@ -90,10 +91,6 @@ export class LightingSystem {
      * Initialize the lighting system
      */
     init() {
-        if (THREE.RectAreaLightUniformsLib) {
-            THREE.RectAreaLightUniformsLib.init();
-        }
-
         this.createEnvironmentMap();
         this.setupLights();
     }
@@ -105,7 +102,7 @@ export class LightingSystem {
      */
     createEnvironmentMap() {
         const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
-        const loader = new THREE.RGBELoader(this.loadingManager || undefined);
+        const loader = new HDRLoader(this.loadingManager || undefined);
         loader.load('assets/textures/env.hdr', (texture) => {
             const envMap = pmremGenerator.fromEquirectangular(texture).texture;
             this.scene.environment = envMap;
@@ -225,7 +222,7 @@ export class LightingSystem {
         // 2700K accurate hex: #FFA740. Cone widened from the original π/11 (~16°) to
         // π/8.5 (~21°) and retargeted onto the notebook page (was a factory-owned
         // spotlight's job, now deleted -- see createDeskLamp, P1-3,
-        // REALISM_PERF_PLAN.md) while staying tight enough to read as the hero accent
+        // while staying tight enough to read as the hero accent
         // light against the cool monitor.
         const deskLamp = new THREE.SpotLight(0xffa740, 8.0, 6, Math.PI / 8.5, 0.22, 2);
         deskLamp.position.set(2.5, 3.5, -1.1);
@@ -249,7 +246,7 @@ export class LightingSystem {
         // Simulates light bouncing off the wood desktop and illuminating the undersides of
         // the keyboard, mouse, and base of the monitor. Intensity/distance bumped slightly
         // (was 0.6/2.5) to cover the lamp-base ambient glow the deleted factory
-        // warmFillLight used to provide (P1-3, REALISM_PERF_PLAN.md).
+        // warmFillLight used to provide.
         const deskBounce = new THREE.PointLight(0xffcf90, 0.75, 3, 2);
         deskBounce.position.set(1.8, 1.05, -0.1);
         this.scene.add(deskBounce);
@@ -269,141 +266,67 @@ export class LightingSystem {
      * @param {THREE.Light} light - The light to register
      */
     addEmissiveLight(light) {
-        this.emissiveLights.push(light);
         this.scene.add(light);
     }
 
     /**
-     * Create a dynamic glare material for screen surfaces
-     * @param {Object} options - Configuration options
-     * @returns {THREE.ShaderMaterial} The glare material
+     * Create a WebGPU-compatible node material for screen glare.
+     * @param {Record<string, number>} options
+     * @returns {THREE.NodeMaterial}
      */
     createGlareMaterial(options = {}) {
         const glareIntensity = options.glareIntensity ?? 0.35;
         const glareSharpness = options.glareSharpness ?? 6.0;
         const fresnelPower = options.fresnelPower ?? 2.5;
+        const lightPositions = [
+            new THREE.Vector3(-6, 9, 4),
+            new THREE.Vector3(2.5, 3.5, -1.1),
+            new THREE.Vector3(-0.8, 5.8, -0.2),
+            new THREE.Vector3(0, 1.8, 0.4)
+        ];
+        const lightColors = [
+            new THREE.Color(0xffd898),
+            new THREE.Color(0xffa740),
+            new THREE.Color(0xffcba0),
+            new THREE.Color(0xc8ddff)
+        ];
+        const lightIntensities = [0.20, 0.55, 0.35, 0.12];
+        const positionNodes = lightPositions.map((value) => uniform(value));
+        const colorNodes = lightColors.map((value) => uniform(value));
+        const intensityNodes = lightIntensities.map((value) => uniform(value));
+        const glareIntensityNode = uniform(glareIntensity);
+        const glareSharpnessNode = uniform(glareSharpness);
+        const fresnelPowerNode = uniform(fresnelPower);
 
-        const uniforms = {
-            // Light source positions (up to 4)
-            uLightPositions: { value: [
-                new THREE.Vector3(-6, 9, 4),         // Window directional
-                new THREE.Vector3(2.5, 3.5, -1.1),  // Desk lamp (2700K)
-                new THREE.Vector3(-0.8, 5.8, -0.2), // Ceiling main (3000K)
-                new THREE.Vector3(0, 1.8, 0.4)       // Monitor bounce (6500K)
-            ]},
-            uLightColors: { value: [
-                new THREE.Color(0xffd898),  // Window — 3500K morning golden
-                new THREE.Color(0xffa740),  // Lamp — 2700K warm amber
-                new THREE.Color(0xffcba0),  // Ceiling — 3000K warm white
-                new THREE.Color(0xc8ddff)   // Monitor — 6500K cool daylight
-            ]},
-            uLightIntensities: { value: new Float32Array([0.20, 0.55, 0.35, 0.12]) },
-            uCameraPosition: { value: new THREE.Vector3() },
-            uGlareIntensity: { value: glareIntensity },
-            uGlareSharpness: { value: glareSharpness },
-            uFresnelPower: { value: fresnelPower }
-        };
+        const viewDirection = normalize(cameraPosition.sub(positionWorld));
+        const normal = normalize(normalWorld);
+        const fresnel = pow(float(1).sub(max(dot(viewDirection, normal), 0)), fresnelPowerNode);
+        let glareColor = vec3(0);
 
-        const vertexShader = `
-            varying vec2 vUv;
-            varying vec3 vWorldPosition;
-            varying vec3 vWorldNormal;
+        for (let i = 0; i < positionNodes.length; i++) {
+            const lightDirection = normalize(positionNodes[i].sub(positionWorld));
+            const halfDirection = normalize(lightDirection.add(viewDirection));
+            const specular = pow(max(dot(normal, halfDirection), 0), glareSharpnessNode.mul(10));
+            const distance = length(positionNodes[i].sub(positionWorld));
+            const attenuation = float(1).div(
+                float(1).add(float(0.05).mul(distance)).add(float(0.01).mul(distance.mul(distance)))
+            );
+            glareColor = glareColor.add(
+                colorNodes[i].mul(specular).mul(intensityNodes[i]).mul(attenuation)
+            );
+        }
 
-            void main() {
-                vUv = uv;
-                vec4 worldPos = modelMatrix * vec4(position, 1.0);
-                vWorldPosition = worldPos.xyz;
-                vWorldNormal = normalize(mat3(modelMatrix) * normal);
-                gl_Position = projectionMatrix * viewMatrix * worldPos;
-            }
-        `;
+        const material = new THREE.NodeMaterial();
+        material.transparent = true;
+        material.depthWrite = false;
+        material.blending = THREE.AdditiveBlending;
+        material.side = THREE.FrontSide;
+        material.colorNode = glareColor.add(vec3(0.9, 0.95, 1.0).mul(fresnel).mul(0.05));
+        material.opacityNode = length(glareColor).mul(glareIntensityNode).add(fresnel.mul(0.08)).clamp(0, 0.7);
 
-        const fragmentShader = `
-            uniform vec3 uLightPositions[4];
-            uniform vec3 uLightColors[4];
-            uniform float uLightIntensities[4];
-            uniform vec3 uCameraPosition;
-            uniform float uGlareIntensity;
-            uniform float uGlareSharpness;
-            uniform float uFresnelPower;
-
-            varying vec2 vUv;
-            varying vec3 vWorldPosition;
-            varying vec3 vWorldNormal;
-
-            void main() {
-                vec3 viewDir = normalize(uCameraPosition - vWorldPosition);
-                vec3 normal = normalize(vWorldNormal);
-
-                // Fresnel effect (edge glow - screens appear brighter at grazing angles)
-                float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), uFresnelPower);
-
-                // Accumulate glare from each light source
-                vec3 glareColor = vec3(0.0);
-
-                for (int i = 0; i < 4; i++) {
-                    if (uLightIntensities[i] > 0.0) {
-                        vec3 lightDir = normalize(uLightPositions[i] - vWorldPosition);
-
-                        // Blinn-Phong specular highlight
-                        vec3 halfDir = normalize(lightDir + viewDir);
-                        float spec = pow(max(dot(normal, halfDir), 0.0), uGlareSharpness * 10.0);
-
-                        // Distance-based attenuation
-                        float dist = length(uLightPositions[i] - vWorldPosition);
-                        float attenuation = 1.0 / (1.0 + 0.05 * dist + 0.01 * dist * dist);
-
-                        glareColor += uLightColors[i] * spec * uLightIntensities[i] * attenuation;
-                    }
-                }
-
-                // Combine glare highlights with fresnel edge glow
-                float alpha = length(glareColor) * uGlareIntensity + fresnel * 0.08;
-                alpha = clamp(alpha, 0.0, 0.7);
-
-                // Add subtle fresnel tint
-                vec3 finalColor = glareColor + vec3(0.9, 0.95, 1.0) * fresnel * 0.05;
-
-                gl_FragColor = vec4(finalColor, alpha);
-            }
-        `;
-
-        const material = new THREE.ShaderMaterial({
-            uniforms,
-            vertexShader,
-            fragmentShader,
-            transparent: true,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending,
-            side: THREE.FrontSide
-        });
-
-        // Track this material for camera updates
+        material.userData.lightIntensityNode = intensityNodes[0];
         this.glareMaterials.push(material);
-
         return material;
-    }
-
-    /**
-     * Update a glare material's light position (e.g., for dynamic lamp position)
-     * @param {THREE.ShaderMaterial} material - The glare material
-     * @param {number} lightIndex - Which light slot to update (0-3)
-     * @param {THREE.Vector3} position - New light position
-     */
-    updateGlareLightPosition(material, lightIndex, position) {
-        if (material.uniforms.uLightPositions) {
-            material.uniforms.uLightPositions.value[lightIndex].copy(position);
-        }
-    }
-
-    /**
-     * Update all glare materials with current camera position
-     * @param {THREE.Camera} camera - The scene camera
-     */
-    updateGlare(camera) {
-        for (const material of this.glareMaterials) {
-            material.uniforms.uCameraPosition.value.copy(camera.position);
-        }
     }
 
     /**
@@ -486,7 +409,7 @@ export class LightingSystem {
 
         // Update glare light intensities to match current window light
         for (const material of this.glareMaterials) {
-            material.uniforms.uLightIntensities.value[0] = mainIntensity * 0.5;
+            material.userData.lightIntensityNode.value = mainIntensity * 0.5;
         }
 
         return true;
@@ -494,35 +417,23 @@ export class LightingSystem {
 
     /**
      * Main update method - call each frame
-     * @param {THREE.Camera} camera - The scene camera
      * @returns {boolean} True when the day/night cycle actually changed lighting
      *   this call — see `updateDayNightCycle`.
      */
-    update(camera) {
-        const dayNightChanged = this.updateDayNightCycle();
-        this.updateGlare(camera);
-        return dayNightChanged;
+    update() {
+        return this.updateDayNightCycle();
     }
 
     /**
-     * Get the environment map for use in materials.
-     * @returns {THREE.Texture | null} The environment map, or null if not yet loaded.
-     */
-    getEnvironmentMap() {
-        return this.envMap;
-    }
-
-    /**
-     * Fit the main directional light's shadow camera frustum to the actual scene bounds,
-     * replacing hand-tuned constants that risk clipping or wasting shadow-map resolution
-     * as scene content changes. Call once after all objects have been added to the scene.
+     * Fit the main directional light's shadow camera frustum to the shadow-relevant scene
+     * bounds. Large room-shell meshes can opt out with
+     * `userData.excludeFromShadowFit`; they still receive shadows but do not define the
+     * map's coverage. Call once after all objects have been added to the scene.
      *
-     * Fitting to the *whole* scene (including the 50-unit wall and floor) spreads the
-     * 2048px shadow map across 50+ units of frustum — ~40 texels/unit, ~2.5x blockier
-     * than the hand-tuned frustum this replaced (20 units wide, ~102 texels/unit). The
-     * wall and floor only receive shadows near the desk anyway, so the fitted extents
-     * retain those original hand-tuned bounds as a minimum, while expanding when the
-     * scene content actually requires more coverage (P0-3, REALISM_PERF_PLAN.md).
+     * Fitting to the whole scene (including the 50-unit wall and floor) would spread
+     * the 2048px shadow map across empty space — ~40 texels/unit instead of the old
+     * ~102 texels/unit. The excluded room shell still receives shadows, while the
+     * fitted extents retain the hand-tuned bounds as a minimum (P0-3).
      * @param {THREE.Scene} scene
      * @param {number} [margin] - Extra world-space padding added to the fitted frustum.
      */
@@ -530,7 +441,11 @@ export class LightingSystem {
         const mainLight = this.lights.main;
         if (!mainLight) return;
 
-        const sceneBox = new THREE.Box3().setFromObject(scene);
+        const sceneBox = new THREE.Box3();
+        for (const child of scene.children) {
+            if (child.userData.excludeFromShadowFit) continue;
+            sceneBox.expandByObject(child);
+        }
         if (sceneBox.isEmpty()) return;
 
         // Build the light's view matrix (position -> target, using the shadow camera's own
@@ -546,8 +461,9 @@ export class LightingSystem {
         const boxInLightSpace = sceneBox.clone().applyMatrix4(viewMatrixInverse);
 
         // Original hand-tuned frustum extents (pre-fit) — preserve at least this much
-        // coverage, but expand beyond it whenever the actual scene requires more. The
-        // previous clamp could silently clip shadows from objects outside these bounds.
+        // coverage, but expand beyond it whenever the actual desk-area scene requires
+        // more. The room shell is excluded above so it cannot spread shadow texels
+        // across empty space.
         const HAND_TUNED = { left: -10, right: 10, top: 8, bottom: -3 };
 
         shadowCamera.left = Math.min(boxInLightSpace.min.x - margin, HAND_TUNED.left);

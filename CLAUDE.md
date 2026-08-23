@@ -1,6 +1,8 @@
 # 3D Portfolio - CLAUDE.md
 
-Three.js interactive desk portfolio. Info displayed via textures/materials on 3D objects -- **NO HTML overlays/popups**.
+Three.js interactive desk portfolio. The 3D scene is the visual layer; the
+semantic portfolio in `index.html` is the accessible source of truth and must
+remain usable without WebGL/WebGPU.
 
 ## Dev Server
 
@@ -49,7 +51,7 @@ npm run typecheck    # tsc --noEmit only
 npm run lint         # eslint js/ only
 ```
 
-**Type checking** uses `// @ts-check` + JSDoc annotations throughout `js/`. `@types/three@0.128.0` provides core Three.js types; CDN add-ons (OrbitControls, EffectComposer, etc.) are declared in `types/three-addons.d.ts`.
+**Type checking** uses `// @ts-check` + JSDoc annotations throughout `js/`. Three.js 0.185 ships its own types; the small `types/three-addons.d.ts` file contains only project globals.
 
 **Key conventions:**
 - All `canvas.getContext('2d')` calls must be followed by an `if (!ctx) throw` guard
@@ -60,16 +62,14 @@ npm run lint         # eslint js/ only
 
 ## Dependencies
 
-Self-hosted, minified vendor bundles in `js/vendor/` (no CDN, no build step for the served files):
-- `vendor-core.js`: Three.js r128, GSAP 3.12.2, and the addons OrbitControls, RGBELoader, RectAreaLightUniformsLib, BufferGeometryUtils
-- `vendor-postfx.js`: EffectComposer, RenderPass, ShaderPass, UnrealBloomPass (lazy-loaded from `scene.js` after the first render; `OutlinePass`/`SSAOPass` were removed, see Phase 4/5 in PERFORMANCE_PLAN.md)
+Runtime dependencies are loaded through the import map in `index.html` from the versions declared in `package.json`. The application uses Three.js 0.185's `WebGPURenderer` with its WebGL2 backend fallback, TSL nodes for post-processing and glare, and the modern `three/addons/` modules.
 
 ## File Structure
 
 | Directory | Purpose |
 |-----------|---------|
-| `js/core/` | Entry point (`main.js`), scene setup (`scene.js`), user interactions (`interactions.js`) |
-| `js/config/` | Technical settings (`config.js`), portfolio content text (`content.js`) |
+| `js/core/` | Entry point (`main.js`), scene setup (`scene.js`), user interactions (`interactions.js`), semantic controls (`accessibility.js`) |
+| `js/config/` | Technical settings (`config.js`), monitor canvas copy (`content.js`) |
 | `js/systems/` | Lighting system + day/night cycle (`lighting.js`), shared utilities (`utils.js`) |
 | `js/factories/` | 3D object creation: `objects.js` (orchestrator), `furniture.js`, `technology.js`, `desk-objects.js`, `wall-objects.js`, `shelf-objects.js`, `monitor-renderer.js` |
 | `assets/textures/` | PBR textures (wood, wall) in WebP |
@@ -97,9 +97,7 @@ this.interactiveObjects.push(group);
 ### Factory Pattern (all files in `js/factories/`)
 ```javascript
 export class ExampleFactory {
-    constructor(scene) {
-        this.scene = scene;
-        this.interactiveObjects = [];
+    constructor() {
         this.origins = {
             myObject: { x: 0, y: 0, z: 0, rotationX: 0, rotationY: 0, rotationZ: 0 }
         };
@@ -111,7 +109,6 @@ export class ExampleFactory {
         group.position.set(origin.x, origin.y, origin.z);
         group.rotation.set(origin.rotationX, origin.rotationY, origin.rotationZ);
         group.userData = { name: 'id', label: 'Display Name' };
-        this.interactiveObjects.push(group);
         return group;
     }
 }
@@ -119,7 +116,7 @@ export class ExampleFactory {
 
 ### Key Constraints
 - `mesh.castShadow = mesh.receiveShadow = true` on all visible meshes
-- `RectAreaLight` for screens requires `RectAreaLightUniformsLib.init()` first
+- Screen illumination uses emissive materials plus point/spot bounce lights; `RectAreaLight` is intentionally avoided because its optional LTC textures were not reliable across the WebGPU fallback path.
 - Reuse geometries/materials across similar objects
 - `camera.far` set to 50 to prevent clipping on steep angles
 - Static objects: `object.matrixAutoUpdate = false` after positioning
@@ -140,6 +137,8 @@ renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 ```
 
+The main scene pipeline is `js/core/postprocessing-webgpu.js`: TSL MRT captures scene color and emissive output, then applies bloom, film grain, and vignette before presenting the final node.
+
 ## Lighting
 
 - Low ambient (0.08), emissive objects as primary light sources
@@ -157,4 +156,6 @@ Interactive objects get a hint outline (fades in after `HINT_DELAY` of no clicks
 
 ## Testing
 
-Manual only -- open in browser with WebGL. No test framework.
+Run `npm run check`, then manually test keyboard-only navigation, Escape focus
+restoration, 200% and 400% zoom, reduced motion, narrow viewports, and the
+semantic fallback with WebGL/WebGPU unavailable. No test framework is present.

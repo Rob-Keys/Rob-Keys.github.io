@@ -10,29 +10,26 @@ import { ShelfObjectFactory } from './shelf-objects.js';
 import { DeskObjectFactory } from './desk-objects.js';
 import { WallObjectFactory } from './wall-objects.js';
 
+/** @typedef {import('three/webgpu').Object3D} Object3D */
+
 export class ObjectFactory {
-    /**
-     * @param {THREE.LoadingManager | null} [loadingManager]
-     * @param {THREE.WebGLRenderer | null} [renderer]
-     */
-    constructor(scene, lightingSystem = null, loadingManager = null, renderer = null) {
+    constructor(scene, lightingSystem = null) {
         this.scene = scene;
-        this.lightingSystem = lightingSystem;
         this.interactiveObjects = [];
 
         // Initialize modular factories
         this.factories = {
-            furniture: new FurnitureFactory(scene, renderer),
-            technology: new TechnologyFactory(scene, lightingSystem),
-            shelf: new ShelfObjectFactory(scene),
-            desk: new DeskObjectFactory(scene),
-            wall: new WallObjectFactory(scene, loadingManager)
+            furniture: new FurnitureFactory(),
+            technology: new TechnologyFactory(lightingSystem),
+            shelf: new ShelfObjectFactory(),
+            desk: new DeskObjectFactory(),
+            wall: new WallObjectFactory()
         };
     }
 
     /**
      * Add object to scene and optionally register as interactive.
-     * @param {THREE.Object3D} object - The object to add
+     * @param {Object3D} object - The object to add
      * @param {boolean} interactive - Whether object is interactive
      */
     addToScene(object, interactive = false) {
@@ -55,21 +52,22 @@ export class ObjectFactory {
             { obj: furniture.createWallShelf(), interactive: false },
             // Wall objects
             { obj: wall.createWallDiploma(), interactive: true },
-            { obj: wall.createVinylRecord(), interactive: false },
+            { obj: wall.createVinylRecord(), interactive: true },
             // Shelf objects
-            { obj: shelf.createShelfPlant(), interactive: false },
-            { obj: shelf.createShelfBooks(), interactive: false },
+            { obj: shelf.createShelfPlant(), interactive: true },
+            { obj: shelf.createShelfBooks(), interactive: true },
             { obj: shelf.createTidbyt(), interactive: true },
             // Technology
             { obj: technology.createMonitor(), interactive: true },
-            { obj: technology.createKeyboard(), interactive: false },
-            { obj: technology.createMouse(), interactive: false },
+            { obj: technology.createKeyboard(), interactive: true },
+            { obj: technology.createMouse(), interactive: true },
             { obj: technology.createLaptop(), interactive: true },
-            { obj: technology.createDigitalClock(), interactive: false },
-            // Desk objects - coffee/lamp have animations but aren't clickable
-            { obj: desk.createCoffeeMug(), interactive: false },
+            { obj: technology.createDigitalClock(), interactive: true },
+            // Content-bearing desk objects are also available through the
+            // semantic controls and therefore remain discoverable in the scene.
+            { obj: desk.createCoffeeMug(), interactive: true },
             { obj: desk.createNotebook(), interactive: true },
-            { obj: desk.createDeskLamp(), interactive: false }
+            { obj: desk.createDeskLamp(), interactive: true }
         ];
 
         // Object creation includes geometry generation and 2D canvas drawing.
@@ -87,28 +85,12 @@ export class ObjectFactory {
     }
 
     /**
-     * Finalize objects that need post-render setup after the first render, when
-     * world matrices are computed. Currently a no-op: the diploma spotlight
-     * (P1-4, REALISM_PERF_PLAN.md) targets the cert mesh directly and stays
-     * aimed correctly without this step. Kept as a hook for future finalization
-     * needs -- see the call site in main.js for hint-outline ordering.
-     */
-    finalizeObjects() {}
-
-    /**
      * Kick off the deferred (post-reveal) texture loads -- diploma frame wood
-     * grain and vinyl cover art (Phase 5.3). Call once, after the loading screen
+     * grain and vinyl cover art. Call once, after the loading screen
      * has hidden.
      */
     loadDeferredTextures() {
         this.factories.wall.loadDeferredTextures();
     }
 
-    /**
-     * Get all created interactive objects.
-     * @returns {THREE.Group[]} Array of interactive objects
-     */
-    getInteractiveObjects() {
-        return this.interactiveObjects;
-    }
 }

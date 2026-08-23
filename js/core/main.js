@@ -7,13 +7,20 @@
 import { SceneManager } from './scene.js';
 import { ObjectFactory } from '../factories/objects.js';
 import { InteractionManager } from './interactions.js';
-import { createPerfMonitor } from '../systems/utils.js';
+import { SemanticPortfolioController } from './accessibility.js';
+import { createPerfMonitor, isMobileDevice } from '../systems/utils.js';
+
+/** @typedef {import('three/webgpu').Object3D} Object3D */
+/** @typedef {import('three/webgpu').Scene} Scene */
+/** @typedef {import('three/webgpu').PerspectiveCamera} PerspectiveCamera */
 
 // Render-on-demand tuning (Phase 1). The scene is idle almost all the time —
 // dust drift, film grain, and coffee steam are the only things moving, and
 // none of them need display-refresh-rate updates to read as continuous.
 const INTERACTION_TIMEOUT_MS = 500; // How long to keep rendering at full rate after the last change.
 const IDLE_FRAME_INTERVAL_MS = 1000 / 30; // Cadence for ambient-only frames once idle.
+const DEEP_IDLE_TIMEOUT_MS = 60000; // Tab-visible but unattended for about a minute.
+const DEEP_IDLE_FRAME_INTERVAL_MS = 1000 / 10; // Preserve motion while reducing battery/thermals.
 
 // Adaptive quality tuning (Phase 6). Measures actual render() cost -- not the
 // idle-throttled frame cadence above, which is deliberately slow and would
@@ -22,6 +29,8 @@ const IDLE_FRAME_INTERVAL_MS = 1000 / 30; // Cadence for ambient-only frames onc
 // never back up.
 const QUALITY_SAMPLE_SIZE = 60; // render() calls averaged per tier evaluation.
 const QUALITY_FRAME_BUDGET_MS = 20; // ~50fps; above this, step down a tier.
+const QUALITY_FRAME_INTERVAL_BUDGET_MS = 22; // GPU/vsync budget; catches missed frames.
+const MIN_GPU_INTERVAL_SAMPLES = 30; // Require a real interaction window before judging GPU pacing.
 const QUALITY_TIER_ORDER = /** @type {const} */ (['high', 'medium', 'low']);
 
 class Portfolio3D {
@@ -29,15 +38,15 @@ class Portfolio3D {
         /** @type {import('./scene.js').SceneManager | null} */ this.sceneManager = null;
         /** @type {import('../factories/objects.js').ObjectFactory | null} */ this.objectFactory = null;
         /** @type {import('./interactions.js').InteractionManager | null} */ this.interactionManager = null;
-        /** @type {THREE.Object3D | null} */ this._coffeeMug = null;
-        /** @type {THREE.Object3D | null} */ this._clock = null;
-        /** @type {THREE.Object3D | null} */ this._monitor = null;
+        this.semanticPortfolio = new SemanticPortfolioController();
+        /** @type {Object3D | null} */ this._coffeeMug = null;
+        /** @type {Object3D | null} */ this._clock = null;
 
         // Render-on-demand state (Phase 1)
         this._lastInteractionTime = 0; // 0 keeps the reveal frame(s) rendering at full rate.
         this._lastRenderTime = 0;
-        this._bloomDirty = true;
-        this._rafId = null;
+        this._lastLoopTime = 0;
+        this._animationLoopActive = false;
 
         // Dev-only frame profiler (Phase 0), enabled via `?perf=1`. Created in
         // init() once the renderer exists.
@@ -50,33 +59,35 @@ class Portfolio3D {
         // either a tier proves fast enough or 'low' is reached.
         /** @type {number[]} */
         this._qualitySamples = [];
+        /** @type {number[]} */
+        this._qualityFrameIntervals = [];
+        this._hasUserActivity = false;
         this._qualityEvalDone = false;
+
+        // Mobile orientation hint: shown once after the reveal if the camera has
+        // not moved, then dismissed as soon as the user looks around.
+        this._lookAroundHintTimer = null;
+        this._lookAroundHintDismissed = false;
+        this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     }
 
     /**
-     * Notify the render-on-demand loop that a frame is needed. Called from
-     * OrbitControls' `change` event, GSAP camera/UI tweens, hover-light changes,
-     * monitor scroll, clock redraws, and the day/night cycle.
-     * @param {boolean} [bloomAffecting] - True when the change touches
-     *   bloom-layer content or moves the camera, so the bloom composer needs
-     *   to re-render this frame too (see `SceneManager.render`).
+     * Notify the render-on-demand loop that user input occurred.
      */
-    requestRender(bloomAffecting = true) {
+    requestRender() {
         this._lastInteractionTime = performance.now();
-        if (bloomAffecting) this._bloomDirty = true;
+        this._hasUserActivity = true;
     }
 
     async init() {
         this.sceneManager = new SceneManager();
-        const { scene: _scene, camera, controls } = this.sceneManager.init();
-        const scene = /** @type {THREE.Scene} */ (_scene);
+        const { scene: _scene, camera, controls } = await this.sceneManager.init();
+        const scene = /** @type {Scene} */ (_scene);
 
         // Pass lightingSystem to ObjectFactory for dynamic glare materials
         this.objectFactory = new ObjectFactory(
             scene,
-            /** @type {null | undefined} */ (this.sceneManager.lightingSystem),
-            this.sceneManager.loadingManager,
-            /** @type {THREE.WebGLRenderer} */ (this.sceneManager.renderer)
+            /** @type {null | undefined} */ (this.sceneManager.lightingSystem)
         );
         const interactiveObjects = await this.objectFactory.createAllObjects();
 
@@ -88,47 +99,39 @@ class Portfolio3D {
         await this.sceneManager.waitForAssets();
 
         this.interactionManager = new InteractionManager(
-            /** @type {THREE.PerspectiveCamera} */ (camera),
-            /** @type {import('three').OrbitControls} */ (controls),
+            /** @type {PerspectiveCamera} */ (camera),
+            /** @type {import('three/addons/controls/OrbitControls.js').OrbitControls} */ (controls),
             interactiveObjects, scene,
-            (bloomAffecting) => this.requestRender(bloomAffecting),
-            this.objectFactory.factories.technology.monitorRenderer
+            () => this.requestRender(),
+            this.objectFactory.factories.technology.monitorRenderer,
+            this.semanticPortfolio
         );
 
         // OrbitControls fires 'change' on every user drag step and on each damping
         // settle step afterward — exactly the signal the render-on-demand loop
         // needs to know the camera moved.
-        /** @type {import('three').OrbitControls} */ (controls).addEventListener(
-            'change', () => this.requestRender(true)
+        /** @type {import('three/addons/controls/OrbitControls.js').OrbitControls} */ (controls).addEventListener(
+            'change', () => this.requestRender()
+        );
+        /** @type {import('three/addons/controls/OrbitControls.js').OrbitControls} */ (controls).addEventListener(
+            'change', () => this.dismissLookAroundHint()
         );
 
         // Pause rendering entirely while the tab is hidden; resume on return.
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                if (this._rafId !== null) cancelAnimationFrame(this._rafId);
-                this._rafId = null;
-            } else if (this._rafId === null) {
-                this.requestRender(true);
+                this.sceneManager?.renderer?.setAnimationLoop(null);
+                this._animationLoopActive = false;
+            } else if (!this._animationLoopActive) {
                 this.animate();
             }
         });
 
         // Cache frequently-accessed objects
-        /** @param {string} name @returns {THREE.Object3D | null} */
-        const findByName = (name) => {
-            // Search scene children first
-            for (const child of scene.children) {
-                if (child.userData?.name === name) return child;
-            }
-            // Also search interactiveObjects (some objects may only be there)
-            for (const obj of interactiveObjects) {
-                if (obj.userData?.name === name) return obj;
-            }
-            return null;
-        };
+        /** @param {string} name @returns {Object3D | null} */
+        const findByName = (name) => scene.children.find((child) => child.userData?.name === name) || null;
         this._coffeeMug = findByName('coffee');
         this._clock = findByName('clock');
-        this._monitor = findByName('monitor');
 
         // Force full render while loading screen is visible (compiles shaders + uploads to GPU),
         // populating the shadow maps before we freeze them.
@@ -140,12 +143,10 @@ class Portfolio3D {
         // so their loads start now instead of gating the reveal above.
         this.objectFactory.loadDeferredTextures();
 
-        // Finalize objects that need post-render setup (e.g., light targeting)
-        this.objectFactory.finalizeObjects();
-
-        // Build hint-glow outlines after finalizeObjects() so world matrices are final.
-        // Unlike the old OutlinePass this doesn't depend on the lazy-loaded postfx
-        // bundle at all, so it no longer needs to wait on postFXReady.
+        // Build hint-glow outlines after the deferred texture setup so world
+        // matrices are final.
+        // This outline is ordinary scene geometry, so it does not need a separate
+        // post-processing pass or asynchronous effect bundle.
         this.interactionManager.initHintOutline(interactiveObjects);
 
         // Warm-up render (Phase 5.4): the hint-outline meshes above and the deferred
@@ -154,6 +155,11 @@ class Portfolio3D {
         // that cost here — still inside init(), before animate() starts — means it
         // never lands on a frame the user is watching for a reaction to their input.
         this.sceneManager?.render();
+
+        // Start the unattended timer after the reveal/warm-up work, rather than
+        // treating startup as a 60-second-old idle session.
+        this._lastInteractionTime = performance.now();
+        this.markPortfolioReady();
 
         if (this._perfEnabled && this.sceneManager.renderer) {
             this._perfUpdate = createPerfMonitor(this.sceneManager.renderer);
@@ -170,32 +176,116 @@ class Portfolio3D {
         if (loadingElement) {
             // CSS transitions opacity/visibility on .loading-hidden (see styles.css)
             loadingElement.classList.add('loading-hidden');
+            loadingElement.setAttribute('aria-hidden', 'true');
             loadingElement.addEventListener('transitionend', () => {
                 loadingElement.style.display = 'none';
             }, { once: true });
+        }
+
+        this.scheduleLookAroundHint();
+    }
+
+    /** Mark the semantic experience ready once the visual layer has completed. */
+    markPortfolioReady() {
+        document.getElementById('portfolio-content')?.setAttribute('aria-busy', 'false');
+    }
+
+    /**
+     * Reveal a semantic fallback when neither the WebGPU nor WebGL2 backend can
+     * initialize. This keeps the failure actionable instead of leaving users
+     * on the boot screen indefinitely.
+     * @param {unknown} error
+     */
+    showFallback(error) {
+        console.error('Portfolio renderer failed to initialize.', error);
+        const loadingElement = document.getElementById('loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+            loadingElement.setAttribute('aria-hidden', 'true');
+        }
+
+        document.body.classList.add('no-webgl');
+        const canvasContainer = document.getElementById('canvas-container');
+        if (canvasContainer) {
+            canvasContainer.hidden = true;
+            canvasContainer.setAttribute('aria-hidden', 'true');
+        }
+        document.getElementById('instructions')?.setAttribute('hidden', '');
+        this.markPortfolioReady();
+
+        const fallback = document.getElementById('non-webgl-fallback');
+        if (fallback) {
+            fallback.hidden = false;
+            fallback.setAttribute('aria-live', 'polite');
+        }
+
+        document.getElementById('portfolio-title')?.focus();
+    }
+
+    /**
+     * Give touch users a short orientation prompt if they remain idle after
+     * the loading screen has cleared. Desktop users keep the existing UI.
+     */
+    scheduleLookAroundHint() {
+        if (!isMobileDevice() || this.reducedMotion) return;
+
+        this._lookAroundHintTimer = window.setTimeout(() => {
+            if (this._lookAroundHintDismissed) return;
+            const hint = document.getElementById('look-around-hint');
+            if (!hint) return;
+            hint.classList.add('look-around-hint-visible');
+            hint.setAttribute('aria-hidden', 'false');
+        }, 3600); // 600ms loading fade + 3s of idle time
+    }
+
+    /** Hide the prompt permanently once the user starts moving the camera. */
+    dismissLookAroundHint() {
+        if (this._lookAroundHintDismissed) return;
+        this._lookAroundHintDismissed = true;
+        if (this._lookAroundHintTimer !== null) {
+            window.clearTimeout(this._lookAroundHintTimer);
+            this._lookAroundHintTimer = null;
+        }
+
+        const hint = document.getElementById('look-around-hint');
+        if (hint) {
+            hint.classList.remove('look-around-hint-visible');
+            hint.setAttribute('aria-hidden', 'true');
         }
     }
 
     /**
      * Render-on-demand loop (Phase 1). Ambient effects (dust, grain, steam)
-     * animate continuously, so frames never fully stop — but they're throttled
-     * to IDLE_FRAME_INTERVAL_MS once nothing has changed for INTERACTION_TIMEOUT_MS,
-     * instead of running the whole pipeline at display refresh rate forever.
+     * animate continuously, so frames never fully stop — but they're throttled to
+     * 30 fps when recently idle and 10 fps after a minute without user activity.
      */
     animate() {
-        this._rafId = requestAnimationFrame(() => this.animate());
+        const renderer = this.sceneManager?.renderer;
+        if (!renderer || this._animationLoopActive) return;
+        this._animationLoopActive = true;
+        renderer.setAnimationLoop(() => this.renderFrame());
+    }
+
+    renderFrame() {
 
         const now = performance.now();
-        const interacting = now - this._lastInteractionTime < INTERACTION_TIMEOUT_MS;
-        const frameInterval = interacting ? 0 : IDLE_FRAME_INTERVAL_MS;
+        const loopInterval = this._lastLoopTime === 0 ? 0 : now - this._lastLoopTime;
+        this._lastLoopTime = now;
+        const idleDuration = now - this._lastInteractionTime;
+        const interacting = idleDuration < INTERACTION_TIMEOUT_MS;
+        const deepIdle = idleDuration >= DEEP_IDLE_TIMEOUT_MS;
+        const frameInterval = interacting ? 0 : deepIdle ? DEEP_IDLE_FRAME_INTERVAL_MS : IDLE_FRAME_INTERVAL_MS;
+
+        if (!this._qualityEvalDone && this._hasUserActivity && interacting && loopInterval > 0 && loopInterval < 1000) {
+            this._qualityFrameIntervals.push(loopInterval);
+        }
         if (now - this._lastRenderTime < frameInterval) return;
         this._lastRenderTime = now;
 
         this.updateAnimations();
 
         const renderStart = this._qualityEvalDone ? 0 : performance.now();
-        this.sceneManager?.render(this._bloomDirty);
-        this._bloomDirty = false;
+        this.sceneManager?.render();
         if (!this._qualityEvalDone) this._sampleQualityTier(performance.now() - renderStart);
 
         this._perfUpdate?.();
@@ -216,11 +306,29 @@ class Portfolio3D {
         const avg = this._qualitySamples.reduce((sum, t) => sum + t, 0) / this._qualitySamples.length;
         this._qualitySamples.length = 0;
 
+        const hasGpuSamples = this._qualityFrameIntervals.length >= MIN_GPU_INTERVAL_SAMPLES;
+        const avgFrameInterval = hasGpuSamples
+            ? this._qualityFrameIntervals.reduce((sum, t) => sum + t, 0) / this._qualityFrameIntervals.length
+            : 0;
+        this._qualityFrameIntervals.length = 0;
+
         const currentTier = this.sceneManager?.qualityTier ?? 'high';
         const currentIndex = QUALITY_TIER_ORDER.indexOf(currentTier);
         const isLastTier = currentIndex >= QUALITY_TIER_ORDER.length - 1;
 
-        if (avg <= QUALITY_FRAME_BUDGET_MS || isLastTier) {
+        const cpuTooSlow = avg > QUALITY_FRAME_BUDGET_MS;
+        const gpuTooSlow = hasGpuSamples && avgFrameInterval > QUALITY_FRAME_INTERVAL_BUDGET_MS;
+
+        if (isLastTier) {
+            this._qualityEvalDone = true;
+            return;
+        }
+
+        // A fast CPU sample without an interaction interval is inconclusive for a
+        // GPU-bound device. Keep sampling until the user gives us a real frame window.
+        if (!cpuTooSlow && !gpuTooSlow && !hasGpuSamples) return;
+
+        if (!cpuTooSlow && !gpuTooSlow) {
             this._qualityEvalDone = true;
             return;
         }
@@ -237,22 +345,21 @@ class Portfolio3D {
     updateAnimations() {
         // sceneManager is guaranteed non-null after init(); narrow for type checker
         const sm = /** @type {import('./scene.js').SceneManager} */ (this.sceneManager);
-        if (sm.lightingSystem && sm.camera) {
-            const dayNightChanged = sm.lightingSystem.update(sm.camera);
-            if (dayNightChanged) this.requestRender(false);
+        if (!this.reducedMotion && sm.lightingSystem) {
+            sm.lightingSystem.update();
         }
-        sm.updateDustParticles();
-        sm.updateFilmGrain();
+        if (!this.reducedMotion) {
+            sm.updateDustParticles();
+        }
 
         // Animate coffee steam (using cached reference)
-        if (this._coffeeMug?.userData.animateSteam) {
+        if (!this.reducedMotion && this._coffeeMug?.userData.animateSteam) {
             this._coffeeMug.userData.animateSteam.call(this._coffeeMug);
         }
 
         // Update digital clock (using cached reference)
         if (this._clock?.userData.updateTime) {
-            const clockChanged = this._clock.userData.updateTime();
-            if (clockChanged) this.requestRender(false);
+            this._clock.userData.updateTime();
         }
     }
 }
@@ -264,7 +371,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const portfolio = new Portfolio3D();
     window._portfolio = portfolio;
-    await portfolio.init();
+    // Manual verification hook for the documented no-WebGL test path.
+    if (new URLSearchParams(window.location.search).get('fallback') === '1') {
+        portfolio.showFallback(new Error('Forced fallback test'));
+        return;
+    }
+    try {
+        await portfolio.init();
+    } catch (error) {
+        portfolio.showFallback(error);
+    }
 });
 
 window.Portfolio3D = Portfolio3D;
