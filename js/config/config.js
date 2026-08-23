@@ -105,6 +105,7 @@ export const ZOOM_CONFIG = Object.freeze({
     monitor:  Object.freeze({ distance: 2,   yOffset: 1.35, targetYOffset: 1.35 }),
     diploma:  Object.freeze({ distance: 1.2, yOffset: 0,    targetYOffset: 0 }),
     laptop:   Object.freeze({ distance: 0.8, yOffset: 1,    targetYOffset: 0.6, useRotation: true }),
+    coffee:   Object.freeze({ distance: 1.05, yOffset: 0.86, targetYOffset: 0.08 }),
     notebook: Object.freeze({ distance: 0.1, yOffset: 1,    targetYOffset: 0,   useRotation: true }),
     lamp:     Object.freeze({ distance: 1.8, yOffset: 0.25, targetYOffset: 0.43 }),
     default:  Object.freeze({ distance: 1.5, yOffset: 0,    targetYOffset: 0 })
@@ -139,7 +140,8 @@ export const OBJECT_ORIGINS = Object.freeze({
     }),
     desk: Object.freeze({
         notebook: Object.freeze({ x: 2.2,  y: 1, z: 0.4,  rotationX: 0, rotationY: -Math.PI / 6, rotationZ: 0 }),
-        coffee:   Object.freeze({ x: -1.8, y: 1, z: -0.8, rotationX: 0, rotationY: 0,             rotationZ: 0 }),
+        // The cup is modeled from its base up, so its root sits at desktop height.
+        coffee:   Object.freeze({ x: -1.8, y: 1.24, z: -0.8, rotationX: 0, rotationY: 0,             rotationZ: 0 }),
         lamp:     Object.freeze({ x: 2.5,  y: 1, z: -1.1, rotationX: 0, rotationY: 0,             rotationZ: 0 })
     }),
     shelf: Object.freeze({

@@ -284,149 +284,189 @@ export class DeskObjectFactory {
         const origin = this.origins.coffee;
 
         const cupHeight = 0.8;
-        const cupTopRadius = 0.2;
-        const cupBottomRadius = 0.12;
+        const cupTopRadius = 0.205;
+        const cupBottomRadius = 0.125;
+        const wallThickness = 0.018;
+        const bottomY = -cupHeight / 2;
+        const topY = cupHeight / 2;
 
-        const offsets = {
-            cup:    { x: 0, y: 0, z: 0 },
-            sleeve: { x: 0, y: -0.02, z: 0 },
-            lid:    { x: 0, y: cupHeight / 2 + 0.01, z: 0 }
-        };
-
-        const cupGeometry = new THREE.CylinderGeometry(cupTopRadius, cupBottomRadius, cupHeight, 32, 1, true);
+        // A lathed profile gives the paper cup a real wall thickness and an open
+        // mouth. The shallow return across the base closes the shell without a
+        // second hidden cap mesh.
+        const cupProfile = [
+            new THREE.Vector2(cupBottomRadius - 0.018, bottomY),
+            new THREE.Vector2(cupBottomRadius, bottomY + 0.026),
+            new THREE.Vector2(cupTopRadius, topY - 0.026),
+            new THREE.Vector2(cupTopRadius + 0.002, topY),
+            new THREE.Vector2(cupTopRadius - wallThickness, topY),
+            new THREE.Vector2(cupTopRadius - wallThickness - 0.004, topY - 0.022),
+            new THREE.Vector2(cupBottomRadius + 0.008, bottomY + 0.066),
+            new THREE.Vector2(cupBottomRadius - 0.006, bottomY + 0.042)
+        ];
+        const cupGeometry = new THREE.LatheGeometry(cupProfile, 48);
         const cupMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0xfafafa,
-            roughness: 0.62,
+            color: 0xf4f0e7,
+            roughness: 0.48,
             roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.0,
-            clearcoat: 0.18,
-            clearcoatRoughness: 0.18,
+            clearcoat: 0.08,
+            clearcoatRoughness: 0.3,
             side: THREE.DoubleSide
         });
         const cup = new THREE.Mesh(cupGeometry, cupMaterial);
-        cup.position.set(offsets.cup.x, offsets.cup.y, offsets.cup.z);
         cup.castShadow = true;
         cup.receiveShadow = true;
         group.add(cup);
 
-        const sleeveHeight = cupHeight * 0.4;
-        const sleeveTopRadius = cupBottomRadius + (cupTopRadius - cupBottomRadius) * 0.55 + 0.035;
-        const sleeveBottomRadius = cupBottomRadius + (cupTopRadius - cupBottomRadius) * 0.15 + 0.025;
+        const radiusAt = (y) => cupBottomRadius + ((y - bottomY) / cupHeight) * (cupTopRadius - cupBottomRadius);
+        const sleeveHeight = 0.34;
+        const sleeveY = -0.02;
+        const sleeveTopRadius = radiusAt(sleeveY + sleeveHeight / 2) + 0.014;
+        const sleeveBottomRadius = radiusAt(sleeveY - sleeveHeight / 2) + 0.014;
 
         const sleeveGeometry = new THREE.CylinderGeometry(
             sleeveTopRadius,
             sleeveBottomRadius,
             sleeveHeight,
-            32,
+            48,
             1,
             true
         );
+        // Gently scallop the sleeve profile into vertical corrugations. This is
+        // one mesh/draw call and reads as folded cardboard in grazing light.
+        const sleevePositions = sleeveGeometry.getAttribute('position');
+        for (let i = 0; i < sleevePositions.count; i++) {
+            const x = sleevePositions.getX(i);
+            const z = sleevePositions.getZ(i);
+            const radius = Math.hypot(x, z);
+            if (radius === 0) continue;
+            const angle = Math.atan2(z, x);
+            const corrugation = 1 + 0.03 * Math.sin(angle * 24);
+            sleevePositions.setX(i, (x / radius) * radius * corrugation);
+            sleevePositions.setZ(i, (z / radius) * radius * corrugation);
+        }
+        sleevePositions.needsUpdate = true;
+        sleeveGeometry.computeVertexNormals();
         const sleeveMaterial = new THREE.MeshStandardMaterial({
-            color: 0x8B6914,
+            color: 0x946335,
             roughness: 0.9,
             metalness: 0.0
         });
         const sleeve = new THREE.Mesh(sleeveGeometry, sleeveMaterial);
-        sleeve.position.set(offsets.sleeve.x, offsets.sleeve.y + 0.15, offsets.sleeve.z);
+        sleeve.position.y = sleeveY;
         sleeve.castShadow = true;
         group.add(sleeve);
 
-        // Thin coffee disk near top of cup
-        const coffeeLevel = cupHeight / 2 - 0.08;
-        const coffeeRadius = cupTopRadius - 0.015;
-
-        // Liquid surface: MeshPhysicalMaterial with a near-mirror clearcoat
-        // (Phase 5.6) -- a flat diffuse disc never sold coffee's meniscus
-        // reflection the way a thin clearcoat layer over a dark base does.
-        const coffeeGeometry = new THREE.CylinderGeometry(coffeeRadius, coffeeRadius, 0.001, 32);
-        const coffeeMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0x2a150c,
-            roughness: 0.35,
-            metalness: 0.0,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.03,
-            envMapIntensity: 0.6 // Reflect environment for liquid look
+        // Rolled paper lip: the highlight makes the rim read as a folded edge
+        // instead of a mathematically sharp cylinder.
+        const rimMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xf7f3ea,
+            roughness: 0.4,
+            clearcoat: 0.12,
+            clearcoatRoughness: 0.24
         });
-        const coffee = new THREE.Mesh(coffeeGeometry, coffeeMaterial);
-        coffee.position.set(offsets.cup.x, coffeeLevel, offsets.cup.z);
-        group.add(coffee);
-
-        // A very shallow torus catches a highlight around the cup wall and
-        // gives the liquid an irregular-looking meniscus without simulating
-        // fluid or adding transparent geometry.
-        const meniscus = new THREE.Mesh(
-            new THREE.TorusGeometry(coffeeRadius * 0.88, 0.008, 8, 24),
-            coffeeMaterial
+        const rim = new THREE.Mesh(
+            new THREE.TorusGeometry(cupTopRadius - wallThickness / 2, 0.011, 10, 48),
+            rimMaterial
         );
-        meniscus.rotation.x = Math.PI / 2;
-        meniscus.position.set(offsets.cup.x, coffeeLevel + 0.004, offsets.cup.z);
-        group.add(meniscus);
+        rim.rotation.x = Math.PI / 2;
+        rim.position.y = topY - 0.004;
+        rim.castShadow = true;
+        group.add(rim);
 
-        // Corrugated texture lines on sleeve — merged into a single draw call
-        const lineMaterial = new THREE.MeshStandardMaterial({
-            color: 0x6B4F0A,
-            roughness: 0.95,
+        const coffeeLevel = topY - 0.076;
+        const coffeeRadius = cupTopRadius - wallThickness - 0.008;
+        const coffeeProfile = [
+            new THREE.Vector2(0, coffeeLevel + 0.008),
+            new THREE.Vector2(coffeeRadius * 0.25, coffeeLevel + 0.010),
+            new THREE.Vector2(coffeeRadius * 0.72, coffeeLevel + 0.008),
+            new THREE.Vector2(coffeeRadius * 0.95, coffeeLevel + 0.003),
+            new THREE.Vector2(coffeeRadius, coffeeLevel - 0.001)
+        ];
+        // A very shallow domed surface avoids the dead-flat look of a disc while
+        // keeping the liquid fully opaque and inexpensive to render.
+        const coffeeGeometry = new THREE.LatheGeometry(coffeeProfile, 40);
+        const coffeeMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2c1006,
+            roughness: 0.28,
             metalness: 0.0
         });
-        const lineGeometries = [];
-        for (let i = 0; i < 12; i++) {
-            const lineGeometry = new THREE.CylinderGeometry(
-                sleeveTopRadius + 0.002,
-                sleeveBottomRadius + 0.002,
-                0.008,
-                32,
-                1,
-                true
-            );
-            const lineY = offsets.sleeve.y - sleeveHeight / 2 + (i + 0.5) * (sleeveHeight / 12);
-            lineGeometry.translate(offsets.sleeve.x, lineY, offsets.sleeve.z);
-            lineGeometries.push(lineGeometry);
-        }
-        const mergedLines = new THREE.Mesh(
-            BufferGeometryUtils.mergeGeometries(lineGeometries),
-            lineMaterial
+        const coffee = new THREE.Mesh(coffeeGeometry, coffeeMaterial);
+        coffee.castShadow = true;
+        group.add(coffee);
+
+        // The thin caramel ring is the coffee's meniscus/crema catching the warm
+        // desk light at the edge of the dark liquid.
+        const cremaMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x8c4b24,
+            roughness: 0.3,
+            clearcoat: 0.48,
+            clearcoatRoughness: 0.08
+        });
+        const meniscus = new THREE.Mesh(
+            new THREE.TorusGeometry(coffeeRadius * 0.89, 0.006, 8, 40),
+            cremaMaterial
         );
-        mergedLines.castShadow = true;
-        group.add(mergedLines);
+        meniscus.rotation.x = Math.PI / 2;
+        meniscus.position.y = coffeeLevel + 0.002;
+        group.add(meniscus);
 
-        // Steam wisps rising from coffee surface. Pooled:
-        // a fixed-size unit plane is shared by every wisp, with per-wisp width/height
-        // baked into `scale` instead of unique geometry, so expiry can reset a wisp in
-        // place -- no per-expiry geometry/material allocation, and nothing to leak.
-        const steamGeometry = new THREE.PlaneGeometry(1, 1);
+        const sleeveEdgeMaterial = new THREE.MeshStandardMaterial({ color: 0x754522, roughness: 0.98 });
+        const sleeveEdgeGeometries = [];
+        for (const y of [sleeveY - sleeveHeight / 2 + 0.006, sleeveY + sleeveHeight / 2 - 0.006]) {
+            const edgeGeometry = new THREE.TorusGeometry(radiusAt(y) + 0.015, 0.005, 6, 48);
+            edgeGeometry.rotateX(Math.PI / 2);
+            edgeGeometry.translate(0, y, 0);
+            sleeveEdgeGeometries.push(edgeGeometry);
+        }
+        const sleeveEdges = new THREE.Mesh(
+            BufferGeometryUtils.mergeGeometries(sleeveEdgeGeometries),
+            sleeveEdgeMaterial
+        );
+        sleeveEdges.castShadow = true;
+        group.add(sleeveEdges);
+
+        // Steam wisps use small static tubes instead of billboards, so their
+        // silhouettes stay believable while the camera moves around the cup.
         const resetWisp = (steam) => {
-            const wispHeight = 0.04 + Math.random() * 0.06;
-            const wispWidth = 0.015 + Math.random() * 0.02;
-            steam.scale.set(wispWidth, wispHeight, 1);
+            const wispScale = 0.72 + Math.random() * 0.46;
+            steam.scale.set(wispScale, wispScale, wispScale);
 
-            const startX = offsets.cup.x + (Math.random() - 0.5) * 0.15;
-            const startZ = offsets.cup.z + (Math.random() - 0.5) * 0.15;
+            const startX = (Math.random() - 0.5) * 0.12;
+            const startZ = (Math.random() - 0.5) * 0.12;
             steam.position.set(
                 startX,
-                coffeeLevel + 0.02 + Math.random() * 0.1,
+                coffeeLevel + 0.02 + Math.random() * 0.06,
                 startZ
             );
 
             steam.rotation.y = Math.random() * Math.PI * 2;
-            steam.rotation.z = (Math.random() - 0.5) * 0.3;
+            steam.rotation.x = (Math.random() - 0.5) * 0.16;
 
-            const opacity = 0.15 + Math.random() * 0.1;
+            const opacity = 0.07 + Math.random() * 0.07;
             steam.material.opacity = opacity;
 
-            steam.userData.velocity.y = 0.0015 + Math.random() * 0.002;
-            steam.userData.velocity.x = (Math.random() - 0.5) * 0.0006;
-            steam.userData.velocity.z = (Math.random() - 0.5) * 0.0006;
-            steam.userData.rotationSpeed = (Math.random() - 0.5) * 0.02;
-            steam.userData.scaleGrowth = 1.005 + Math.random() * 0.005;
-            steam.userData.lifetime = 100 + Math.random() * 100;
+            steam.userData.velocity.y = 0.0008 + Math.random() * 0.0012;
+            steam.userData.velocity.x = (Math.random() - 0.5) * 0.00045;
+            steam.userData.velocity.z = (Math.random() - 0.5) * 0.00045;
+            steam.userData.rotationSpeed = (Math.random() - 0.5) * 0.014;
+            steam.userData.scaleGrowth = 1.003 + Math.random() * 0.003;
+            steam.userData.lifetime = 140 + Math.random() * 100;
         };
 
         const createSteamWisp = () => {
+            const curve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0.018, 0.09, 0.008),
+                new THREE.Vector3(-0.016, 0.18, -0.006),
+                new THREE.Vector3(0.012, 0.28, 0.004)
+            ]);
+            const steamGeometry = new THREE.TubeGeometry(curve, 14, 0.0035, 4, false);
             const steamMaterial = new THREE.MeshBasicMaterial({
-                color: 0xffffff,
+                color: 0xf4eee4,
                 transparent: true,
-                side: THREE.DoubleSide,
-                depthWrite: false
+                depthWrite: false,
+                depthTest: true
             });
             const steam = new THREE.Mesh(steamGeometry, steamMaterial);
             steam.userData = { isSteam: true, velocity: { x: 0, y: 0, z: 0 } };
@@ -454,6 +494,9 @@ export class DeskObjectFactory {
                 if (steam.userData.lifetime < 25) {
                     steam.material.opacity = steam.userData.lifetime / 25 * 0.25;
                 }
+
+                steam.rotation.y += steam.userData.rotationSpeed;
+                steam.scale.multiplyScalar(steam.userData.scaleGrowth);
 
                 if (steam.userData.lifetime <= 0) {
                     resetWisp(steam);
