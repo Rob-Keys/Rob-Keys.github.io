@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fffaf0"/>
+      <stop offset="0.52" stop-color="#f8f0df"/>
+      <stop offset="1" stop-color="#eadcc4"/>
+    </linearGradient>
+    <pattern id="grain" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="8" r="1" fill="#b99d73" opacity=".10"/>
+      <circle cx="22" cy="25" r="1" fill="#b99d73" opacity=".08"/>
+      <path d="M2 28L10 26M19 6L28 4" stroke="#c7ae88" stroke-width="1" opacity=".08"/>
+    </pattern>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#6b4a28" flood-opacity=".14"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="900" fill="url(#paper)"/>
+  <rect width="1200" height="900" fill="url(#grain)"/>
+
+  <rect x="42" y="42" width="1116" height="816" rx="4" fill="none" stroke="#e57200" stroke-width="8"/>
+  <rect x="62" y="62" width="1076" height="776" rx="2" fill="none" stroke="#232d4b" stroke-width="3"/>
+  <path d="M96 184V96h88M1104 184V96h-88M96 716v88h88M1104 716v88h-88" fill="none" stroke="#232d4b" stroke-width="4"/>
+
+  <g transform="translate(600 126)" fill="none" stroke="#232d4b" stroke-width="7" stroke-linejoin="round">
+    <path d="M-82 18H82L70 74H-70Z"/>
+    <path d="M-68 18Q0-66 68 18"/>
+    <path d="M-52 22V70M-26 22V70M0 22V70M26 22V70M52 22V70"/>
+    <path d="M-92 78H92M-10-70H10M0-70V-88"/>
+  </g>
+  <text x="600" y="254" text-anchor="middle" fill="#232d4b" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700" letter-spacing="4">UNIVERSITY OF VIRGINIA</text>
+  <text x="600" y="288" text-anchor="middle" fill="#655a4d" font-family="Georgia, 'Times New Roman', serif" font-size="21" font-style="italic" letter-spacing="1">Charlottesville, Virginia · Founded 1819</text>
+
+  <line x1="220" y1="326" x2="480" y2="326" stroke="#d7bd91" stroke-width="2"/>
+  <circle cx="600" cy="326" r="6" fill="#e57200"/>
+  <line x1="720" y1="326" x2="980" y2="326" stroke="#d7bd91" stroke-width="2"/>
+
+  <text x="600" y="382" text-anchor="middle" fill="#3e3b37" font-family="Georgia, 'Times New Roman', serif" font-size="25">Know all by these presents that</text>
+  <text x="600" y="456" text-anchor="middle" fill="#e57200" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="700" letter-spacing="6">ROB KEYS</text>
+  <text x="600" y="500" text-anchor="middle" fill="#3e3b37" font-family="Georgia, 'Times New Roman', serif" font-size="24" font-style="italic">has satisfied the requirements and been admitted to the degree of</text>
+  <text x="600" y="554" text-anchor="middle" fill="#232d4b" font-family="Georgia, 'Times New Roman', serif" font-size="38" font-weight="700" letter-spacing="3">BACHELOR OF SCIENCE</text>
+  <text x="600" y="590" text-anchor="middle" fill="#232d4b" font-family="Georgia, 'Times New Roman', serif" font-size="27">in Computer Science</text>
+  <text x="600" y="628" text-anchor="middle" fill="#655a4d" font-family="Georgia, 'Times New Roman', serif" font-size="21" font-style="italic">School of Engineering and Applied Science</text>
+  <text x="600" y="666" text-anchor="middle" fill="#3e3b37" font-family="Georgia, 'Times New Roman', serif" font-size="21">Graduated May 2026</text>
+
+  <g fill="none" stroke="#51483d" stroke-width="2">
+    <path d="M190 758H430M770 758H1010"/>
+  </g>
+  <text x="310" y="790" text-anchor="middle" fill="#655a4d" font-family="Georgia, 'Times New Roman', serif" font-size="18">Rector and Visitors</text>
+  <text x="890" y="790" text-anchor="middle" fill="#655a4d" font-family="Georgia, 'Times New Roman', serif" font-size="18">President</text>
+
+  <g transform="translate(600 754)" filter="url(#softShadow)">
+    <circle r="45" fill="#e57200" stroke="#232d4b" stroke-width="5"/>
+    <circle r="34" fill="#f8f0df" stroke="#232d4b" stroke-width="2"/>
+    <path d="M-22 7H22L18 23H-18ZM-19 7Q0-18 19 7M-14 9V21M-7 9V21M0 9V21M7 9V21M14 9V21" fill="none" stroke="#232d4b" stroke-width="3"/>
+  </g>
+</svg>

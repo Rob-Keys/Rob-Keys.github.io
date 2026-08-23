@@ -103,6 +103,7 @@ export const COLORS = Object.freeze({
  */
 export const ZOOM_CONFIG = Object.freeze({
     monitor:  Object.freeze({ distance: 2,   yOffset: 1.35, targetYOffset: 1.35 }),
+    diploma:  Object.freeze({ distance: 1.2, yOffset: 0,    targetYOffset: 0 }),
     laptop:   Object.freeze({ distance: 0.8, yOffset: 1,    targetYOffset: 0.6, useRotation: true }),
     notebook: Object.freeze({ distance: 0.1, yOffset: 1,    targetYOffset: 0,   useRotation: true }),
     default:  Object.freeze({ distance: 1.5, yOffset: 0,    targetYOffset: 0 })
