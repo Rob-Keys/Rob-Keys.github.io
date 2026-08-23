@@ -192,303 +192,124 @@ export class ShelfObjectFactory {
 
         // === MATERIALS ===
         const potMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0xc4713f,  // Terracotta orange
-            roughness: 0.88,
+            color: 0xb9653f,
+            roughness: 0.9,
             roughnessMap: createRoughnessVariationTexture(),
-            metalness: 0.0,
-            clearcoat: 0.05,
-            clearcoatRoughness: 0.85
+            metalness: 0,
+            clearcoat: 0.04,
+            clearcoatRoughness: 0.9
         });
-        const rimMaterial = new THREE.MeshStandardMaterial({
-            color: 0xb8623a,  // Slightly darker rim
-            roughness: 0.75,
-            metalness: 0.0
-        });
-        const soilMaterial = new THREE.MeshStandardMaterial({
-            color: 0x3d2817,
-            roughness: 0.95,
-            metalness: 0.0
-        });
-        const vineMaterial = new THREE.MeshStandardMaterial({
-            color: 0x4a7a4a,
-            roughness: 0.55,
-            metalness: 0.0
-        });
-        const nodeMaterial = new THREE.MeshStandardMaterial({
-            color: 0x4a7a4a,
-            roughness: 0.5,
-            metalness: 0.0
-        });
+        const rimMaterial = new THREE.MeshStandardMaterial({ color: 0xa65337, roughness: 0.82 });
+        const soilMaterial = new THREE.MeshStandardMaterial({ color: 0x2d1c11, roughness: 0.98 });
+        const vineMaterial = new THREE.MeshStandardMaterial({ color: 0x3d6b3b, roughness: 0.72 });
+        const nodeMaterial = new THREE.MeshStandardMaterial({ color: 0x527b42, roughness: 0.68 });
 
-        // === TERRACOTTA POT ===
-        const potGeometry = new THREE.CylinderGeometry(0.21, 0.16, 0.28, 20);
-        const pot = new THREE.Mesh(potGeometry, potMaterial);
-        pot.position.y = 0.14;  // Half height, sitting on shelf
+        // A softly rounded profile makes the planter read as a hand-thrown pot,
+        // while the separate saucer gives it a believable contact with the shelf.
+        const potProfile = [
+            new THREE.Vector2(0.14, 0.018),
+            new THREE.Vector2(0.15, 0.035),
+            new THREE.Vector2(0.17, 0.08),
+            new THREE.Vector2(0.205, 0.235),
+            new THREE.Vector2(0.202, 0.27),
+            new THREE.Vector2(0.19, 0.285)
+        ];
+        const pot = new THREE.Mesh(new THREE.LatheGeometry(potProfile, 24), potMaterial);
         pot.castShadow = true;
         pot.receiveShadow = true;
         group.add(pot);
 
-        // Decorative rim at top of pot
-        const rimGeometry = new THREE.TorusGeometry(0.21, 0.019, 8, 24);
-        const rim = new THREE.Mesh(rimGeometry, rimMaterial);
-        rim.position.y = 0.28;
+        const saucer = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.235, 0.205, 0.025, 24),
+            rimMaterial
+        );
+        saucer.position.y = 0.012;
+        saucer.castShadow = true;
+        saucer.receiveShadow = true;
+        group.add(saucer);
+
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.198, 0.018, 8, 24), rimMaterial);
+        rim.position.y = 0.275;
         rim.rotation.x = Math.PI / 2;
         rim.castShadow = true;
         group.add(rim);
 
-        // === MOUNDED SOIL ===
-        const soilGeometry = new THREE.SphereGeometry(0.19, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-        soilGeometry.scale(1, 0.25, 1);  // Flatten to mound shape
-        const soil = new THREE.Mesh(soilGeometry, soilMaterial);
-        soil.position.y = 0.28;  // At pot rim level
+        const soil = new THREE.Mesh(
+            new THREE.SphereGeometry(0.185, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+            soilMaterial
+        );
+        soil.scale.y = 0.22;
+        soil.position.y = 0.278;
         soil.castShadow = true;
         group.add(soil);
 
-        // === HEART-SHAPED LEAF GEOMETRY ===
-        // Built once at unit scale and reused across every instance; per-leaf size
-        // is applied via the instance matrix's uniform scale instead of baking a
-        // unique geometry per leaf. The curvature below
-        // is a function of local (unit-scale) coordinates, so a uniform post-scale
-        // reproduces exactly what baking `scale` into w/h/curveFactor used to produce.
+        // A pothos leaf is attached at the notch, not at its centre. The shallow
+        // folded surface catches highlights across the midrib and avoids the flat
+        // paper-card appearance of a single plane.
         const createHeartLeaf = () => {
             const shape = new THREE.Shape();
-            const w = 0.07;  // Larger leaves
-            const h = 0.09;
-
-            // Heart/pothos leaf shape using bezier curves
-            shape.moveTo(0, -h);  // Bottom tip (pointed end)
-
-            // Right side curve
-            shape.bezierCurveTo(
-                w * 0.4, -h * 0.6,   // Control 1
-                w * 0.9, -h * 0.1,   // Control 2
-                w * 0.8, h * 0.3     // End point
-            );
-
-            // Right top lobe
-            shape.bezierCurveTo(
-                w * 0.7, h * 0.6,    // Control 1
-                w * 0.3, h * 0.8,    // Control 2
-                0, h * 0.6           // Top center (slight indent)
-            );
-
-            // Left top lobe
-            shape.bezierCurveTo(
-                -w * 0.3, h * 0.8,   // Control 1
-                -w * 0.7, h * 0.6,   // Control 2
-                -w * 0.8, h * 0.3    // End point
-            );
-
-            // Left side curve back to tip
-            shape.bezierCurveTo(
-                -w * 0.9, -h * 0.1,  // Control 1
-                -w * 0.4, -h * 0.6,  // Control 2
-                0, -h                // Back to bottom tip
-            );
+            const w = 0.095;
+            const h = 0.13;
+            shape.moveTo(0, -h * 1.35);
+            shape.bezierCurveTo(w * 0.42, -h * 0.95, w * 0.92, -h * 0.35, w * 0.82, h * 0.08);
+            shape.bezierCurveTo(w * 0.75, h * 0.34, w * 0.32, h * 0.45, 0, 0);
+            shape.bezierCurveTo(-w * 0.32, h * 0.45, -w * 0.75, h * 0.34, -w * 0.82, h * 0.08);
+            shape.bezierCurveTo(-w * 0.92, -h * 0.35, -w * 0.42, -h * 0.95, 0, -h * 1.35);
 
             const geometry = new THREE.ExtrudeGeometry(shape, {
                 depth: 0.006,
                 bevelEnabled: true,
-                bevelThickness: 0.003,
-                bevelSize: 0.003,
-                bevelSegments: 2
+                bevelThickness: 0.0025,
+                bevelSize: 0.0025,
+                bevelSegments: 2,
+                curveSegments: 4
             });
-
-            // Apply natural curvature to leaf (droop from center vein)
+            geometry.translate(0, 0, -0.003);
             const positions = geometry.attributes.position;
             for (let i = 0; i < positions.count; i++) {
                 const x = positions.getX(i);
                 const y = positions.getY(i);
-
-                // Curve downward from center vein (center line)
-                const curveFactor = Math.pow(Math.abs(x) / (w * 0.8), 2) * 0.02;
-                positions.setZ(i, positions.getZ(i) - curveFactor);
-
-                // Slight lengthwise droop toward tip
-                const lengthDroop = (y < 0) ? Math.abs(y / h) * 0.008 : 0;
-                positions.setZ(i, positions.getZ(i) - lengthDroop);
+                const edgeFold = Math.pow(Math.min(1, Math.abs(x) / w), 1.7) * 0.022;
+                const tipDrop = Math.max(0, -y / (h * 1.35)) * 0.012;
+                positions.setZ(i, positions.getZ(i) + 0.012 - edgeFold - tipDrop);
             }
             geometry.computeVertexNormals();
-
             return geometry;
         };
 
         const unitLeafGeometry = createHeartLeaf();
-        // One shared, reused sphere for every vine node -- cloned and translated
-        // per node instead of being reconstructed from scratch each time, then
-        // merged into a single mesh below.
-        const unitNodeGeometry = new THREE.SphereGeometry(0.01, 6, 4);
-        unitNodeGeometry.scale(1, 1.3, 1); // Slightly elongated
+        const unitNodeGeometry = new THREE.SphereGeometry(0.011, 6, 4);
+        unitNodeGeometry.scale(1, 1.35, 1);
 
-        // === VINE CONFIGURATIONS ===
-        // Using CatmullRomCurve3 for natural, organic paths with multiple bends
-        // Vines clustered close together, overlapping is fine
+        // Each stem has a different bend, height, and depth. The curves sag under
+        // their own weight and the leaves fan toward the light, as a real trailing
+        // pothos would rather than forming a repeated curtain.
         const vineConfigs = [
-            {
-                // Vine 1: Trails forward-left with organic bends
-                points: [
-                    new THREE.Vector3(-0.04, 0.30, 0.10),
-                    new THREE.Vector3(-0.08, 0.18, 0.30),
-                    new THREE.Vector3(-0.12, -0.10, 0.42),
-                    new THREE.Vector3(-0.08, -0.40, 0.46),
-                    new THREE.Vector3(-0.14, -0.75, 0.44)
-                ],
-                leafCount: 5
-            },
-            {
-                // Vine 2: Trails forward-right with S-curve
-                points: [
-                    new THREE.Vector3(0.04, 0.30, 0.10),
-                    new THREE.Vector3(0.08, 0.15, 0.28),
-                    new THREE.Vector3(0.12, -0.15, 0.40),
-                    new THREE.Vector3(0.06, -0.45, 0.44),
-                    new THREE.Vector3(0.14, -0.80, 0.42)
-                ],
-                leafCount: 6
-            },
-            {
-                // Vine 3: Trails straight forward, longest with multiple bends
-                points: [
-                    new THREE.Vector3(0, 0.30, 0.12),
-                    new THREE.Vector3(0.02, 0.12, 0.35),
-                    new THREE.Vector3(-0.02, -0.20, 0.46),
-                    new THREE.Vector3(0.04, -0.55, 0.48),
-                    new THREE.Vector3(0, -0.95, 0.45)
-                ],
-                leafCount: 7
-            },
-            {
-                // Vine 4: Another front vine, slightly left with wave
-                points: [
-                    new THREE.Vector3(-0.02, 0.30, 0.11),
-                    new THREE.Vector3(-0.05, 0.10, 0.32),
-                    new THREE.Vector3(-0.10, -0.25, 0.44),
-                    new THREE.Vector3(-0.04, -0.55, 0.46),
-                    new THREE.Vector3(-0.10, -0.85, 0.43)
-                ],
-                leafCount: 6
-            },
-            {
-                // Vine 5: Trails off left side with organic curve
-                points: [
-                    new THREE.Vector3(-0.08, 0.30, 0.04),
-                    new THREE.Vector3(-0.22, 0.18, 0.10),
-                    new THREE.Vector3(-0.38, -0.05, 0.14),
-                    new THREE.Vector3(-0.45, -0.35, 0.18),
-                    new THREE.Vector3(-0.55, -0.70, 0.14)
-                ],
-                leafCount: 5
-            },
-            {
-                // Vine 6: Another vine trailing left with different path
-                points: [
-                    new THREE.Vector3(-0.10, 0.30, 0.00),
-                    new THREE.Vector3(-0.25, 0.12, 0.04),
-                    new THREE.Vector3(-0.40, -0.18, 0.08),
-                    new THREE.Vector3(-0.50, -0.50, 0.10),
-                    new THREE.Vector3(-0.60, -0.85, 0.06)
-                ],
-                leafCount: 6
-            },
-            {
-                // Vine 7: Front-left outer edge
-                points: [
-                    new THREE.Vector3(-0.06, 0.30, 0.09),
-                    new THREE.Vector3(-0.14, 0.14, 0.28),
-                    new THREE.Vector3(-0.18, -0.18, 0.40),
-                    new THREE.Vector3(-0.12, -0.50, 0.44),
-                    new THREE.Vector3(-0.20, -0.88, 0.40)
-                ],
-                leafCount: 6
-            },
-            {
-                // Vine 8: Front-right outer edge
-                points: [
-                    new THREE.Vector3(0.06, 0.30, 0.09),
-                    new THREE.Vector3(0.14, 0.12, 0.26),
-                    new THREE.Vector3(0.18, -0.20, 0.38),
-                    new THREE.Vector3(0.10, -0.52, 0.42),
-                    new THREE.Vector3(0.18, -0.90, 0.38)
-                ],
-                leafCount: 5
-            },
-            {
-                // Vine 9: Additional left-trailing vine
-                points: [
-                    new THREE.Vector3(-0.06, 0.30, 0.02),
-                    new THREE.Vector3(-0.18, 0.20, 0.08),
-                    new THREE.Vector3(-0.32, -0.02, 0.12),
-                    new THREE.Vector3(-0.42, -0.38, 0.15),
-                    new THREE.Vector3(-0.52, -0.78, 0.10)
-                ],
-                leafCount: 5
-            },
-            {
-                // Vine 10: Short upright (stays near pot, new growth)
-                points: [
-                    new THREE.Vector3(-0.03, 0.30, 0.00),
-                    new THREE.Vector3(-0.05, 0.38, 0.05),
-                    new THREE.Vector3(-0.07, 0.32, 0.10)
-                ],
-                leafCount: 3,
-                isNewGrowth: true
-            },
-            {
-                // Vine 11: Another short upright on right
-                points: [
-                    new THREE.Vector3(0.03, 0.30, 0.02),
-                    new THREE.Vector3(0.06, 0.40, 0.04),
-                    new THREE.Vector3(0.08, 0.34, 0.08)
-                ],
-                leafCount: 2,
-                isNewGrowth: true
-            }
-        ];
+            { points: [[-0.10, 0.29, 0.02], [-0.18, 0.18, 0.16], [-0.28, -0.08, 0.36], [-0.22, -0.40, 0.47], [-0.34, -0.74, 0.43]], leafCount: 5 },
+            { points: [[0.02, 0.29, 0.03], [0.12, 0.15, 0.20], [0.17, -0.12, 0.42], [0.10, -0.46, 0.54], [0.24, -0.91, 0.50]], leafCount: 6 },
+            { points: [[-0.02, 0.29, 0.06], [0.00, 0.10, 0.28], [-0.08, -0.18, 0.47], [0.04, -0.52, 0.58], [-0.03, -1.08, 0.55]], leafCount: 6 },
+            { points: [[0.09, 0.29, 0.00], [0.25, 0.16, 0.08], [0.34, -0.08, 0.27], [0.30, -0.36, 0.40], [0.47, -0.70, 0.35]], leafCount: 5 },
+            { points: [[-0.12, 0.29, 0.00], [-0.28, 0.15, 0.06], [-0.45, -0.10, 0.18], [-0.56, -0.35, 0.29], [-0.65, -0.64, 0.24]], leafCount: 5 },
+            { points: [[0.00, 0.29, -0.02], [-0.05, 0.43, 0.00], [-0.02, 0.55, 0.06]], leafCount: 3, isNewGrowth: true },
+            { points: [[0.07, 0.29, 0.01], [0.16, 0.41, 0.06], [0.11, 0.53, 0.10]], leafCount: 2, isNewGrowth: true }
+        ].map((config) => ({
+            ...config,
+            points: config.points.map(([x, y, z]) => new THREE.Vector3(x, y, z))
+        }));
 
-        // === BUILD VINE/NODE/LEAF DATA ===
-        // 11 vine tubes and 56 node spheres are collected here and merged into two
-        // draw calls below; the 56 leaves are collected as instance transforms for
-        // two InstancedMeshes (regular vs. new-growth). This replaces what used to
-        // be ~127 individual meshes/materials -- roughly half the scene's draw calls
-        // -- with ~4.
+        // Vines, petioles, and nodes are merged by material. Leaves remain two
+        // instanced meshes, keeping the whole plant inexpensive to render.
         const vineGeometries = [];
         const nodeGeometries = [];
+        const petioleGeometries = [];
+        /** @type {THREE.Matrix4[]} */
+        const veinInstances = [];
         /** @type {{ matrix: THREE.Matrix4, isNewGrowth: boolean, variation: number }[]} */
         const leafInstances = [];
 
         vineConfigs.forEach((config, vineIndex) => {
-            // Use CatmullRomCurve3 for smooth organic curves through multiple points
             const curve = new THREE.CatmullRomCurve3(config.points, false, 'catmullrom', 0.5);
-
-            // Create vine using TubeGeometry
-            const vineGeometry = new THREE.TubeGeometry(curve, 16, 0.008, 6, false);
-
-            // Taper the vine (thinner at end)
-            const vinePositions = vineGeometry.attributes.position;
-            const tubeSegments = 16;
-            const radialSegments = 6;
-
-            for (let i = 0; i < vinePositions.count; i++) {
-                // Approximate t position along tube
-                const segmentIndex = Math.floor(i / (radialSegments + 1));
-                const t = segmentIndex / tubeSegments;
-
-                // Taper factor (1.0 at start, 0.6 at end)
-                const taper = 1.0 - t * 0.4;
-
-                // Get current position relative to curve point
-                const curvePoint = curve.getPointAt(Math.min(t, 1));
-                const dx = vinePositions.getX(i) - curvePoint.x;
-                const dy = vinePositions.getY(i) - curvePoint.y;
-                const dz = vinePositions.getZ(i) - curvePoint.z;
-
-                // Apply taper
-                vinePositions.setX(i, curvePoint.x + dx * taper);
-                vinePositions.setY(i, curvePoint.y + dy * taper);
-                vinePositions.setZ(i, curvePoint.z + dz * taper);
-            }
-            vineGeometry.computeVertexNormals();
-            vineGeometries.push(vineGeometry);
+            vineGeometries.push(new THREE.TubeGeometry(curve, 14, 0.008, 6, false));
 
             // Add leaves along vine
             for (let i = 0; i < config.leafCount; i++) {
@@ -497,31 +318,35 @@ export class ShelfObjectFactory {
                 const tangent = curve.getTangentAt(t);
                 const seed = vineIndex * 100 + i; // stable per-leaf jitter seed
 
-                // Alternate sides for leaves
                 const side = (i % 2) * 2 - 1;
                 const up = new THREE.Vector3(0, 1, 0);
                 const right = new THREE.Vector3().crossVectors(tangent, up).normalize();
-
-                // Offset leaf position slightly from vine
                 const leafPos = position.clone();
-                leafPos.add(right.multiplyScalar(side * 0.025));
+                leafPos.add(right.multiplyScalar(side * (0.045 + jitter(seed * 2.1) * 0.018)));
+                leafPos.y += (jitter(seed * 3.7) - 0.5) * 0.025;
 
-                // Node at leaf attachment point -- translated clone, merged below
+                petioleGeometries.push(new THREE.TubeGeometry(
+                    new THREE.LineCurve3(position, leafPos),
+                    4,
+                    0.0038,
+                    5,
+                    false
+                ));
+
                 const node = unitNodeGeometry.clone();
                 node.translate(position.x, position.y, position.z);
                 nodeGeometries.push(node);
 
-                // Leaf scale: smaller at tips (newer growth)
                 const isNewGrowth = config.isNewGrowth || t > 0.7;
                 const leafScale = isNewGrowth
-                    ? 0.6 + jitter(seed * 7.3) * 0.2
-                    : 0.8 + jitter(seed * 7.3) * 0.3;
+                    ? 0.58 + jitter(seed * 7.3) * 0.18
+                    : 0.78 + jitter(seed * 7.3) * 0.30;
 
-                // Leaf rotation: face outward, droop increases toward tip
-                const droopAngle = -0.4 - t * 0.4;  // More droop at end
-                const outwardAngle = side * Math.PI / 3 + (jitter(seed * 11.1) - 0.5) * 0.3;
-                const twistAngle = (jitter(seed * 13.7) - 0.5) * 0.2;
-                const yAngle = Math.atan2(tangent.x, tangent.z) + outwardAngle;
+                // The leaf face stays mostly toward the room, with small natural
+                // yaw/bank variation and a stronger downward pitch on long vines.
+                const droopAngle = -0.18 - t * 0.35 + (jitter(seed * 23.1) - 0.5) * 0.16;
+                const yAngle = Math.atan2(tangent.x, tangent.z) + side * 0.42 + (jitter(seed * 11.1) - 0.5) * 0.92;
+                const twistAngle = (jitter(seed * 13.7) - 0.5) * 0.52;
 
                 const quaternion = new THREE.Quaternion().setFromEuler(
                     new THREE.Euler(droopAngle, yAngle, twistAngle)
@@ -529,22 +354,27 @@ export class ShelfObjectFactory {
                 const matrix = new THREE.Matrix4().compose(
                     leafPos,
                     quaternion,
-                    new THREE.Vector3(leafScale, leafScale, leafScale)
+                    new THREE.Vector3(
+                        leafScale * (0.86 + jitter(seed * 29.7) * 0.22),
+                        leafScale,
+                        leafScale
+                    )
                 );
 
                 leafInstances.push({ matrix, isNewGrowth, variation: jitter(seed * 17.9) * 0.3 });
+                const veinMatrix = new THREE.Matrix4().makeTranslation(0, -0.072, 0.022);
+                veinInstances.push(matrix.clone().multiply(veinMatrix));
             }
         });
 
-        // One merged mesh for all 11 vine tubes (same material already)
+        const mergedVines = BufferGeometryUtils.mergeGeometries(vineGeometries.concat(petioleGeometries));
         const vine = new THREE.Mesh(
-            BufferGeometryUtils.mergeGeometries(vineGeometries),
+            mergedVines,
             vineMaterial
         );
         vine.castShadow = true;
         group.add(vine);
 
-        // One merged mesh for all 56 vine nodes
         const nodes = new THREE.Mesh(
             BufferGeometryUtils.mergeGeometries(nodeGeometries),
             nodeMaterial
@@ -552,11 +382,7 @@ export class ShelfObjectFactory {
         nodes.castShadow = true;
         group.add(nodes);
 
-        // Two InstancedMeshes (regular vs. new-growth leaves) -- per-instance color
-        // via instanceColor carries the original HSL variation; per-leaf roughness
-        // variation collapses to one value per growth tier since both tiers now
-        // share a single material (per-instance roughness isn't supported).
-        const baseHue = 0.33; // Green
+        const baseHue = 0.285;
         /**
          * @param {{ matrix: THREE.Matrix4, variation: number }[]} instances
          * @param {boolean} isNewGrowth
@@ -564,13 +390,11 @@ export class ShelfObjectFactory {
         const createLeafInstancedMesh = (instances, isNewGrowth) => {
             if (instances.length === 0) return null;
             const material = new THREE.MeshPhysicalMaterial({
-                roughness: isNewGrowth ? 0.52 : 0.68,
-                metalness: isNewGrowth ? 0.08 : 0.05,
-                // A restrained sheen gives leaf edges a waxy, backlit response
-                // without transparent sorting or a per-leaf material.
-                sheen: 0.22,
-                sheenColor: isNewGrowth ? 0x86b86d : 0x4b7a42,
-                sheenRoughness: 0.55,
+                roughness: isNewGrowth ? 0.5 : 0.64,
+                metalness: 0.02,
+                sheen: 0.16,
+                sheenColor: isNewGrowth ? 0x9abc72 : 0x5f8b4e,
+                sheenRoughness: 0.62,
                 side: THREE.DoubleSide,
                 vertexColors: true
             });
@@ -578,8 +402,8 @@ export class ShelfObjectFactory {
             const color = new THREE.Color();
             instances.forEach((instance, i) => {
                 mesh.setMatrixAt(i, instance.matrix);
-                const saturation = isNewGrowth ? 0.55 : 0.5 + instance.variation * 0.1;
-                const lightness = isNewGrowth ? 0.32 : 0.26 + instance.variation * 0.05;
+                const saturation = isNewGrowth ? 0.48 : 0.46 + instance.variation * 0.16;
+                const lightness = isNewGrowth ? 0.36 : 0.22 + instance.variation * 0.09;
                 color.setHSL(baseHue, saturation, lightness);
                 mesh.setColorAt(i, color);
             });
@@ -595,7 +419,17 @@ export class ShelfObjectFactory {
         if (regularLeaves) group.add(regularLeaves);
         if (newGrowthLeaves) group.add(newGrowthLeaves);
 
-        addContactShadow(group, 0.5, 0.45, -0.005);
+        const leafVeins = new THREE.InstancedMesh(
+            new THREE.CylinderGeometry(0.0032, 0.0012, 0.17, 5),
+            new THREE.MeshStandardMaterial({ color: 0x2d5630, roughness: 0.8 }),
+            veinInstances.length
+        );
+        veinInstances.forEach((matrix, index) => leafVeins.setMatrixAt(index, matrix));
+        leafVeins.instanceMatrix.needsUpdate = true;
+        leafVeins.castShadow = false;
+        group.add(leafVeins);
+
+        addContactShadow(group, 0.58, 0.44, -0.005);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'shelfPlant', label: 'Pothos - Work-Life Balance' };

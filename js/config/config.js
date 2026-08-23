@@ -151,7 +151,9 @@ export const OBJECT_ORIGINS = Object.freeze({
         // sit on its top surface, not at its center, so every prop shares the
         // same physically meaningful ground plane.
         books:      Object.freeze({ x: 0,    y: 3.575, z: -1.7, rotationX: 0, rotationY: 0, rotationZ: 0 }),
-        shelfPlant: Object.freeze({ x: -2.0, y: 3.575, z: -1.6, rotationX: 0, rotationY: 0, rotationZ: 0 }),
+        // Pull the planter toward the shelf's front edge so the pot sits in front
+        // of the 0.02-unit front trim instead of disappearing behind it.
+        shelfPlant: Object.freeze({ x: -2.0, y: 3.575, z: -1.39, rotationX: 0, rotationY: 0, rotationZ: 0 }),
         tidbyt:     Object.freeze({ x: 1.4,  y: 3.575, z: -1.65, rotationX: 0, rotationY: 0, rotationZ: 0 })
     }),
     wall: Object.freeze({
