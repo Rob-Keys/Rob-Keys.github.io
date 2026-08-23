@@ -70,7 +70,7 @@ export class TechnologyFactory {
 
         // Main LCD screen with moderate emissive glow
         const screenGeometry = new THREE.BoxGeometry(3.2, 1.4, 0.05);
-        const frontScreenMaterial = new THREE.MeshStandardMaterial({
+        const frontScreenMaterial = new THREE.MeshPhysicalMaterial({
             map: texture,
             emissive: 0xaabbcc,
             emissiveMap: texture,
@@ -78,6 +78,8 @@ export class TechnologyFactory {
             roughness: 0.15, // Lower roughness for realistic screen reflection
             roughnessMap: createScreenSmudgeTexture(), // faint fingerprint/smudge catches env light when the screen is dark
             metalness: 0.0,
+            clearcoat: 0.45,
+            clearcoatRoughness: 0.08,
             envMapIntensity: LIGHTING_CONFIG.environment.screen
         });
 
@@ -311,6 +313,10 @@ export class TechnologyFactory {
         logo.castShadow = true;
         group.add(logo);
 
+        // A soft, texture-backed contact card grounds the stand without another
+        // shadow map or a second light source.
+        addContactShadow(group, 1.0, 0.9, -0.21);
+
         applyOrigin(group, origin, true); // Static object
         group.userData.name = 'monitor';
         group.userData.label = 'Monitor - About Me';
@@ -454,7 +460,8 @@ export class TechnologyFactory {
         const keycapMaterial = new THREE.MeshStandardMaterial({
             color: 0xf0f0f0,
             roughness: 0.85,
-            metalness: 0.0
+            metalness: 0.0,
+            vertexColors: true
         });
 
         const keycapInstances = new THREE.InstancedMesh(
@@ -468,12 +475,19 @@ export class TechnologyFactory {
         const quaternion = new THREE.Quaternion().setFromEuler(rotation);
 
         keyTransforms.forEach((transform, i) => {
+            // Tiny height/color differences keep the key field from reading as a
+            // perfectly manufactured grid. The spacebar gets a restrained warm
+            // gray tint to suggest handling wear while remaining one draw call.
+            const heightScale = 0.96 + ((i * 17) % 7) * 0.012;
             matrix.compose(
                 new THREE.Vector3(transform.x, transform.y, transform.z),
                 quaternion,
-                new THREE.Vector3(transform.scaleX, 1, transform.scaleZ)
+                new THREE.Vector3(transform.scaleX, heightScale, transform.scaleZ)
             );
             keycapInstances.setMatrixAt(i, matrix);
+            keycapInstances.setColorAt(i, new THREE.Color(
+                transform.label === '' ? 0xd8d5cc : 0xf0f0ee
+            ));
         });
 
         keycapInstances.instanceMatrix.needsUpdate = true;
@@ -634,6 +648,22 @@ export class TechnologyFactory {
         base.receiveShadow = true;
         group.add(base);
 
+        // Two short hinge barrels are enough to establish the lid's mechanical
+        // connection; merging them keeps the detail to one extra draw call.
+        const hingeGeometry = new THREE.CylinderGeometry(0.035, 0.035, 0.12, 12);
+        const hingeGeometries = [-0.45, 0.45].map((x) => {
+            const geometry = hingeGeometry.clone();
+            geometry.rotateZ(Math.PI / 2);
+            geometry.translate(x, 0.055, -0.41);
+            return geometry;
+        });
+        const hinges = new THREE.Mesh(
+            BufferGeometryUtils.mergeGeometries(hingeGeometries),
+            metalMaterial
+        );
+        hinges.castShadow = true;
+        group.add(hinges);
+
         // Keyboard keys — merged into a single draw call via geometry merge
         const keyMaterial = new THREE.MeshStandardMaterial({
             color: 0x1a1a1a,
@@ -759,7 +789,7 @@ export class TechnologyFactory {
 
         // Display screen on the lid with moderate emissive glow
         const screenGeometry = new THREE.PlaneGeometry(1.3, 0.8);
-        const screenMaterial = new THREE.MeshStandardMaterial({
+        const screenMaterial = new THREE.MeshPhysicalMaterial({
             map: texture,
             emissive: 0x60799b,
             emissiveMap: texture,
@@ -767,6 +797,8 @@ export class TechnologyFactory {
             roughness: 0.05,
             roughnessMap: createScreenSmudgeTexture(),
             metalness: 0.0,
+            clearcoat: 0.5,
+            clearcoatRoughness: 0.08,
             envMapIntensity: LIGHTING_CONFIG.environment.screen
         });
         const screen = new THREE.Mesh(screenGeometry, screenMaterial);
@@ -850,11 +882,14 @@ export class TechnologyFactory {
         const origin = this.origins.clock;
 
         // Clock body - sleek rectangular box
-        const bodyGeometry = new THREE.BoxGeometry(0.8, 0.4, 0.1);
-        const bodyMaterial = new THREE.MeshStandardMaterial({
+        const bodyGeometry = createBeveledBox(0.8, 0.4, 0.1, 0.012, 2);
+        const bodyMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x111111,
-            roughness: 0.2,
-            metalness: 0.5
+            roughness: 0.28,
+            roughnessMap: createRoughnessVariationTexture(),
+            metalness: 0.45,
+            clearcoat: 0.25,
+            clearcoatRoughness: 0.2
         });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
         body.position.y = 0.08; // Sit on desk surface
@@ -874,13 +909,22 @@ export class TechnologyFactory {
         texture.colorSpace = THREE.SRGBColorSpace;
 
         const screenGeometry = new THREE.PlaneGeometry(0.6, 0.3);
-        const screenMaterial = new THREE.MeshBasicMaterial({
+        const screenMaterial = new THREE.MeshPhysicalMaterial({
             map: texture,
-            color: 0xffffff
+            color: 0xffffff,
+            emissive: 0xff2300,
+            emissiveMap: texture,
+            emissiveIntensity: 0.55,
+            roughness: 0.25,
+            clearcoat: 0.35,
+            clearcoatRoughness: 0.12,
+            metalness: 0.0
         });
         const screen = new THREE.Mesh(screenGeometry, screenMaterial);
         screen.position.set(0, 0.15, 0.051); // Slightly in front of body
         group.add(screen);
+
+        addContactShadow(group, 0.82, 0.28, -0.13);
 
         // Time update function
         let lastMinuteKey = -1;

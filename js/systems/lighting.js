@@ -199,7 +199,10 @@ export class LightingSystem {
         const ceilingMain = new THREE.SpotLight(0xffcba0, LIGHTING_CONFIG.ceiling.mainIntensity, 18, Math.PI / 4, 0.45, 2);
         ceilingMain.position.set(-0.8, 5.8, -0.2);
         ceilingMain.target.position.set(-0.4, 0.0, -1.0);
-        ceilingMain.castShadow = true;
+        // The window/sun key remains the only mobile shadow caster. Removing the
+        // two small local shadow maps saves fill-rate while preserving the scene's
+        // primary directional shadow silhouette.
+        ceilingMain.castShadow = !isMobile;
         // Tight room, close-range fixture — 1024 loses no visible resolution over 2048 (Phase 3.3).
         ceilingMain.shadow.mapSize.width = SHADOW_CONFIG.ceiling.mapSize;
         ceilingMain.shadow.mapSize.height = SHADOW_CONFIG.ceiling.mapSize;
@@ -227,7 +230,7 @@ export class LightingSystem {
         const deskLamp = new THREE.SpotLight(0xffa740, 8.0, 6, Math.PI / 8.5, 0.22, 2);
         deskLamp.position.set(2.5, 3.5, -1.1);
         deskLamp.target.position.set(1.9, 0.97, 0.35);
-        deskLamp.castShadow = true;
+        deskLamp.castShadow = !isMobile;
         deskLamp.shadow.mapSize.width = SHADOW_CONFIG.lamp.mapSize;
         deskLamp.shadow.mapSize.height = SHADOW_CONFIG.lamp.mapSize;
         deskLamp.shadow.bias = SHADOW_CONFIG.lamp.bias;

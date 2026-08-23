@@ -146,7 +146,12 @@ export class ShelfObjectFactory {
         // book, non-uniformly scaled per instance so every book's visible page
         // edge (top of the spine, opposite the cover) reuses one draw call.
         const pageGeometry = new THREE.BoxGeometry(1, 1, 1);
-        const pageMaterial = new THREE.MeshStandardMaterial({ color: 0xede4d0, roughness: 0.85 });
+        const pageMaterial = new THREE.MeshStandardMaterial({
+            color: 0xede4d0,
+            roughness: 0.85,
+            normalMap: bookGrainTexture,
+            normalScale: new THREE.Vector2(0.08, 0.08)
+        });
         const pageBlock = new THREE.InstancedMesh(pageGeometry, pageMaterial, books.length);
         pageBlock.castShadow = true;
         pageBlock.receiveShadow = true;
@@ -165,6 +170,8 @@ export class ShelfObjectFactory {
         });
         pageBlock.instanceMatrix.needsUpdate = true;
         group.add(pageBlock);
+
+        addContactShadow(group, 1.0, 0.42, -0.005);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'books', label: 'Books - Knowledge Base' };
@@ -556,9 +563,14 @@ export class ShelfObjectFactory {
          */
         const createLeafInstancedMesh = (instances, isNewGrowth) => {
             if (instances.length === 0) return null;
-            const material = new THREE.MeshStandardMaterial({
+            const material = new THREE.MeshPhysicalMaterial({
                 roughness: isNewGrowth ? 0.52 : 0.68,
                 metalness: isNewGrowth ? 0.08 : 0.05,
+                // A restrained sheen gives leaf edges a waxy, backlit response
+                // without transparent sorting or a per-leaf material.
+                sheen: 0.22,
+                sheenColor: isNewGrowth ? 0x86b86d : 0x4b7a42,
+                sheenRoughness: 0.55,
                 side: THREE.DoubleSide,
                 vertexColors: true
             });
@@ -582,6 +594,8 @@ export class ShelfObjectFactory {
         const newGrowthLeaves = createLeafInstancedMesh(leafInstances.filter((l) => l.isNewGrowth), true);
         if (regularLeaves) group.add(regularLeaves);
         if (newGrowthLeaves) group.add(newGrowthLeaves);
+
+        addContactShadow(group, 0.5, 0.45, -0.005);
 
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'shelfPlant', label: 'Pothos - Work-Life Balance' };

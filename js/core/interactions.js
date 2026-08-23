@@ -190,6 +190,7 @@ export class InteractionManager {
 
             if (this.hoveredObject !== object) {
                 this.hoveredObject = object;
+                this.updateHintOutlineTarget(object);
                 this.requestRender();
             }
         }
@@ -200,6 +201,7 @@ export class InteractionManager {
         document.body.style.cursor = 'default';
         if (this.hoveredObject !== null) {
             this.hoveredObject = null;
+            this.updateHintOutlineTarget(null);
             this.requestRender();
         }
     }
@@ -425,7 +427,7 @@ export class InteractionManager {
                 targetMaterial.map.needsUpdate = true;
             } else {
                 const texture = new THREE.CanvasTexture(canvas);
-                texture.anisotropy = 16;
+                texture.anisotropy = 8;
                 texture.minFilter = THREE.LinearMipmapLinearFilter;
                 texture.magFilter = THREE.LinearFilter;
                 texture.generateMipmaps = true;
@@ -461,10 +463,12 @@ export class InteractionManager {
      */
     initHintOutline(interactiveObjects) {
         this.hintOutlineMaterial = new THREE.MeshBasicMaterial({
-            color: 0xff3333,
+            // Warm, low-opacity focus cue: readable against the dark scene but
+            // quiet enough that it does not turn the portfolio into a game UI.
+            color: 0xffc27a,
             side: THREE.BackSide,
             transparent: true,
-            opacity: 0,
+            opacity: 0.22,
             depthWrite: false,
             toneMapped: false
         });
@@ -473,7 +477,7 @@ export class InteractionManager {
         this.hintOutlineGroup.visible = false;
 
         const outlineMaterial = /** @type {THREE.MeshBasicMaterial} */ (this.hintOutlineMaterial);
-        const INFLATE_SCALE = 1.03;
+        const INFLATE_SCALE = 1.012;
         for (const object of interactiveObjects) {
             object.updateMatrixWorld(true);
             object.traverse((child) => {
@@ -486,12 +490,29 @@ export class InteractionManager {
                 outlineMesh.scale.multiplyScalar(INFLATE_SCALE);
                 outlineMesh.matrixAutoUpdate = false;
                 outlineMesh.updateMatrix();
+                outlineMesh.userData.outlineTarget = object;
+                outlineMesh.visible = false;
                 /** @type {THREE.Group} */ (this.hintOutlineGroup).add(outlineMesh);
             });
         }
 
         if (this.scene) this.scene.add(this.hintOutlineGroup);
         this.startHintTimer();
+    }
+
+    /** @param {THREE.Object3D | null} object */
+    updateHintOutlineTarget(object) {
+        if (!this.hintOutlineGroup || !this.hintOutlineMaterial) return;
+
+        const visible = object !== null && this.currentZoomedObject === null;
+        this.hintOutlineGroup.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                child.visible = visible && child.userData.outlineTarget === object;
+            }
+        });
+        this.hintOutlineGroup.visible = visible;
+        this.hintActive = visible;
+        this.hintOutlineMaterial.opacity = visible ? 0.22 : 0;
     }
 
     /**
@@ -509,18 +530,9 @@ export class InteractionManager {
      * Fade in the hint outlines on interactive objects
      */
     showHint() {
-        if (!this.hintOutlineGroup || !this.hintOutlineMaterial || this.currentZoomedObject) return;
-
-        this.hintActive = true;
-        this.hintOutlineMaterial.opacity = 0;
-        this.hintOutlineGroup.visible = true;
-
-        gsap.to(this.hintOutlineMaterial, {
-            opacity: 0.6,
-            duration: 2.0,
-            ease: 'power1.out',
-            onUpdate: () => this.requestRender()
-        });
+        if (this.currentZoomedObject || !this.hoveredObject) return;
+        this.updateHintOutlineTarget(this.hoveredObject);
+        this.requestRender();
     }
 
     /**
@@ -536,6 +548,9 @@ export class InteractionManager {
             onUpdate: () => this.requestRender(),
             onComplete: () => {
                 /** @type {THREE.Group} */ (this.hintOutlineGroup).visible = false;
+                /** @type {THREE.Group} */ (this.hintOutlineGroup).traverse((child) => {
+                    if (child instanceof THREE.Mesh) child.visible = false;
+                });
                 this.hintActive = false;
             }
         });

@@ -217,7 +217,7 @@ export class FurnitureFactory {
         // clearcoat=0: plaster has no clear-coat specular.
         // envMapIntensity=0.04: outdoor HDRI values are 3-8x above 1.0; even at 0.04
         // the HDRI still contributes meaningful fill without dominating a matte interior wall.
-        const wallMat = this._createTexturedMaterial('wall', 0.95, 0.0, false, 0xf0e9d8, 0, 1.0);
+        const wallMat = this._createTexturedMaterial('wall', 0.95, 0.0, true, 0xf0e9d8, 0, 1.0);
         wallMat.envMapIntensity = 0.04;
         // Baked-in warm tint (Phase 3.1) replacing the backWallWash PointLight that used
         // to lift this wall out of pure black — a static emissive term costs nothing per
@@ -273,12 +273,11 @@ export class FurnitureFactory {
 
     createSideWalls() {
         const group = new THREE.Group();
-        const wallMat = new THREE.MeshStandardMaterial({
-            color: 0xf0e9d8,
-            roughness: 0.95,
-            metalness: 0.0,
-            envMapIntensity: 0.10
-        });
+        // Reuse the same plaster normal/roughness set as the back wall. The
+        // side walls are large grazing-angle surfaces, so even low-frequency
+        // roughness variation does more for realism than increasing geometry.
+        const wallMat = this._createTexturedMaterial('wall', 0.95, 0.0, true, 0xf0e9d8, 0, 1.0);
+        wallMat.envMapIntensity = 0.10;
         const baseboardMat = new THREE.MeshStandardMaterial({ color: 0x5c4a3d, roughness: 0.7, metalness: 0.0 });
 
         // Left wall (window side — source of the directional light)

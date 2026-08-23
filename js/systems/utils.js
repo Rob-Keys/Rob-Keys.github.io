@@ -476,6 +476,7 @@ export function createContactShadowPlane(width, depth) {
 
     const plane = new THREE.Mesh(geometry, material);
     plane.renderOrder = 0;
+    plane.userData.isContactShadow = true;
     return plane;
 }
 
@@ -491,7 +492,10 @@ export function createContactShadowPlane(width, depth) {
  *   vertex in the parent's local space); the plane is placed a hair below it.
  */
 export function addContactShadow(group, width, depth, groundY) {
-    if (!PORTFOLIO_CONFIG.rendering.enableContactShadows) return;
+    // Contact cards are a high-quality desktop affordance. They are deliberately
+    // omitted on coarse-pointer devices, where the extra transparent draws are
+    // more noticeable in the GPU budget than they are in the small viewport.
+    if (!PORTFOLIO_CONFIG.rendering.enableContactShadows || isMobileDevice()) return;
 
     const plane = createContactShadowPlane(width, depth);
     plane.position.set(0, groundY - CONTACT_SHADOW_EPSILON, 0);

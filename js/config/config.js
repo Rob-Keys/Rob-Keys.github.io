@@ -230,6 +230,7 @@ export const QUALITY_TIERS = Object.freeze({
     medium: Object.freeze({
         maxPixelRatioDesktop: 1.25,
         maxPixelRatioMobile: 1.0,
+        enableContactShadows: false,
         enableDustParticles: false,
         filmGrainAmplitude: 0,
         lampShadowEnabled: false
@@ -240,6 +241,7 @@ export const QUALITY_TIERS = Object.freeze({
         postProcessResolutionScale: 0.25,
         enableBloom: false,
         simpleGlare: true,
+        enableContactShadows: false,
         enableDustParticles: false,
         filmGrainAmplitude: 0,
         lampShadowEnabled: false,

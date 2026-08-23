@@ -37,6 +37,7 @@ export class DeskObjectFactory {
         const coverMaterial = new THREE.MeshStandardMaterial({
             color: 0x2c3e50,
             roughness: 0.7,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.1
         });
         const cover = new THREE.Mesh(coverGeometry, coverMaterial);
@@ -207,10 +208,13 @@ export class DeskObjectFactory {
         };
 
         const cupGeometry = new THREE.CylinderGeometry(cupTopRadius, cupBottomRadius, cupHeight, 32, 1, true);
-        const cupMaterial = new THREE.MeshStandardMaterial({
+        const cupMaterial = new THREE.MeshPhysicalMaterial({
             color: 0xfafafa,
-            roughness: 0.85,
+            roughness: 0.62,
+            roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.0,
+            clearcoat: 0.18,
+            clearcoatRoughness: 0.18,
             side: THREE.DoubleSide
         });
         const cup = new THREE.Mesh(cupGeometry, cupMaterial);
@@ -260,6 +264,17 @@ export class DeskObjectFactory {
         const coffee = new THREE.Mesh(coffeeGeometry, coffeeMaterial);
         coffee.position.set(offsets.cup.x, coffeeLevel, offsets.cup.z);
         group.add(coffee);
+
+        // A very shallow torus catches a highlight around the cup wall and
+        // gives the liquid an irregular-looking meniscus without simulating
+        // fluid or adding transparent geometry.
+        const meniscus = new THREE.Mesh(
+            new THREE.TorusGeometry(coffeeRadius * 0.88, 0.008, 8, 24),
+            coffeeMaterial
+        );
+        meniscus.rotation.x = Math.PI / 2;
+        meniscus.position.set(offsets.cup.x, coffeeLevel + 0.004, offsets.cup.z);
+        group.add(meniscus);
 
         // Corrugated texture lines on sleeve — merged into a single draw call
         const lineMaterial = new THREE.MeshStandardMaterial({

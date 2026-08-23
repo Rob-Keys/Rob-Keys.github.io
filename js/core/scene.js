@@ -31,9 +31,11 @@ export class SceneManager {
         this.origins = OBJECT_ORIGINS.scene;
 
         /** @type {'high' | 'medium' | 'low'} */
-        this.qualityTier = 'high';
+        this.qualityTier = isMobileDevice() ? 'medium' : 'high';
         /** @type {import('../config/config.js').RenderingConfig} */
-        this._renderingConfig = PORTFOLIO_CONFIG.rendering;
+        this._renderingConfig = isMobileDevice()
+            ? { ...PORTFOLIO_CONFIG.rendering, ...QUALITY_TIERS.medium }
+            : PORTFOLIO_CONFIG.rendering;
 
         this.loadingManager = new THREE.LoadingManager();
         this.loadingManager.onStart = () => {
@@ -117,6 +119,14 @@ export class SceneManager {
         this.postProcessing?.setBloomEnabled(this._renderingConfig.enableBloom);
         this.lightingSystem?.setSimpleGlare(this._renderingConfig.simpleGlare);
         if (this.dustCloud) this.dustCloud.visible = this._renderingConfig.enableDustParticles;
+
+        // Contact cards are ordinary scene meshes, so they can be disabled after
+        // startup without rebuilding any geometry or materials.
+        this.scene?.traverse((object) => {
+            if (object.userData.isContactShadow) {
+                object.visible = this._renderingConfig.enableContactShadows;
+            }
+        });
 
         const lights = /** @type {{ deskLamp?: THREE.Light, fill?: THREE.Light } | null} */ (this.lights);
         if (lights?.deskLamp) lights.deskLamp.castShadow = this._renderingConfig.lampShadowEnabled;
@@ -213,7 +223,7 @@ export class SceneManager {
         );
         floor.position.set(origin.x, origin.y, origin.z);
         floor.rotation.set(origin.rotationX, origin.rotationY, origin.rotationZ);
-        floor.receiveShadow = true;
+        floor.receiveShadow = !isMobileDevice();
         floor.userData.excludeFromShadowFit = true;
         floor.updateMatrixWorld(true);
         floor.matrixAutoUpdate = false;
