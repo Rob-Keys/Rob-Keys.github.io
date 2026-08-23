@@ -386,7 +386,10 @@ export class InteractionManager {
 
             // Update scroll offset
             this.monitorScrollOffset += event.deltaY * 0.5;
-            this.monitorScrollOffset = Math.max(0, Math.min(this.monitorScrollOffset, 2000));
+            this.monitorScrollOffset = Math.max(
+                0,
+                Math.min(this.monitorScrollOffset, this.monitorRenderer.getMaxScrollOffset())
+            );
 
             // Update monitor texture
             this.updateMonitorTexture();
