@@ -1,12 +1,15 @@
 name: Deploy to prod
 
-# Manually promotes a build of the site to the `prod` branch, which Cloudflare
+# Promotes a build of the site to the `prod` branch, which Cloudflare
 # Pages watches and rebuilds from on every push. The `prod` branch contains
 # only the files the site actually serves at runtime -- no source tooling,
-# docs, or config. Run from the Actions tab when you're ready to publish
-# whatever is currently on `main` (or another ref you choose).
+# docs, or config. Pushes to `main` deploy automatically; the workflow can
+# also be run from the Actions tab for another ref.
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       ref:
@@ -24,7 +27,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
           path: source
 
