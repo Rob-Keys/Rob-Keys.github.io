@@ -631,235 +631,238 @@ export class TechnologyFactory {
         const group = new THREE.Group();
         const origin = this.origins.laptop;
 
-        const metalMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.4,
+        // Apple-style unibody aluminum is bright enough to show its form in the
+        // warm room, but still carries the cool, satin reflection of anodized metal.
+        const aluminumMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xb9bec4,
+            roughness: 0.32,
             roughnessMap: createRoughnessVariationTexture(),
-            metalness: 0.8,
-            clearcoat: 0.5,
-            clearcoatRoughness: 0.2
+            metalness: 0.92,
+            clearcoat: 0.22,
+            clearcoatRoughness: 0.28
+        });
+        const darkAluminumMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x30343a,
+            roughness: 0.48,
+            metalness: 0.72,
+            clearcoat: 0.18,
+            clearcoatRoughness: 0.4
+        });
+        const blackGlassMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x05070b,
+            roughness: 0.2,
+            metalness: 0.08,
+            clearcoat: 0.7,
+            clearcoatRoughness: 0.08
         });
 
-        // Base (bottom half with keyboard)
-        const baseGeometry = createBeveledBox(1.4, 0.05, 0.9, 0.006, 2);
-        const base = new THREE.Mesh(baseGeometry, metalMaterial);
-        base.position.set(0, 0.025, 0);
+        // The base is a shallow, rounded unibody shell with a raised keyboard deck.
+        const base = new THREE.Mesh(createBeveledBox(1.74, 0.052, 1.08, 0.014, 3), aluminumMaterial);
+        base.position.y = 0.026;
         base.castShadow = true;
         base.receiveShadow = true;
         group.add(base);
 
-        // Two short hinge barrels are enough to establish the lid's mechanical
-        // connection; merging them keeps the detail to one extra draw call.
-        const hingeGeometry = new THREE.CylinderGeometry(0.035, 0.035, 0.12, 12);
-        const hingeGeometries = [-0.45, 0.45].map((x) => {
+        const deck = new THREE.Mesh(createBeveledBox(1.69, 0.016, 1.02, 0.011, 3), aluminumMaterial);
+        deck.position.y = 0.058;
+        deck.castShadow = true;
+        deck.receiveShadow = true;
+        group.add(deck);
+
+        // Black keyboard well. The narrow aluminum border around it is a key
+        // MacBook cue and prevents the keyboard from reading as a floating grid.
+        const keyboardWell = new THREE.Mesh(
+            createBeveledBox(1.41, 0.008, 0.50, 0.012, 3),
+            new THREE.MeshStandardMaterial({ color: 0x20242a, roughness: 0.72, metalness: 0.16 })
+        );
+        keyboardWell.position.set(0, 0.069, -0.18);
+        keyboardWell.castShadow = true;
+        keyboardWell.receiveShadow = true;
+        group.add(keyboardWell);
+
+        // Rounded keycaps are instanced: the keyboard gets a proper silhouette and
+        // highlight at one draw call instead of dozens of independent meshes.
+        const keyMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x292d33,
+            roughness: 0.68,
+            metalness: 0.12,
+            clearcoat: 0.08,
+            clearcoatRoughness: 0.32
+        });
+        const keyGeometry = createKeycapGeometry(0.078, 0.068, 0.012, 0.84, 0.009, 2);
+        const keyRows = [
+            { count: 14, start: -0.585, z: -0.385, step: 0.088 },
+            { count: 13, start: -0.54, z: -0.305, step: 0.093 },
+            { count: 13, start: -0.54, z: -0.225, step: 0.093 },
+            { count: 12, start: -0.49, z: -0.145, step: 0.098 },
+            { count: 11, start: -0.43, z: -0.065, step: 0.105 }
+        ];
+        const keyCount = keyRows.reduce((total, row) => total + row.count, 0) + 1;
+        const keys = new THREE.InstancedMesh(keyGeometry, keyMaterial, keyCount);
+        const keyTransform = new THREE.Object3D();
+        let keyIndex = 0;
+        keyRows.forEach((row) => {
+            for (let column = 0; column < row.count; column++) {
+                keyTransform.position.set(row.start + column * row.step, 0.078, row.z);
+                keyTransform.rotation.set(0, 0, 0);
+                keyTransform.scale.set(1, 1, 1);
+                keyTransform.updateMatrix();
+                keys.setMatrixAt(keyIndex++, keyTransform.matrix);
+            }
+        });
+        // A wider space bar fills the final row without needing a second material.
+        keyTransform.position.set(0, 0.078, 0.015);
+        keyTransform.scale.set(5.4, 1, 1);
+        keyTransform.updateMatrix();
+        keys.setMatrixAt(keyIndex, keyTransform.matrix);
+        keys.instanceMatrix.needsUpdate = true;
+        keys.castShadow = true;
+        keys.receiveShadow = true;
+        group.add(keys);
+
+        const trackpad = new THREE.Mesh(
+            createBeveledBox(0.74, 0.006, 0.36, 0.014, 3),
+            new THREE.MeshPhysicalMaterial({
+                color: 0x9299a1,
+                roughness: 0.18,
+                metalness: 0.26,
+                clearcoat: 0.72,
+                clearcoatRoughness: 0.1
+            })
+        );
+        trackpad.position.set(0, 0.069, 0.32);
+        trackpad.castShadow = true;
+        trackpad.receiveShadow = true;
+        group.add(trackpad);
+
+        // Two short hinge barrels make the lid feel mechanically attached.
+        const hingeGeometry = new THREE.CylinderGeometry(0.022, 0.022, 0.14, 12);
+        const hingeGeometries = [-0.43, 0.43].map((x) => {
             const geometry = hingeGeometry.clone();
             geometry.rotateZ(Math.PI / 2);
-            geometry.translate(x, 0.055, -0.41);
+            geometry.translate(x, 0.076, -0.505);
             return geometry;
         });
-        const hinges = new THREE.Mesh(
-            BufferGeometryUtils.mergeGeometries(hingeGeometries),
-            metalMaterial
-        );
+        const hinges = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(hingeGeometries), darkAluminumMaterial);
         hinges.castShadow = true;
         group.add(hinges);
 
-        // Keyboard keys — merged into a single draw call via geometry merge
-        const keyMaterial = new THREE.MeshStandardMaterial({
-            color: 0x1a1a1a,
-            roughness: 0.9,
-            metalness: 0.0
-        });
-
-        const keySize = 0.08;
-        const keyGap = 0.09;
-        const keysStartX = -0.58;
-        const keysStartZ = -0.32;
-
-        const laptopKeyGeometries = [];
-        const laptopKeyGeometry = new THREE.BoxGeometry(keySize, 0.02, keySize);
-
-        for (let row = 0; row < 5; row++) {
-            for (let col = 0; col < 14; col++) {
-                const kg = laptopKeyGeometry.clone();
-                kg.translate(keysStartX + col * keyGap, 0.06, keysStartZ + row * keyGap);
-                laptopKeyGeometries.push(kg);
-            }
-        }
-
-        const spaceGeo = new THREE.BoxGeometry(0.5, 0.02, keySize);
-        spaceGeo.translate(0, 0.06, keysStartZ + 5 * keyGap);
-        laptopKeyGeometries.push(spaceGeo);
-
-        const mergedLaptopKeys = new THREE.Mesh(
-            BufferGeometryUtils.mergeGeometries(laptopKeyGeometries),
-            keyMaterial
-        );
-        mergedLaptopKeys.castShadow = true;
-        mergedLaptopKeys.receiveShadow = true;
-        group.add(mergedLaptopKeys);
-
-        // Screen lid (hinged at the back)
+        // Screen lid (hinged at the rear edge of the base).
         const screenLid = new THREE.Group();
-
-        // Screen bezel/frame
-        const lidGeometry = createBeveledBox(1.4, 0.9, 0.04, 0.005, 2);
-        const lid = new THREE.Mesh(lidGeometry, metalMaterial);
-        lid.position.set(0, 0.45, 0);
+        const lid = new THREE.Mesh(createBeveledBox(1.74, 1.0, 0.028, 0.014, 3), aluminumMaterial);
+        lid.position.y = 0.49;
         lid.castShadow = true;
+        lid.receiveShadow = true;
         screenLid.add(lid);
 
-        // Create screen display content: a code-editor mock (Phase 5.4) rather
-        // than a plain text window -- a screen showing real-looking code is a
-        // much stronger realism cue for a software engineer's laptop, and it
-        // reads clearly at the shallow lid angle where a text-heavy window
-        // would blur into noise.
+        const glassBorder = new THREE.Mesh(
+            createBeveledBox(1.62, 0.89, 0.012, 0.012, 3),
+            blackGlassMaterial
+        );
+        glassBorder.position.set(0, 0.49, 0.022);
+        screenLid.add(glassBorder);
+
         const canvas = document.createElement('canvas');
-        canvas.width = 1024;
-        canvas.height = 768;
+        canvas.width = 1440;
+        canvas.height = 900;
         const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Failed to get 2D context for keyboard canvas');
+        if (!ctx) throw new Error('Failed to get 2D context for laptop terminal');
 
-        // Fill with simple color initially
-        ctx.fillStyle = '#1e1e2e';
+        // Draw the complete terminal before creating the texture. This removes the
+        // dark first-frame flash and keeps the visual source compact and reusable.
+        ctx.fillStyle = '#0b0f14';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        const texture = new THREE.CanvasTexture(canvas);
-
-        // Defer heavy rendering
-        requestAnimationFrame(() => setTimeout(() => {
-            // Editor background
-            ctx.fillStyle = '#1e1e2e';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Title bar
-            ctx.fillStyle = '#181825';
-            ctx.fillRect(0, 0, canvas.width, 44);
-            ['#ff5f57', '#ffbd2e', '#28ca42'].forEach((color, i) => {
-                ctx.fillStyle = color;
-                ctx.beginPath();
-                ctx.arc(28 + i * 24, 22, 7, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            ctx.font = '15px "Courier New", monospace';
-            ctx.fillStyle = '#9399b2';
-            ctx.textAlign = 'center';
-            ctx.fillText('experience.ts — laptop', canvas.width / 2, 27);
-
-            // Line-number gutter
-            const gutterWidth = 56;
-            ctx.fillStyle = '#181825';
-            ctx.fillRect(0, 44, gutterWidth, canvas.height - 44);
-
-            // Syntax-highlighted lines: a small TS snippet describing the role
-            const lines = [
-                { text: 'interface Role {', color: '#cdd6f4' },
-                { text: '  company: string;', color: '#89b4fa' },
-                { text: '  title: string;', color: '#89b4fa' },
-                { text: '  start: Date;', color: '#89b4fa' },
-                { text: '}', color: '#cdd6f4' },
-                { text: '', color: '#cdd6f4' },
-                { text: 'const nextRole: Role = {', color: '#cdd6f4' },
-                { text: '  company: "Amazon Web Services",', color: '#a6e3a1' },
-                { text: '  title: "Software Development Engineer",', color: '#a6e3a1' },
-                { text: '  start: new Date("2026-06-01"),', color: '#a6e3a1' },
-                { text: '};', color: '#cdd6f4' },
-                { text: '', color: '#cdd6f4' },
-                { text: '// AWS — SDE Intern, Summer 2025, Seattle WA', color: '#6c7086' },
-                { text: 'console.log(`Welcome, ${nextRole.title}`);', color: '#f9e2af' }
-            ];
-
-            ctx.textAlign = 'left';
-            ctx.font = '20px "Courier New", monospace';
-            const lineHeight = 34;
-            let y = 44 + 30;
-            lines.forEach((line, i) => {
-                ctx.fillStyle = '#585b70';
-                ctx.fillText(String(i + 1), 16, y);
-                ctx.fillStyle = line.color;
-                ctx.fillText(line.text, gutterWidth + 20, y);
-                y += lineHeight;
-            });
-
-            texture.needsUpdate = true;
-        }, 0));
-
-        // Canvas pixels represent display colors, so keep the texture in sRGB.
-        texture.colorSpace = THREE.SRGBColorSpace;
-
-        // Display screen on the lid with moderate emissive glow
-        const screenGeometry = new THREE.PlaneGeometry(1.3, 0.8);
-        const screenMaterial = new THREE.MeshPhysicalMaterial({
-            map: texture,
-            emissive: 0x60799b,
-            emissiveMap: texture,
-            emissiveIntensity: 1,
-            roughness: 0.05,
-            roughnessMap: createScreenSmudgeTexture(),
-            metalness: 0.0,
-            clearcoat: 0.5,
-            clearcoatRoughness: 0.08,
-            envMapIntensity: LIGHTING_CONFIG.environment.screen
+        ctx.fillStyle = '#20262f';
+        ctx.fillRect(0, 0, canvas.width, 62);
+        ['#ff5f57', '#febc2e', '#28c840'].forEach((color, index) => {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(34 + index * 27, 31, 9, 0, Math.PI * 2);
+            ctx.fill();
         });
-        const screen = new THREE.Mesh(screenGeometry, screenMaterial);
-        screen.position.set(0, 0.45, 0.025);
-        screen.layers.enable(1); // Add to bloom layer
+        ctx.fillStyle = '#aeb7c4';
+        ctx.font = '24px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('zsh — 80×24', canvas.width / 2, 39);
+        ctx.textAlign = 'left';
+        ctx.font = '28px Menlo, Monaco, "Courier New", monospace';
+        const terminalLines = [
+            ['Last login: Fri Aug 23 09:41:12 on ttys001', '#7e8a9a'],
+            ['rob@macbook-pro ~ % cd ~/projects/portfolio', '#d7e0ea'],
+            ['rob@macbook-pro portfolio % npm run dev', '#8cc8ff'],
+            ['', '#d7e0ea'],
+            ['  VITE v8.2.2  ready in 182 ms', '#8ee6a1'],
+            ['  ➜  Local:   http://localhost:5173/', '#b5d8ff'],
+            ['  ➜  Network: use --host to expose', '#8d99a8'],
+            ['', '#d7e0ea'],
+            ['rob@macbook-pro portfolio % git status', '#d7e0ea'],
+            ['On branch main', '#a7b3c2'],
+            ['nothing to commit, working tree clean', '#8ee6a1'],
+            ['', '#d7e0ea'],
+            ['rob@macbook-pro portfolio % _', '#d7e0ea']
+        ];
+        terminalLines.forEach(([line, color], index) => {
+            ctx.fillStyle = color;
+            ctx.fillText(line, 54, 118 + index * 54);
+        });
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 8;
+
+        // The display pixels are deliberately unlit. A real LCD emits its image
+        // independently of the room, while the separate glass/glow layers below
+        // provide reflections and light spill without washing out the terminal.
+        const screenMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            color: 0xffffff,
+            side: THREE.DoubleSide
+        });
+        const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.55, 0.82), screenMaterial);
+        screen.position.set(0, 0.49, 0.065);
+        screen.layers.enable(1);
         screenLid.add(screen);
 
-        // Dynamic glare overlay for laptop screen
-        const laptopGlareGeometry = new THREE.PlaneGeometry(1.28, 0.78);
-        let laptopGlareMaterial;
+        // Tiny camera dot inside the top bezel anchors the scale of the display.
+        const cameraDot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.009, 10, 8),
+            new THREE.MeshPhysicalMaterial({ color: 0x090b0f, roughness: 0.18, metalness: 0.75 })
+        );
+        cameraDot.position.set(0, 0.885, 0.07);
+        screenLid.add(cameraDot);
 
+        let laptopGlareMaterial;
         if (this.lightingSystem) {
             laptopGlareMaterial = this.lightingSystem.createGlareMaterial({
-                glareIntensity: 0.25, // Less intense than monitor
-                glareSharpness: 5.0,
-                fresnelPower: 2.0
+                glareIntensity: 0.045,
+                glareSharpness: 7.0,
+                fresnelPower: 2.6
             });
         } else {
             laptopGlareMaterial = new THREE.MeshBasicMaterial({
                 color: 0xffffff,
                 transparent: true,
-                opacity: 0.03,
+                opacity: 0.012,
                 depthWrite: false,
                 blending: THREE.AdditiveBlending
             });
         }
-
-        const laptopGlareOverlay = new THREE.Mesh(laptopGlareGeometry, laptopGlareMaterial);
-        laptopGlareOverlay.position.set(0, 0.45, 0.03);
+        const laptopGlareOverlay = new THREE.Mesh(new THREE.PlaneGeometry(1.53, 0.80), laptopGlareMaterial);
+        laptopGlareOverlay.position.set(0, 0.49, 0.071);
         laptopGlareOverlay.renderOrder = 1;
-        if (this.lightingSystem) {
-            laptopGlareOverlay.userData.glareMaterial = laptopGlareMaterial;
-        }
+        if (this.lightingSystem) laptopGlareOverlay.userData.glareMaterial = laptopGlareMaterial;
         screenLid.add(laptopGlareOverlay);
 
-        // The laptop screen used to also carry a RectAreaLight for even rectangular
-        // illumination -- deleted: the screen's emissive
-        // material plus bloom already sell the glow, and the bounce PointLight below
-        // provides the soft keyboard/desk fill a RectAreaLight would have added, at a
-        // fraction of the per-fragment cost.
-
-        // Faint cool bounce light from the laptop screen onto nearby desk
-        // surfaces (Phase 3.3 TODO, closed out here). Built as a child of
-        // screenLid so its position tracks the tilted screen correctly, then
-        // handed off to addEmissiveLight (which parents lights to the scene
-        // root) using its computed world position -- reading its *local*
-        // position after that reparent would silently drop the screenLid/group
-        // tilt and offset.
-        const laptopBounceLight = this.lightingSystem ? new THREE.PointLight(0x8fb8ff, 0.05, 2, 2) : null;
+        const laptopBounceLight = this.lightingSystem ? new THREE.PointLight(0x9cc6ff, 0.28, 2.8, 2) : null;
         if (laptopBounceLight) {
-            laptopBounceLight.position.set(0, 0.45, 0.1);
+            laptopBounceLight.position.set(0, 0.45, 0.12);
             screenLid.add(laptopBounceLight);
         }
 
-        // Position screen lid at the back edge of the base, tilted open
-        screenLid.position.set(0, 0.05, -0.45);
-        screenLid.rotation.x = -Math.PI / 6;  // Open at ~30 degrees from vertical
+        screenLid.position.set(0, 0.076, -0.505);
+        screenLid.rotation.x = -Math.PI / 6;
         group.add(screenLid);
 
-        // Contact shadow for realistic grounding (Phase 3.1)
-        addContactShadow(group, 1.6, 1.1, 0);
+        addContactShadow(group, 1.8, 1.2, 0);
 
         applyOrigin(group, origin, true); // Static object
 

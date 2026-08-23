@@ -9,11 +9,135 @@ import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'
 import {
     applyOrigin,
     createBeveledBox,
+    createCanvasTexture,
     createPaperGrainNormalTexture,
     createRoughnessVariationTexture,
     addContactShadow
 } from '../systems/utils.js';
 import { OBJECT_ORIGINS } from '../config/config.js';
+
+/** @type {THREE.CanvasTexture | null} */
+let _coffeeCupPaperTexture = null;
+/** @type {THREE.CanvasTexture | null} */
+let _coffeeSleeveTexture = null;
+/** @type {THREE.CanvasTexture | null} */
+let _coffeeSteamTexture = null;
+
+function createCoffeeCupPaperTexture() {
+    if (_coffeeCupPaperTexture) return _coffeeCupPaperTexture;
+
+    const { texture } = createCanvasTexture(256, 256, (ctx, canvas) => {
+        const paper = ctx.createLinearGradient(0, 0, canvas.width, 0);
+        paper.addColorStop(0, '#e6e0d5');
+        paper.addColorStop(0.22, '#faf7ef');
+        paper.addColorStop(0.55, '#f1ece2');
+        paper.addColorStop(0.82, '#fbf8f1');
+        paper.addColorStop(1, '#e4ded3');
+        ctx.fillStyle = paper;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 760; i++) {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            const length = 2 + Math.random() * 10;
+            const alpha = 0.025 + Math.random() * 0.05;
+            ctx.strokeStyle = `rgba(105, 94, 78, ${alpha})`;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + length * 0.25, y + length);
+            ctx.stroke();
+        }
+    });
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 1.5);
+    _coffeeCupPaperTexture = texture;
+    return texture;
+}
+
+function createCoffeeSleeveTexture() {
+    if (_coffeeSleeveTexture) return _coffeeSleeveTexture;
+
+    const { texture } = createCanvasTexture(256, 256, (ctx, canvas) => {
+        const kraft = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        kraft.addColorStop(0, '#6b3b21');
+        kraft.addColorStop(0.3, '#9a6035');
+        kraft.addColorStop(0.7, '#80502c');
+        kraft.addColorStop(1, '#5d321d');
+        ctx.fillStyle = kraft;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = 0; i < 920; i++) {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            const alpha = 0.04 + Math.random() * 0.09;
+            ctx.strokeStyle = `rgba(246, 218, 181, ${alpha})`;
+            ctx.lineWidth = 0.5 + Math.random() * 1.2;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + 3 + Math.random() * 12, y + (Math.random() - 0.5) * 2);
+            ctx.stroke();
+        }
+
+        // A low-contrast printed mark breaks up the uninterrupted brown field.
+        ctx.strokeStyle = 'rgba(52, 27, 15, 0.26)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(canvas.width * 0.5, canvas.height * 0.52, 28, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.font = 'bold 15px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(52, 27, 15, 0.32)';
+        ctx.fillText('ROASTED', canvas.width * 0.5, canvas.height * 0.47);
+        ctx.fillText('COFFEE', canvas.width * 0.5, canvas.height * 0.58);
+    });
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 1);
+    _coffeeSleeveTexture = texture;
+    return texture;
+}
+
+function createCoffeeSteamTexture() {
+    if (_coffeeSteamTexture) return _coffeeSteamTexture;
+
+    const { texture } = createCanvasTexture(160, 256, (ctx, canvas) => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.lineCap = 'round';
+        ctx.filter = 'blur(10px)';
+        ctx.lineWidth = 28;
+        ctx.strokeStyle = 'rgba(247, 239, 226, 0.26)';
+        const paths = [
+            [0.42, 0.96, 0.18, 0.7, 0.78, 0.5, 0.44, 0.08],
+            [0.58, 0.98, 0.88, 0.76, 0.24, 0.42, 0.62, 0.04]
+        ];
+        for (const [x0, y0, cx0, cy0, cx1, cy1, x1, y1] of paths) {
+            ctx.beginPath();
+            ctx.moveTo(x0 * canvas.width, y0 * canvas.height);
+            ctx.bezierCurveTo(
+                cx0 * canvas.width, cy0 * canvas.height,
+                cx1 * canvas.width, cy1 * canvas.height,
+                x1 * canvas.width, y1 * canvas.height
+            );
+            ctx.stroke();
+        }
+        ctx.filter = 'blur(4px)';
+        ctx.lineWidth = 7;
+        ctx.strokeStyle = 'rgba(255, 250, 241, 0.1)';
+        for (const [x0, y0, cx0, cy0, cx1, cy1, x1, y1] of paths) {
+            ctx.beginPath();
+            ctx.moveTo(x0 * canvas.width, y0 * canvas.height);
+            ctx.bezierCurveTo(
+                cx0 * canvas.width, cy0 * canvas.height,
+                cx1 * canvas.width, cy1 * canvas.height,
+                x1 * canvas.width, y1 * canvas.height
+            );
+            ctx.stroke();
+        }
+    });
+    texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+    _coffeeSteamTexture = texture;
+    return texture;
+}
 
 export class DeskObjectFactory {
     constructor() {
@@ -283,9 +407,9 @@ export class DeskObjectFactory {
         const group = new THREE.Group();
         const origin = this.origins.coffee;
 
-        const cupHeight = 0.8;
-        const cupTopRadius = 0.205;
-        const cupBottomRadius = 0.125;
+        const cupHeight = 0.72;
+        const cupTopRadius = 0.25;
+        const cupBottomRadius = 0.165;
         const wallThickness = 0.018;
         const bottomY = -cupHeight / 2;
         const topY = cupHeight / 2;
@@ -305,12 +429,15 @@ export class DeskObjectFactory {
         ];
         const cupGeometry = new THREE.LatheGeometry(cupProfile, 48);
         const cupMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0xf4f0e7,
-            roughness: 0.48,
+            color: 0xffffff,
+            map: createCoffeeCupPaperTexture(),
+            roughness: 0.58,
             roughnessMap: createRoughnessVariationTexture(),
+            normalMap: createPaperGrainNormalTexture(),
+            normalScale: new THREE.Vector2(0.16, 0.16),
             metalness: 0.0,
-            clearcoat: 0.08,
-            clearcoatRoughness: 0.3,
+            clearcoat: 0.04,
+            clearcoatRoughness: 0.38,
             side: THREE.DoubleSide
         });
         const cup = new THREE.Mesh(cupGeometry, cupMaterial);
@@ -319,8 +446,8 @@ export class DeskObjectFactory {
         group.add(cup);
 
         const radiusAt = (y) => cupBottomRadius + ((y - bottomY) / cupHeight) * (cupTopRadius - cupBottomRadius);
-        const sleeveHeight = 0.34;
-        const sleeveY = -0.02;
+        const sleeveHeight = 0.3;
+        const sleeveY = -0.015;
         const sleeveTopRadius = radiusAt(sleeveY + sleeveHeight / 2) + 0.014;
         const sleeveBottomRadius = radiusAt(sleeveY - sleeveHeight / 2) + 0.014;
 
@@ -348,8 +475,12 @@ export class DeskObjectFactory {
         sleevePositions.needsUpdate = true;
         sleeveGeometry.computeVertexNormals();
         const sleeveMaterial = new THREE.MeshStandardMaterial({
-            color: 0x946335,
-            roughness: 0.9,
+            color: 0xffffff,
+            map: createCoffeeSleeveTexture(),
+            roughness: 0.92,
+            roughnessMap: createRoughnessVariationTexture(),
+            normalMap: createPaperGrainNormalTexture(),
+            normalScale: new THREE.Vector2(0.24, 0.24),
             metalness: 0.0
         });
         const sleeve = new THREE.Mesh(sleeveGeometry, sleeveMaterial);
@@ -360,8 +491,10 @@ export class DeskObjectFactory {
         // Rolled paper lip: the highlight makes the rim read as a folded edge
         // instead of a mathematically sharp cylinder.
         const rimMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0xf7f3ea,
-            roughness: 0.4,
+            color: 0xf3eee4,
+            roughness: 0.5,
+            normalMap: createPaperGrainNormalTexture(),
+            normalScale: new THREE.Vector2(0.1, 0.1),
             clearcoat: 0.12,
             clearcoatRoughness: 0.24
         });
@@ -373,6 +506,15 @@ export class DeskObjectFactory {
         rim.position.y = topY - 0.004;
         rim.castShadow = true;
         group.add(rim);
+
+        const baseRim = new THREE.Mesh(
+            new THREE.TorusGeometry(cupBottomRadius - 0.004, 0.009, 8, 40),
+            rimMaterial
+        );
+        baseRim.rotation.x = Math.PI / 2;
+        baseRim.position.y = bottomY + 0.014;
+        baseRim.castShadow = true;
+        group.add(baseRim);
 
         const coffeeLevel = topY - 0.076;
         const coffeeRadius = cupTopRadius - wallThickness - 0.008;
@@ -386,10 +528,13 @@ export class DeskObjectFactory {
         // A very shallow domed surface avoids the dead-flat look of a disc while
         // keeping the liquid fully opaque and inexpensive to render.
         const coffeeGeometry = new THREE.LatheGeometry(coffeeProfile, 40);
-        const coffeeMaterial = new THREE.MeshStandardMaterial({
-            color: 0x2c1006,
-            roughness: 0.28,
-            metalness: 0.0
+        const coffeeMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x160603,
+            roughness: 0.26,
+            metalness: 0.0,
+            clearcoat: 0.38,
+            clearcoatRoughness: 0.12,
+            side: THREE.DoubleSide
         });
         const coffee = new THREE.Mesh(coffeeGeometry, coffeeMaterial);
         coffee.castShadow = true;
@@ -398,8 +543,8 @@ export class DeskObjectFactory {
         // The thin caramel ring is the coffee's meniscus/crema catching the warm
         // desk light at the edge of the dark liquid.
         const cremaMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0x8c4b24,
-            roughness: 0.3,
+            color: 0x77401f,
+            roughness: 0.38,
             clearcoat: 0.48,
             clearcoatRoughness: 0.08
         });
@@ -426,49 +571,47 @@ export class DeskObjectFactory {
         sleeveEdges.castShadow = true;
         group.add(sleeveEdges);
 
-        // Steam wisps use small static tubes instead of billboards, so their
-        // silhouettes stay believable while the camera moves around the cup.
+        // Steam uses soft alpha sprites rather than crisp tubes. A shared blurred
+        // texture gives the wisps a volumetric silhouette without per-frame
+        // geometry churn or the look of floating white wires.
+        const steamTexture = createCoffeeSteamTexture();
         const resetWisp = (steam) => {
-            const wispScale = 0.72 + Math.random() * 0.46;
-            steam.scale.set(wispScale, wispScale, wispScale);
+            const wispWidth = 0.14 + Math.random() * 0.07;
+            const wispHeight = 0.25 + Math.random() * 0.12;
+            steam.scale.set(wispWidth, wispHeight, 1);
 
             const startX = (Math.random() - 0.5) * 0.12;
             const startZ = (Math.random() - 0.5) * 0.12;
             steam.position.set(
                 startX,
-                coffeeLevel + 0.02 + Math.random() * 0.06,
+                coffeeLevel + 0.015 + Math.random() * 0.045,
                 startZ
             );
 
-            steam.rotation.y = Math.random() * Math.PI * 2;
-            steam.rotation.x = (Math.random() - 0.5) * 0.16;
+            steam.rotation.z = (Math.random() - 0.5) * 0.35;
 
-            const opacity = 0.07 + Math.random() * 0.07;
+            const opacity = 0.11 + Math.random() * 0.08;
             steam.material.opacity = opacity;
 
-            steam.userData.velocity.y = 0.0008 + Math.random() * 0.0012;
-            steam.userData.velocity.x = (Math.random() - 0.5) * 0.00045;
-            steam.userData.velocity.z = (Math.random() - 0.5) * 0.00045;
-            steam.userData.rotationSpeed = (Math.random() - 0.5) * 0.014;
-            steam.userData.scaleGrowth = 1.003 + Math.random() * 0.003;
-            steam.userData.lifetime = 140 + Math.random() * 100;
+            steam.userData.velocity.y = 0.00055 + Math.random() * 0.00075;
+            steam.userData.velocity.x = (Math.random() - 0.5) * 0.00035;
+            steam.userData.velocity.z = (Math.random() - 0.5) * 0.00035;
+            steam.userData.rotationSpeed = (Math.random() - 0.5) * 0.004;
+            steam.userData.scaleGrowth = 1.002 + Math.random() * 0.002;
+            steam.userData.lifetime = 160 + Math.random() * 100;
         };
 
         const createSteamWisp = () => {
-            const curve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0, 0),
-                new THREE.Vector3(0.018, 0.09, 0.008),
-                new THREE.Vector3(-0.016, 0.18, -0.006),
-                new THREE.Vector3(0.012, 0.28, 0.004)
-            ]);
-            const steamGeometry = new THREE.TubeGeometry(curve, 14, 0.0035, 4, false);
-            const steamMaterial = new THREE.MeshBasicMaterial({
-                color: 0xf4eee4,
+            const steamMaterial = new THREE.SpriteMaterial({
+                map: steamTexture,
+                color: 0xffffff,
                 transparent: true,
                 depthWrite: false,
-                depthTest: true
+                depthTest: true,
+                opacity: 0.28
             });
-            const steam = new THREE.Mesh(steamGeometry, steamMaterial);
+            const steam = new THREE.Sprite(steamMaterial);
+            steam.center.set(0.5, 0.08);
             steam.userData = { isSteam: true, velocity: { x: 0, y: 0, z: 0 } };
             resetWisp(steam);
             return steam;
@@ -477,7 +620,7 @@ export class DeskObjectFactory {
         // Add initial steam particles and cache the pool -- avoids filtering
         // `children` every animation tick to find them.
         const steamParticles = [];
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 3; i++) {
             const steam = createSteamWisp();
             group.add(steam);
             steamParticles.push(steam);
@@ -495,7 +638,7 @@ export class DeskObjectFactory {
                     steam.material.opacity = steam.userData.lifetime / 25 * 0.25;
                 }
 
-                steam.rotation.y += steam.userData.rotationSpeed;
+                steam.rotation.z += steam.userData.rotationSpeed;
                 steam.scale.multiplyScalar(steam.userData.scaleGrowth);
 
                 if (steam.userData.lifetime <= 0) {
@@ -505,7 +648,7 @@ export class DeskObjectFactory {
         };
 
         // Contact shadow for realistic grounding (Phase 3.1)
-        addContactShadow(group, 0.35, 0.35, -0.4);
+        addContactShadow(group, 0.46, 0.46, bottomY);
 
         applyOrigin(group, origin);
         group.userData = { name: 'coffee', label: 'Starbucks - What Drives Me', animateSteam: animateSteamFunc };

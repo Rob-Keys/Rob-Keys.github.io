@@ -135,13 +135,15 @@ export const OBJECT_ORIGINS = Object.freeze({
         monitor:  Object.freeze({ x: 0,    y: 1,    z: -1.1, rotationX: 0, rotationY: 0,              rotationZ: 0 }),
         keyboard: Object.freeze({ x: 0,    y: 0.94, z: 0.1,  rotationX: 0, rotationY: Math.PI,        rotationZ: 0 }),
         mouse:    Object.freeze({ x: 1.3,  y: 1,    z: 0,    rotationX: 0, rotationY: 0,              rotationZ: 0 }),
-        laptop:   Object.freeze({ x: -2.4, y: 0.85, z: 0.2,  rotationX: 0, rotationY: Math.PI / 4,   rotationZ: 0 }),
+        // The unibody base starts at local y=0; match it to the desktop's top
+        // surface so the laptop reads as resting on the wood instead of hovering.
+        laptop:   Object.freeze({ x: -2.4, y: 0.80, z: 0.2,  rotationX: 0, rotationY: Math.PI / 4,   rotationZ: 0 }),
         clock:    Object.freeze({ x: 1,    y: 0.83, z: -1,   rotationX: 0, rotationY: -Math.PI / 9,  rotationZ: 0 })
     }),
     desk: Object.freeze({
         notebook: Object.freeze({ x: 2.2,  y: 1, z: 0.4,  rotationX: 0, rotationY: -Math.PI / 6, rotationZ: 0 }),
         // The cup is modeled from its base up, so its root sits at desktop height.
-        coffee:   Object.freeze({ x: -1.8, y: 1.24, z: -0.8, rotationX: 0, rotationY: 0,             rotationZ: 0 }),
+        coffee:   Object.freeze({ x: -1.8, y: 1.19, z: -0.8, rotationX: 0, rotationY: 0,             rotationZ: 0 }),
         lamp:     Object.freeze({ x: 2.5,  y: 1, z: -1.1, rotationX: 0, rotationY: 0,             rotationZ: 0 })
     }),
     shelf: Object.freeze({
