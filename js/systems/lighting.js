@@ -221,15 +221,13 @@ export class LightingSystem {
         this.scene.add(ceilingFill.target);
         this.lights.fill2 = ceilingFill;
 
-        // Desk lamp SpotLight — 2700K incandescent-equivalent warm amber.
-        // 2700K accurate hex: #FFA740. Cone widened from the original π/11 (~16°) to
-        // π/8.5 (~21°) and retargeted onto the notebook page (was a factory-owned
-        // spotlight's job, now deleted -- see createDeskLamp, P1-3,
-        // while staying tight enough to read as the hero accent
-        // light against the cool monitor.
-        const deskLamp = new THREE.SpotLight(0xffa740, 8.0, 6, Math.PI / 8.5, 0.22, 2);
-        deskLamp.position.set(2.5, 3.5, -1.1);
-        deskLamp.target.position.set(1.9, 0.97, 0.35);
+        // Desk lamp SpotLight — 2700K incandescent-equivalent warm amber. Its
+        // origin is the bulb inside the actual shade (not an arbitrary point above
+        // the fixture), so the pool of light and the cast shadow agree with the
+        // object the viewer can see.
+        const deskLamp = new THREE.SpotLight(0xffa24a, 8.5, 5, Math.PI / 5.5, 0.28, 2);
+        deskLamp.position.set(2.72, 1.97, -0.56);
+        deskLamp.target.position.set(2.14, 0.99, 0.30);
         deskLamp.castShadow = !isMobile;
         deskLamp.shadow.mapSize.width = SHADOW_CONFIG.lamp.mapSize;
         deskLamp.shadow.mapSize.height = SHADOW_CONFIG.lamp.mapSize;
@@ -241,8 +239,8 @@ export class LightingSystem {
 
         // Lamp shade upward glow — warm amber light escaping through the top of the shade.
         // Also simulates the lamp warming the ceiling directly above it.
-        const lampShadeGlow = new THREE.PointLight(0xffb840, 1.2, 5, 2);
-        lampShadeGlow.position.set(2.5, 3.6, -1.1);
+        const lampShadeGlow = new THREE.PointLight(0xffb840, 0.65, 2.4, 2);
+        lampShadeGlow.position.set(2.72, 2.00, -0.56);
         this.scene.add(lampShadeGlow);
 
         // Desk bounce — soft warm PointLight just above desk surface under the lamp cone.
@@ -250,8 +248,8 @@ export class LightingSystem {
         // the keyboard, mouse, and base of the monitor. Intensity/distance bumped slightly
         // (was 0.6/2.5) to cover the lamp-base ambient glow the deleted factory
         // warmFillLight used to provide.
-        const deskBounce = new THREE.PointLight(0xffcf90, 0.75, 3, 2);
-        deskBounce.position.set(1.8, 1.05, -0.1);
+        const deskBounce = new THREE.PointLight(0xffcf90, 0.90, 2.4, 2);
+        deskBounce.position.set(2.12, 1.02, 0.18);
         this.scene.add(deskBounce);
 
         // Monitor bounce — 6500K daylight-balanced screen glow.

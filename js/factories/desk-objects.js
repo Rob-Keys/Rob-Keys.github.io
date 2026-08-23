@@ -473,155 +473,213 @@ export class DeskObjectFactory {
         const group = new THREE.Group();
         const origin = this.origins.lamp;
 
-        // Shared materials
+        // This is a compact, articulated task lamp: the proportions, joints, shade
+        // thickness, reflector, bulb, switch, and trailing cable all describe one
+        // coherent physical object. The light itself is kept in LightingSystem so
+        // the scene still pays for only one shadow-casting lamp light.
         const metalMaterial = new THREE.MeshStandardMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.3,
+            color: 0x252a29,
+            roughness: 0.26,
             roughnessMap: createRoughnessVariationTexture(),
-            metalness: 0.8,
+            metalness: 0.86,
         });
 
         const chromeMaterial = new THREE.MeshStandardMaterial({
-            color: 0x888888,
-            roughness: 0.1,
+            color: 0x9a9d99,
+            roughness: 0.16,
             roughnessMap: createRoughnessVariationTexture(),
             metalness: 0.9
         });
 
-        // Heavy circular base for stability
-        const baseGeometry = new THREE.CylinderGeometry(0.28, 0.35, 0.08, 24);
+        const rubberMaterial = new THREE.MeshStandardMaterial({
+            color: 0x111211,
+            roughness: 0.88,
+            metalness: 0.02
+        });
+
+        const createRodBetween = (start, end, radius, material, segments = 12) => {
+            const direction = new THREE.Vector3().subVectors(end, start);
+            const rod = new THREE.Mesh(
+                new THREE.CylinderGeometry(radius, radius * 1.08, direction.length(), segments),
+                material
+            );
+            rod.position.copy(start).add(end).multiplyScalar(0.5);
+            rod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+            rod.castShadow = true;
+            rod.receiveShadow = true;
+            return rod;
+        };
+
+        // Weighted base with a slightly splayed underside and a small rubber foot.
+        const baseGeometry = new THREE.CylinderGeometry(0.33, 0.39, 0.10, 32);
         const base = new THREE.Mesh(baseGeometry, metalMaterial);
-        base.position.set(0, -0.15, 0);
+        base.position.set(0, -0.14, 0);
         base.castShadow = true;
         base.receiveShadow = true;
         group.add(base);
 
-        // Vertical stem rising from base center
-        const stemHeight = 0.55;
-        const stemGeometry = new THREE.CylinderGeometry(0.035, 0.04, stemHeight, 16);
+        const baseTop = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.27, 0.30, 0.025, 32),
+            chromeMaterial
+        );
+        baseTop.position.y = -0.075;
+        baseTop.castShadow = true;
+        group.add(baseTop);
+
+        const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.31, 0.018, 32), rubberMaterial);
+        foot.position.y = -0.195;
+        foot.castShadow = true;
+        group.add(foot);
+
+        // Vertical post and the first pivot.
+        const stemHeight = 0.56;
+        const stemGeometry = new THREE.CylinderGeometry(0.041, 0.052, stemHeight, 16);
         const stem = new THREE.Mesh(stemGeometry, chromeMaterial);
-        stem.position.set(0, -0.11 + stemHeight / 2, 0);
+        stem.position.set(0, -0.055 + stemHeight / 2, 0);
         stem.castShadow = true;
         group.add(stem);
 
-        // Pivot joint at top of stem
-        const jointGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+        const jointGeometry = new THREE.SphereGeometry(0.066, 18, 12);
         const joint = new THREE.Mesh(jointGeometry, chromeMaterial);
-        const jointY = -0.11 + stemHeight;
+        const jointY = -0.055 + stemHeight;
         joint.position.set(0, jointY, 0);
         joint.castShadow = true;
         group.add(joint);
 
-        // Angled neck extending toward the notebook
-        const neckLength = 0.6;
-        const neckAngleX = Math.PI / 4;  // 45° tilt forward (toward +z / notebook)
-        const neckAngleZ = -Math.PI / 12; // slight tilt left (toward notebook x)
+        // Two-piece arm with a real elbow. The second member is shorter and more
+        // nearly horizontal, which avoids the toy-like single diagonal rod.
+        const elbow = new THREE.Vector3(0.06, 0.78, 0.31);
+        const headPivot = new THREE.Vector3(0.20, 0.93, 0.57);
+        group.add(createRodBetween(new THREE.Vector3(0, jointY, 0), elbow, 0.031, chromeMaterial));
+        group.add(createRodBetween(elbow, headPivot, 0.029, chromeMaterial));
 
-        const neckGroup = new THREE.Group();
-        const neckGeometry = new THREE.CylinderGeometry(0.025, 0.03, neckLength, 12);
-        neckGeometry.translate(0, neckLength / 2, 0);  // pivot from base
-        const neck = new THREE.Mesh(neckGeometry, chromeMaterial);
-        neck.castShadow = true;
-        neckGroup.add(neck);
+        const elbowJoint = new THREE.Mesh(new THREE.SphereGeometry(0.058, 16, 12), chromeMaterial);
+        elbowJoint.position.copy(elbow);
+        elbowJoint.castShadow = true;
+        group.add(elbowJoint);
 
-        neckGroup.position.set(0, jointY, 0);
-        neckGroup.rotation.x = neckAngleX;
-        neckGroup.rotation.z = neckAngleZ;
-        group.add(neckGroup);
-
-        // Calculate where the neck ends (for shade placement)
-        const neckEndY = jointY + Math.cos(neckAngleX) * neckLength;
-        const neckEndZ = Math.sin(neckAngleX) * neckLength;
-        const neckEndX = -Math.sin(neckAngleZ) * Math.cos(neckAngleX) * neckLength;
+        const headJoint = new THREE.Mesh(new THREE.SphereGeometry(0.052, 16, 12), chromeMaterial);
+        headJoint.position.copy(headPivot);
+        headJoint.castShadow = true;
+        group.add(headJoint);
 
         // Lamp head assembly positioned at neck end
         const headGroup = new THREE.Group();
 
-        // Conical shade - wider at bottom where light exits
-        // Cone tip is at top (y=+height/2), open base at bottom (y=-height/2)
-        const shadeHeight = 0.22;
-        const shadeRadius = 0.18;
-        const shadeGeometry = new THREE.ConeGeometry(shadeRadius, shadeHeight, 24, 1, true);
-        const shadeMaterial = new THREE.MeshStandardMaterial({
-            color: 0x2d4a2d,
-            roughness: 0.4,
-            metalness: 0.3,
+        // Enamelled bell shade. A separate inner cone and rolled rim provide the
+        // visual thickness that the old single-sided cone was missing.
+        const shadeHeight = 0.27;
+        const shadeRadius = 0.225;
+        const shadeMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x30483d,
+            roughness: 0.29,
+            metalness: 0.18,
+            clearcoat: 0.42,
+            clearcoatRoughness: 0.18,
             side: THREE.DoubleSide
         });
-        const shade = new THREE.Mesh(shadeGeometry, shadeMaterial);
+        const shade = new THREE.Mesh(
+            new THREE.ConeGeometry(shadeRadius, shadeHeight, 32, 1, true),
+            shadeMaterial
+        );
         shade.castShadow = true;
+        shade.receiveShadow = true;
         headGroup.add(shade);
 
-        // Inner reflective surface
-        const innerShadeGeometry = new THREE.ConeGeometry(0.16, 0.20, 16, 1, true);
+        const rim = new THREE.Mesh(
+            new THREE.TorusGeometry(shadeRadius * 0.965, 0.022, 8, 32),
+            shadeMaterial
+        );
+        rim.rotation.x = Math.PI / 2;
+        rim.position.y = -shadeHeight / 2;
+        rim.castShadow = true;
+        headGroup.add(rim);
+
+        // Warm, slightly matte reflector so the bulb reads as a real lamp rather
+        // than a bright floating sphere.
+        const innerShadeGeometry = new THREE.ConeGeometry(0.198, 0.245, 32, 1, true);
         const innerShadeMaterial = new THREE.MeshStandardMaterial({
-            color: 0xeeeeee,
-            roughness: 0.1,
-            metalness: 0.8,
+            color: 0xd9c39b,
+            roughness: 0.23,
+            metalness: 0.55,
             side: THREE.BackSide
         });
         const innerShade = new THREE.Mesh(innerShadeGeometry, innerShadeMaterial);
-        innerShade.castShadow = true;
+        innerShade.position.y = 0.004;
+        innerShade.receiveShadow = true;
         headGroup.add(innerShade);
 
-        // Light bulb positioned inside the cone shade
-        // Cone extends from y=-shadeHeight/2 (open base) to y=+shadeHeight/2 (tip)
-        // Place bulb in the upper portion of the cone interior
-        const bulbY = shadeHeight * 0.15; // Inside cone, toward the narrow end
-        const bulbGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+        // Ceramic socket and a frosted globe mounted in the narrow end.
+        const socket = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.048, 0.058, 0.075, 16),
+            rubberMaterial
+        );
+        socket.position.y = shadeHeight * 0.42;
+        socket.castShadow = true;
+        headGroup.add(socket);
+
+        const bulbY = shadeHeight * 0.13;
+        const bulbGeometry = new THREE.SphereGeometry(0.065, 20, 14);
         const bulbMaterial = new THREE.MeshStandardMaterial({
-            color: 0xfff8e0,
-            emissive: 0xffaa44,
-            emissiveIntensity: 0.6,
+            color: 0xfff4cf,
+            emissive: 0xff9b32,
+            emissiveIntensity: 1.45,
             transparent: true,
-            opacity: 0.95,
-            roughness: 0.1,
+            opacity: 0.92,
+            roughness: 0.24,
             metalness: 0.0
         });
         const bulb = new THREE.Mesh(bulbGeometry, bulbMaterial);
         bulb.position.set(0, bulbY, 0);
-        bulb.castShadow = true;
         bulb.layers.enable(1); // Add to bloom layer
         headGroup.add(bulb);
 
-        // Inner glow sphere for volumetric light effect
-        const glowGeometry = new THREE.SphereGeometry(0.055, 12, 12);
+        // Small emissive core adds a restrained glow without a second shadow map.
+        const glowGeometry = new THREE.SphereGeometry(0.082, 16, 12);
         const glowMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffdd88,
+            color: 0xffb84d,
             transparent: true,
-            opacity: 0.3,
-            side: THREE.BackSide
+            opacity: 0.17,
+            depthWrite: false
         });
         const glow = new THREE.Mesh(glowGeometry, glowMaterial);
         glow.position.set(0, bulbY, 0);
-        glow.layers.enable(1); // Add to bloom layer
+        glow.layers.enable(1);
         headGroup.add(glow);
 
-        // Position head at end of neck, shade opening faces forward and down toward desk
-        headGroup.position.set(neckEndX, neckEndY, neckEndZ);
-        headGroup.rotation.x = - Math.PI / 6;  // opening faces forward (+Z) and tilts down
-        headGroup.rotation.z = neckAngleZ;
+        // The open face points toward the notebook: down, forward, and just left.
+        headGroup.position.copy(headPivot);
+        headGroup.rotation.x = -0.68;
+        headGroup.rotation.z = -0.36;
         group.add(headGroup);
 
-        // The lamp's actual illumination -- a shadow-casting SpotLight plus a warm
-        // PointLight fill -- lives in LightingSystem.setupLights() (`deskLamp`,
-        // `lampShadeGlow`, `deskBounce`). This physical lamp used to carry its own
-        // second shadow-casting spotlight and fill light on top of that trio: five
-        // lights and two 1024 shadow maps modeling one lamp, and the quality-tier
-        // toggle (scene.js applyQualityTier) only ever reached lighting.js's
-        // `deskLamp`, so this duplicate kept casting a shadow even at low tier
-        // Deleted here; lighting.js's `deskLamp`
-        // target/angle was widened to cover the notebook page this used to aim at.
+        // A thin rubber power lead trails behind the base and rests just above the
+        // desktop, giving the silhouette a believable end point.
+        const cableCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(-0.18, -0.188, -0.12),
+            new THREE.Vector3(-0.28, -0.184, -0.22),
+            new THREE.Vector3(-0.24, -0.18, -0.38),
+            new THREE.Vector3(-0.16, -0.176, -0.49)
+        ]);
+        const cable = new THREE.Mesh(
+            new THREE.TubeGeometry(cableCurve, 12, 0.012, 6, false),
+            rubberMaterial
+        );
+        cable.castShadow = true;
+        group.add(cable);
 
-        // Switch on the base
-        const switchGeometry = new THREE.CylinderGeometry(0.025, 0.025, 0.03, 8);
+        // Raised rocker switch, placed where a hand can actually reach it.
         const switchMaterial = new THREE.MeshStandardMaterial({
-            color: 0xcccccc,
-            roughness: 0.2,
-            metalness: 0.8
+            color: 0xbcc2b8,
+            roughness: 0.32,
+            metalness: 0.58
         });
-        const lampSwitch = new THREE.Mesh(switchGeometry, switchMaterial);
-        lampSwitch.position.set(0.18, -0.12, 0);
+        const lampSwitch = new THREE.Mesh(
+            createBeveledBox(0.075, 0.024, 0.052, 0.008, 2),
+            switchMaterial
+        );
+        lampSwitch.position.set(0.16, -0.052, 0.02);
+        lampSwitch.rotation.z = -0.16;
         lampSwitch.castShadow = true;
         group.add(lampSwitch);
 
