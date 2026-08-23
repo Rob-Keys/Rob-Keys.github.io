@@ -5,46 +5,174 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rob Keys - Interactive Portfolio</title>
 
-    <link rel="stylesheet" href="css/styles.css">
+  <script type="module" crossorigin src="/assets/index-C4rquw8x.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BawQ5qQ4.css">
+    <link rel="preload" href="/assets/textures/env.hdr" as="fetch" crossorigin>
+    <link rel="preload" href="/assets/textures/floor_nor.webp" as="image">
+    <link rel="preload" href="/assets/textures/floor_rough.webp" as="image">
 </head>
 <body>
+    <a class="skip-link" href="#portfolio-content">Skip to portfolio content</a>
+
     <!-- Keep the boot UI outside the WebGL stacking context. This lets it paint
          independently while the scene and its GPU resources are being created. -->
-    <div id="loading" role="status" aria-live="polite" aria-label="Loading portfolio">
+    <div id="loading" role="status" aria-live="polite" aria-atomic="true" aria-label="Loading portfolio">
         <div class="loading-content">
             <p class="loading-eyebrow">Portfolio of</p>
-            <h1 class="loading-title" aria-label="Rob Keys">
+            <p class="loading-title" aria-label="Rob Keys">
                 <span>R</span><span>o</span><span>b</span><span class="loading-space">&nbsp;</span><span>K</span><span>e</span><span>y</span><span>s</span>
-            </h1>
+            </p>
             <div class="loading-track"><div class="loading-shimmer"></div></div>
             <p class="loading-status">Setting up the desk</p>
         </div>
     </div>
 
-    <div id="canvas-container">
+    <div id="canvas-container" aria-hidden="true"></div>
+
+    <aside id="non-webgl-fallback" hidden aria-label="3D view unavailable" role="status" aria-live="polite">
+        <p id="fallback-title" class="fallback-title"><strong>3D view unavailable.</strong></p>
+        <p>The accessible portfolio below is fully usable without WebGL or WebGPU.</p>
+    </aside>
+
+    <main id="portfolio-content" class="semantic-portfolio" aria-labelledby="portfolio-title" aria-busy="true" tabindex="-1">
+        <header class="portfolio-header">
+            <p class="portfolio-eyebrow">Software engineer • Builder • Problem solver</p>
+            <h1 id="portfolio-title" tabindex="-1">Rob Keys</h1>
+            <p class="portfolio-lede">Software Development Engineer at Amazon Web Services, focused on scalable systems, thoughtful user experiences, and technology that helps people.</p>
+        </header>
+
+        <section id="portfolio-items" aria-labelledby="portfolio-items-title">
+            <h2 id="portfolio-items-title">Portfolio information</h2>
+
+            <details id="portfolio-item-monitor" class="portfolio-item">
+                <summary data-portfolio-object="monitor">About me</summary>
+                    <p>I am a Software Development Engineer at Amazon Web Services with a passion for building scalable, impactful systems. I graduated from the University of Virginia with a B.S. in Computer Science, maintaining a 4.0 GPA while completing my degree in three years.</p>
+                    <h4>At a glance</h4>
+                    <ul>
+                        <li>Cloud architecture and AWS services</li>
+                        <li>Distributed systems and consensus algorithms</li>
+                        <li>Data structures, algorithms, and optimization</li>
+                        <li>Cybersecurity and privacy-focused software</li>
+                    </ul>
+            </details>
+
+            <details id="portfolio-item-laptop" class="portfolio-item">
+                <summary data-portfolio-object="laptop">Work experience</summary>
+                    <h4>Amazon Web Services — Software Development Engineer</h4>
+                    <p>Since 2026, I have been building scalable cloud infrastructure and services that power businesses worldwide.</p>
+                    <h4>Amazon Web Services — Software Development Engineer Intern</h4>
+                    <p>During my 2025 internship in Seattle, I worked on distributed systems and cloud infrastructure, gaining hands-on experience with large-scale systems and professional software development practices.</p>
+            </details>
+
+            <details id="portfolio-item-diploma" class="portfolio-item">
+                <summary data-portfolio-object="diploma">Education</summary>
+                    <h4>Bachelor of Science in Computer Science</h4>
+                    <p>University of Virginia</p>
+                    <ul>
+                        <li>4.0 GPA</li>
+                        <li>Graduated in three years</li>
+                        <li>NCAE-certified cybersecurity focal path</li>
+                    </ul>
+                    <p>Relevant study included data structures and algorithms, software engineering, cloud computing, databases, networks, cybersecurity, artificial intelligence, machine learning, and mathematics.</p>
+            </details>
+
+            <details id="portfolio-item-notebook" class="portfolio-item">
+                <summary data-portfolio-object="notebook">Personal projects</summary>
+                    <ul>
+                        <li><strong>SweetHopeBakeryy:</strong> a bakery website first written in PHP and later migrated to JavaScript.</li>
+                        <li><strong>Tidbyt:</strong> a clock application for a physical Tidbyt pixel display, written in its custom language.</li>
+                        <li><strong>Variety:</strong> contributions to an open-source Linux wallpaper manager.</li>
+                    </ul>
+            </details>
+
+            <details id="portfolio-item-tidbyt" class="portfolio-item">
+                <summary data-portfolio-object="tidbyt">Daily dashboard</summary>
+                    <p>The Tidbyt represents small, useful tools that bring information into the physical world. I built a custom clock app for the pixel display and enjoy designing focused interfaces that are easy to understand at a glance.</p>
+            </details>
+
+            <details id="portfolio-item-books" class="portfolio-item">
+                <summary data-portfolio-object="books">Knowledge base</summary>
+                    <p>I keep learning through books about clean code, software architecture, distributed systems, systems thinking, and practical engineering.</p>
+            </details>
+
+            <details id="portfolio-item-shelfPlant" class="portfolio-item">
+                <summary data-portfolio-object="shelfPlant">Work-life balance</summary>
+                    <p>Sustainable engineering depends on curiosity, rest, collaboration, and making room for interests outside of work.</p>
+            </details>
+
+            <details id="portfolio-item-vinyl" class="portfolio-item">
+                <summary data-portfolio-object="vinyl">Music and creativity</summary>
+                    <p>Music helps me focus and find rhythm in the creative process. Lo-fi beats are good for coding, classic rock brings energy, and jazz is a favorite for relaxing.</p>
+            </details>
+
+            <details id="portfolio-item-keyboard" class="portfolio-item">
+                <summary data-portfolio-object="keyboard">Skills</summary>
+                    <ul>
+                        <li><strong>Cloud architecture:</strong> scalable systems using AWS services and consensus algorithms such as Raft.</li>
+                        <li><strong>Data structures and algorithms:</strong> computational problem-solving, optimization, and complexity analysis.</li>
+                        <li><strong>Cybersecurity:</strong> privacy protection systems and contextual integrity frameworks.</li>
+                        <li><strong>Communication and teamwork:</strong> collaboration and leadership in high-pressure environments.</li>
+                        <li><strong>Problem solving:</strong> systematic debugging and architectural reasoning.</li>
+                    </ul>
+            </details>
+
+            <details id="portfolio-item-mouse" class="portfolio-item">
+                <summary data-portfolio-object="mouse">Navigation and tools</summary>
+                    <p>I value tools that make complex workflows clear, efficient, and approachable. Good navigation reduces friction and leaves people focused on their goals.</p>
+            </details>
+
+            <details id="portfolio-item-clock" class="portfolio-item">
+                <summary data-portfolio-object="clock">Time management</summary>
+                    <ul>
+                        <li><strong>Prioritization:</strong> focus on high-impact tasks first.</li>
+                        <li><strong>Deep work:</strong> protect dedicated blocks for complex problem-solving.</li>
+                        <li><strong>Iteration:</strong> break large projects into manageable sprints.</li>
+                        <li><strong>Balance:</strong> maintain a sustainable pace for long-term work.</li>
+                    </ul>
+            </details>
+
+            <details id="portfolio-item-coffee" class="portfolio-item">
+                <summary data-portfolio-object="coffee">What drives me</summary>
+                    <ul>
+                        <li><strong>Creating meaningful impact:</strong> building software that solves real problems and makes a tangible difference.</li>
+                        <li><strong>Solving complex challenges:</strong> breaking down difficult problems and building robust solutions.</li>
+                        <li><strong>Inclusive technology:</strong> making software work for people with different needs, backgrounds, and devices.</li>
+                        <li><strong>Innovation and learning:</strong> exploring new technologies and methods to keep improving.</li>
+                    </ul>
+            </details>
+
+            <details id="portfolio-item-lamp" class="portfolio-item">
+                <summary data-portfolio-object="lamp">Contact and documents</summary>
+                    <p>I am interested in new opportunities and collaborations.</p>
+                    <p><a href="mailto:rob_keys@outlook.com">Email Rob Keys at rob_keys@outlook.com</a></p>
+                    <p>Additional documents can be shared on request.</p>
+            </details>
+        </section>
+
+        <p id="portfolio-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+
+        <section id="accessibility" class="accessibility-statement" aria-labelledby="accessibility-title">
+            <h2 id="accessibility-title">Accessibility</h2>
+            <p>This portfolio is designed to work with keyboard navigation, screen readers, browser zoom, reduced-motion preferences, and without WebGL. If you encounter a barrier, please <a href="mailto:rob_keys@outlook.com">contact Rob Keys</a>.</p>
+        </section>
+
+        <footer class="site-footer">
+            <p>Rob Keys — interactive portfolio</p>
+        </footer>
+    </main>
+
+    <aside id="instructions" aria-labelledby="instructions-title">
+        <h2 id="instructions-title">How to explore</h2>
+        <p>Use Tab to choose a portfolio topic, then press Enter or Space to open its details. Click or tap objects to explore the 3D desk. Press Escape to close details. The semantic portfolio above works without WebGL.</p>
+        <button id="dismiss-instructions" type="button">Dismiss instructions</button>
+    </aside>
+
+    <div id="look-around-hint" aria-hidden="true">
+        <span class="look-around-arrow look-around-arrow-left" aria-hidden="true">←</span>
+        <p>Drag your finger to look around</p>
+        <span class="look-around-arrow look-around-arrow-right" aria-hidden="true">→</span>
     </div>
 
-    <div id="info-panel">
-        <button id="close-btn">&times;</button>
-        <div id="panel-content"></div>
-    </div>
-
-    <div id="instructions">
-        Click objects to explore • Click again to zoom out • Click another object to switch
-    </div>
-
-    <!-- Self-hosted, concatenated + minified vendor bundle: three.js + OrbitControls +
-         RGBELoader + RectAreaLightUniformsLib + BufferGeometryUtils + GSAP. Everything
-         the scene needs before its first frame. Post-processing (bloom/FXAA/grade) lives
-         in vendor-postfx.js, lazy-loaded from scene.js after the first render so it never
-         blocks initial paint. -->
-    <link rel="preload" href="js/vendor/vendor-core.js" as="script">
-    <link rel="preload" href="assets/textures/env.hdr" as="fetch" crossorigin>
-    <link rel="preload" href="assets/textures/floor_nor.webp" as="image">
-    <link rel="preload" href="assets/textures/floor_rough.webp" as="image">
-    <script defer src="js/vendor/vendor-core.js"></script>
-
-    <!-- Modular application code - loads after dependencies -->
-    <script type="module" defer src="js/core/main.js?v=2"></script>
+    <!-- Modular application code -->
 </body>
 </html>
