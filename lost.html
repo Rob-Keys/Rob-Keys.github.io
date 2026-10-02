@@ -23,7 +23,7 @@
             border-radius: 24px;
             padding: 48px 40px;
             width: 90vw;
-            height: 90vh;
+            min-height: min(90vh, 760px);
             text-align: center;
             display: flex;
             flex-direction: column;
@@ -61,6 +61,7 @@
             justify-content: center;
             gap: 2vh;
             margin-bottom: 28px;
+            width: min(100%, 840px);
         }
 
         .contact-btn {
@@ -71,7 +72,7 @@
             font-family: inherit;
             font-size: 0.95rem;
             font-weight: 600;
-            width: 400px;
+            width: min(400px, 100%);
         }
 
         .btn-email { background: #232D4B; color: #E8EBF2; }
@@ -82,12 +83,9 @@
             flex-wrap: wrap;
             gap: 6px;
             justify-content: center;
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 16px 24px;
-            border-radius: 0 0 24px 24px;
+            position: static;
+            margin-top: 24px;
+            padding: 0 8px;
         }
 
         .lang-btn {
@@ -104,7 +102,12 @@
         .lang-btn.active { background: #232D4B; color: #fff; border-color: #232D4B; }
 
         @media (max-width: 480px) {
-            .card { padding: 32px 20px; }
+            body { padding: 12px; }
+            .card { width: 100%; min-height: calc(100vh - 24px); height: auto; padding: 112px 20px 100px; }
+            .contact-buttons { flex-direction: column; align-items: stretch; gap: 12px; }
+            .contact-btn { width: 100%; }
+            .lang-track { margin-top: 28px; padding: 12px 0 0; }
+            .profile-img { top: 20px; left: 20px; }
         }
     </style>
 </head>
