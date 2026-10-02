@@ -82,19 +82,21 @@ monitor-specific canvas copy lives in `js/config/content.js`; scene settings
 
 ## Deployment
 
-`prod` is a separate branch with an unrelated commit history — it holds only
-the Vite production output plus `wrangler.jsonc`. Cloudflare Pages watches
-`prod` and rebuilds on every push to it.
+`prod` is a separate branch with an unrelated commit history. It holds only
+the Vite production output at the repository root plus `wrangler.jsonc`;
+Cloudflare Workers Builds reads that branch and serves the root configured in
+`wrangler.jsonc`.
 
-There's no pull-request step. To publish:
+Merges to `main` publish automatically. To publish another ref manually:
 
-1. Merge your changes into `main` (or whatever ref you want to ship).
-2. Go to the **Actions** tab → **Deploy to prod** → **Run workflow**.
-3. Optionally override the `ref` input (defaults to `main`).
+1. Go to the **Actions** tab → **Deploy to prod** → **Run workflow**.
+2. Set the optional `ref` input to the branch or commit to publish (defaults to `main`).
 
-The workflow (`.github/workflows/deploy-prod.yml`) checks out that ref, runs
-`npm ci` and `npm run build`, copies `dist/` into a `prod` worktree, and
-commits/pushes straight to `prod` if anything changed.
+The workflow (`.github/workflows/deploy-prod.yml`) checks out the selected
+source ref, runs `npm ci` and `npm run build`, copies `dist/` to the root of a
+`prod` worktree, and commits/pushes it if anything changed. Automatic runs
+skip publication when their source commit is no longer the current `main` tip;
+manual runs can intentionally publish historical refs.
 
 ## Dependencies
 

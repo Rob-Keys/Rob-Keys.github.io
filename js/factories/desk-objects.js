@@ -593,12 +593,12 @@ export class DeskObjectFactory {
             const opacity = 0.11 + Math.random() * 0.08;
             steam.material.opacity = opacity;
 
-            steam.userData.velocity.y = 0.00055 + Math.random() * 0.00075;
-            steam.userData.velocity.x = (Math.random() - 0.5) * 0.00035;
-            steam.userData.velocity.z = (Math.random() - 0.5) * 0.00035;
-            steam.userData.rotationSpeed = (Math.random() - 0.5) * 0.004;
-            steam.userData.scaleGrowth = 1.002 + Math.random() * 0.002;
-            steam.userData.lifetime = 160 + Math.random() * 100;
+            steam.userData.velocity.y = (0.00055 + Math.random() * 0.00075) * 60;
+            steam.userData.velocity.x = (Math.random() - 0.5) * 0.00035 * 60;
+            steam.userData.velocity.z = (Math.random() - 0.5) * 0.00035 * 60;
+            steam.userData.rotationSpeed = (Math.random() - 0.5) * 0.004 * 60;
+            steam.userData.scaleGrowth = ((1.002 + Math.random() * 0.002) - 1) * 60;
+            steam.userData.lifetime = (160 + Math.random() * 100) / 60;
         };
 
         const createSteamWisp = () => {
@@ -627,19 +627,19 @@ export class DeskObjectFactory {
         }
 
         // Store steam animation function
-        const animateSteamFunc = function() {
+        const animateSteamFunc = function(elapsedSeconds = 1 / 60) {
             steamParticles.forEach((steam) => {
-                steam.position.y += steam.userData.velocity.y;
-                steam.position.x += steam.userData.velocity.x;
-                steam.position.z += steam.userData.velocity.z;
+                steam.position.y += steam.userData.velocity.y * elapsedSeconds;
+                steam.position.x += steam.userData.velocity.x * elapsedSeconds;
+                steam.position.z += steam.userData.velocity.z * elapsedSeconds;
 
-                steam.userData.lifetime--;
-                if (steam.userData.lifetime < 25) {
-                    steam.material.opacity = steam.userData.lifetime / 25 * 0.25;
+                steam.userData.lifetime -= elapsedSeconds;
+                if (steam.userData.lifetime < 25 / 60) {
+                    steam.material.opacity = steam.userData.lifetime / (25 / 60) * 0.25;
                 }
 
-                steam.rotation.z += steam.userData.rotationSpeed;
-                steam.scale.multiplyScalar(steam.userData.scaleGrowth);
+                steam.rotation.z += steam.userData.rotationSpeed * elapsedSeconds;
+                steam.scale.multiplyScalar(1 + steam.userData.scaleGrowth * elapsedSeconds);
 
                 if (steam.userData.lifetime <= 0) {
                     resetWisp(steam);

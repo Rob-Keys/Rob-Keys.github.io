@@ -13,13 +13,13 @@ import { WallObjectFactory } from './wall-objects.js';
 /** @typedef {import('three/webgpu').Object3D} Object3D */
 
 export class ObjectFactory {
-    constructor(scene, lightingSystem = null) {
+    constructor(scene, lightingSystem = null, loadingManager = undefined) {
         this.scene = scene;
         this.interactiveObjects = [];
 
         // Initialize modular factories
         this.factories = {
-            furniture: new FurnitureFactory(),
+            furniture: new FurnitureFactory(loadingManager),
             technology: new TechnologyFactory(lightingSystem),
             shelf: new ShelfObjectFactory(),
             desk: new DeskObjectFactory(),
@@ -45,37 +45,37 @@ export class ObjectFactory {
         // Create all objects - interactive: true means clickable for zoom/info panel
         const objects = [
             // Furniture (non-interactive)
-            { obj: furniture.createWall(), interactive: false },
-            { obj: furniture.createCeiling(), interactive: false },
-            { obj: furniture.createSideWalls(), interactive: false },
-            { obj: furniture.createDesk(), interactive: false },
-            { obj: furniture.createWallShelf(), interactive: false },
+            { create: () => furniture.createWall(), interactive: false },
+            { create: () => furniture.createCeiling(), interactive: false },
+            { create: () => furniture.createSideWalls(), interactive: false },
+            { create: () => furniture.createDesk(), interactive: false },
+            { create: () => furniture.createWallShelf(), interactive: false },
             // Wall objects
-            { obj: wall.createWallDiploma(), interactive: true },
-            { obj: wall.createVinylRecord(), interactive: true },
+            { create: () => wall.createWallDiploma(), interactive: true },
+            { create: () => wall.createVinylRecord(), interactive: true },
             // Shelf objects
-            { obj: shelf.createShelfPlant(), interactive: true },
-            { obj: shelf.createShelfBooks(), interactive: true },
-            { obj: shelf.createTidbyt(), interactive: true },
+            { create: () => shelf.createShelfPlant(), interactive: true },
+            { create: () => shelf.createShelfBooks(), interactive: true },
+            { create: () => shelf.createTidbyt(), interactive: true },
             // Technology
-            { obj: technology.createMonitor(), interactive: true },
-            { obj: technology.createKeyboard(), interactive: true },
-            { obj: technology.createMouse(), interactive: true },
-            { obj: technology.createLaptop(), interactive: true },
-            { obj: technology.createDigitalClock(), interactive: true },
+            { create: () => technology.createMonitor(), interactive: true },
+            { create: () => technology.createKeyboard(), interactive: true },
+            { create: () => technology.createMouse(), interactive: true },
+            { create: () => technology.createLaptop(), interactive: true },
+            { create: () => technology.createDigitalClock(), interactive: true },
             // Content-bearing desk objects are also available through the
             // semantic controls and therefore remain discoverable in the scene.
-            { obj: desk.createCoffeeMug(), interactive: true },
-            { obj: desk.createNotebook(), interactive: true },
-            { obj: desk.createDeskLamp(), interactive: true }
+            { create: () => desk.createCoffeeMug(), interactive: true },
+            { create: () => desk.createNotebook(), interactive: true },
+            { create: () => desk.createDeskLamp(), interactive: true }
         ];
 
         // Object creation includes geometry generation and 2D canvas drawing.
         // Yield between small batches so the boot screen can paint and animate
         // instead of waiting behind one long main-thread task.
         for (let i = 0; i < objects.length; i++) {
-            const { obj, interactive } = objects[i];
-            this.addToScene(obj, interactive);
+            const { create, interactive } = objects[i];
+            this.addToScene(create(), interactive);
             if ((i + 1) % 3 === 0) {
                 await new Promise((resolve) => requestAnimationFrame(resolve));
             }
@@ -91,6 +91,10 @@ export class ObjectFactory {
      */
     loadDeferredTextures() {
         this.factories.wall.loadDeferredTextures();
+    }
+
+    waitForAssets() {
+        return this.factories.furniture.waitForTextures();
     }
 
 }

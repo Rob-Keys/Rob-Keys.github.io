@@ -5,11 +5,12 @@
  * Every keycap is one instance of a single InstancedMesh, so legends can't be
  * separate meshes or per-key materials without giving up that single draw call.
  * Instead each key's legend is baked into one cell of a shared atlas, every
- * instance carries the UV offset of its own cell, and a small `onBeforeCompile`
- * patch composites that cell over the keycap's top face.
+ * instance carries the UV offset of its own cell, and a TSL node material
+ * composites that cell over the keycap's top face.
  */
 
 import * as THREE from 'three/webgpu';
+import { attribute, materialColor, mix, texture as sampleTexture, uv } from 'three/tsl';
 import { assert, createCanvasTexture } from '../systems/utils.js';
 
 /** Atlas cell edge in pixels; one cell holds one key's legend. */
@@ -33,36 +34,6 @@ const LEGEND_ANISOTROPY = 8;
  * `aspect` is the key's width/depth ratio, used to pre-compress the text so a
  * wide key doesn't stretch it.
  */
-
-const LEGEND_VERTEX_PARS = `
-attribute vec2 instanceLegendOffset;
-attribute float legendMask;
-uniform vec2 legendCellScale;
-varying vec2 vLegendUv;
-varying float vLegendMask;
-`;
-
-const LEGEND_VERTEX_BODY = `
-    vLegendUv = uv * legendCellScale + instanceLegendOffset;
-    vLegendMask = legendMask;
-`;
-
-const LEGEND_FRAGMENT_PARS = `
-uniform sampler2D legendMap;
-uniform vec3 legendColor;
-varying vec2 vLegendUv;
-varying float vLegendMask;
-`;
-
-// The mask is constant per triangle (the geometry is non-indexed and no triangle
-// straddles the top face and a side wall), so no branch is needed here.
-const LEGEND_FRAGMENT_BODY = `
-    diffuseColor.rgb = mix(
-        diffuseColor.rgb,
-        legendColor,
-        texture2D(legendMap, vLegendUv).a * vLegendMask
-    );
-`;
 
 /**
  * Starting font size for a legend, as a fraction of the cell. Longer labels
@@ -165,24 +136,18 @@ export function applyKeycapLegends(keycaps, legends) {
         new THREE.InstancedBufferAttribute(offsets, 2)
     );
 
-    const material = /** @type {THREE.MeshStandardMaterial} */ (keycaps.material);
-    material.onBeforeCompile = (shader) => {
-        shader.uniforms.legendMap = { value: texture };
-        shader.uniforms.legendColor = { value: new THREE.Color(LEGEND_COLOR) };
-        shader.uniforms.legendCellScale = {
-            value: new THREE.Vector2(CELL_SIZE / atlasWidth, CELL_SIZE / atlasHeight)
-        };
-
-        shader.vertexShader = LEGEND_VERTEX_PARS + shader.vertexShader.replace(
-            '#include <begin_vertex>',
-            `#include <begin_vertex>\n${LEGEND_VERTEX_BODY}`
-        );
-        // Placed after <color_fragment> so the legend joins diffuseColor before
-        // lighting, and is shaded by the same lights as the cap it's printed on.
-        shader.fragmentShader = LEGEND_FRAGMENT_PARS + shader.fragmentShader.replace(
-            '#include <color_fragment>',
-            `#include <color_fragment>\n${LEGEND_FRAGMENT_BODY}`
-        );
-    };
+    const previousMaterial = keycaps.material;
+    const material = new THREE.MeshStandardNodeMaterial();
+    material.color.set(0xf0f0f0);
+    material.roughness = 0.85;
+    material.metalness = 0;
+    material.vertexColors = true;
+    const offset = attribute('instanceLegendOffset', 'vec2');
+    const mask = attribute('legendMask', 'float');
+    const cellScale = new THREE.Vector2(CELL_SIZE / atlasWidth, CELL_SIZE / atlasHeight);
+    const legendAlpha = sampleTexture(texture, uv().mul(cellScale).add(offset)).a.mul(mask);
+    material.colorNode = mix(materialColor.rgb, new THREE.Color(LEGEND_COLOR), legendAlpha);
+    keycaps.material = material;
+    previousMaterial.dispose();
     material.needsUpdate = true;
 }

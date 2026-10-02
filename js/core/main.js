@@ -10,11 +10,6 @@ import { InteractionManager } from './interactions.js';
 import { SemanticPortfolioController } from './accessibility.js';
 import { createPerfMonitor, isMobileDevice } from '../systems/utils.js';
 
-// The semantic portfolio is an alternate view once the visual experience is
-// running. Leaving this class off until the module executes preserves the
-// semantic page as a no-JavaScript fallback.
-document.body.classList.add('js-enabled');
-
 /** @typedef {import('three/webgpu').Object3D} Object3D */
 /** @typedef {import('three/webgpu').Scene} Scene */
 /** @typedef {import('three/webgpu').PerspectiveCamera} PerspectiveCamera */
@@ -75,14 +70,25 @@ class Portfolio3D {
         this._lookAroundHintTimer = null;
         this._lookAroundHintDismissed = false;
         this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        this._lastAnimationTimestamp = 0;
+        window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', (event) => {
+            this.reducedMotion = event.matches;
+            if (this.interactionManager) this.interactionManager.reducedMotion = event.matches;
+            this.sceneManager?.setReducedMotion(event.matches);
+            this._lastInteractionTime = performance.now();
+            this._lastRenderTime = 0;
+            this.requestRender();
+        });
     }
 
     /**
      * Notify the render-on-demand loop that user input occurred.
      */
     requestRender() {
+        if (document.body.classList.contains('accessibility-open')) return;
         this._lastInteractionTime = performance.now();
         this._hasUserActivity = true;
+        if (this.reducedMotion) this._lastRenderTime = 0;
         if (!this._animationLoopActive && !document.hidden) this.animate();
     }
 
@@ -96,7 +102,8 @@ class Portfolio3D {
         // Pass lightingSystem to ObjectFactory for dynamic glare materials
         this.objectFactory = new ObjectFactory(
             scene,
-            /** @type {null | undefined} */ (this.sceneManager.lightingSystem)
+            /** @type {null | undefined} */ (this.sceneManager.lightingSystem),
+            this.sceneManager.loadingManager
         );
         const interactiveObjects = await this.objectFactory.createAllObjects();
 
@@ -108,7 +115,7 @@ class Portfolio3D {
         // revealing the scene. Wall art is intentionally deferred until after the
         // fade because it sits outside the initial camera composition.
         this.updateLoadingStatus('Finishing asset imports');
-        await this.sceneManager.waitForAssets();
+        await Promise.all([this.sceneManager.waitForAssets(), this.objectFactory.waitForAssets()]);
 
         this.interactionManager = new InteractionManager(
             /** @type {PerspectiveCamera} */ (camera),
@@ -128,6 +135,7 @@ class Portfolio3D {
         /** @type {import('three/addons/controls/OrbitControls.js').OrbitControls} */ (controls).addEventListener(
             'change', () => this.dismissLookAroundHint()
         );
+        window.addEventListener('resize', () => this.requestRender());
 
         // Pause rendering entirely while the tab is hidden; resume on return.
         document.addEventListener('visibilitychange', () => {
@@ -139,6 +147,20 @@ class Portfolio3D {
                     this._ambientTimer = null;
                 }
             } else if (!this._animationLoopActive) {
+                this.animate();
+            }
+        });
+
+        document.addEventListener('portfolio-view-change', (event) => {
+            const open = /** @type {CustomEvent<{accessible: boolean}>} */ (event).detail.accessible;
+            if (open) {
+                this.sceneManager?.renderer?.setAnimationLoop(null);
+                this._animationLoopActive = false;
+                if (this._ambientTimer !== null) window.clearTimeout(this._ambientTimer);
+                this._ambientTimer = null;
+            } else {
+                this._lastInteractionTime = performance.now();
+                this._lastRenderTime = 0;
                 this.animate();
             }
         });
@@ -208,7 +230,12 @@ class Portfolio3D {
             loadingElement.setAttribute('aria-hidden', 'true');
             loadingElement.addEventListener('transitionend', () => {
                 loadingElement.style.display = 'none';
+                document.body.classList.remove('visual-loading');
+                document.body.classList.add('visual-open');
             }, { once: true });
+        } else {
+            document.body.classList.remove('visual-loading');
+            document.body.classList.add('visual-open');
         }
 
         this.scheduleLookAroundHint();
@@ -233,6 +260,7 @@ class Portfolio3D {
             loadingElement.setAttribute('aria-hidden', 'true');
         }
 
+        document.body.classList.remove('visual-loading', 'visual-open');
         document.body.classList.add('no-webgl');
         const canvasContainer = document.getElementById('canvas-container');
         if (canvasContainer) {
@@ -289,7 +317,7 @@ class Portfolio3D {
      */
     animate() {
         const renderer = this.sceneManager?.renderer;
-        if (!renderer || this._animationLoopActive) return;
+        if (!renderer || this._animationLoopActive || document.body.classList.contains('accessibility-open')) return;
         if (this._ambientTimer !== null) {
             window.clearTimeout(this._ambientTimer);
             this._ambientTimer = null;
@@ -300,7 +328,7 @@ class Portfolio3D {
 
     /** @param {number} delay */
     scheduleAmbientFrame(delay) {
-        if (document.hidden || this._ambientTimer !== null) return;
+        if (document.hidden || document.body.classList.contains('accessibility-open') || this._ambientTimer !== null) return;
         this._ambientTimer = window.setTimeout(() => {
             this._ambientTimer = null;
             if (document.hidden) return;
@@ -310,13 +338,17 @@ class Portfolio3D {
 
     renderFrame() {
 
+        if (document.hidden || document.body.classList.contains('accessibility-open')) return;
+
         const now = performance.now();
         const loopInterval = this._lastLoopTime === 0 ? 0 : now - this._lastLoopTime;
         this._lastLoopTime = now;
         const idleDuration = now - this._lastInteractionTime;
         const interacting = idleDuration < INTERACTION_TIMEOUT_MS;
         const deepIdle = idleDuration >= DEEP_IDLE_TIMEOUT_MS;
-        const frameInterval = interacting ? 0 : deepIdle ? DEEP_IDLE_FRAME_INTERVAL_MS : IDLE_FRAME_INTERVAL_MS;
+        const frameInterval = this.reducedMotion
+            ? Math.max(1, 60000 - (Date.now() % 60000))
+            : interacting ? 0 : deepIdle ? DEEP_IDLE_FRAME_INTERVAL_MS : IDLE_FRAME_INTERVAL_MS;
 
         if (!this._qualityEvalDone && this._hasUserActivity && interacting && loopInterval > 0 && loopInterval < 1000) {
             this._qualityFrameIntervals.push(loopInterval);
@@ -329,7 +361,11 @@ class Portfolio3D {
         }
         this._lastRenderTime = now;
 
-        this.updateAnimations();
+        const elapsedSeconds = this._lastAnimationTimestamp === 0
+            ? 0
+            : Math.min((now - this._lastAnimationTimestamp) / 1000, 0.1);
+        this._lastAnimationTimestamp = now;
+        this.updateAnimations(elapsedSeconds);
 
         const renderStart = this._qualityEvalDone ? 0 : performance.now();
         this.sceneManager?.render();
@@ -399,7 +435,8 @@ class Portfolio3D {
     /**
      * Update all animated elements each frame
      */
-    updateAnimations() {
+    /** @param {number} elapsedSeconds */
+    updateAnimations(elapsedSeconds) {
         // sceneManager is guaranteed non-null after init(); narrow for type checker
         const sm = /** @type {import('./scene.js').SceneManager} */ (this.sceneManager);
         if (!this.reducedMotion && sm.lightingSystem) {
@@ -411,7 +448,7 @@ class Portfolio3D {
 
         // Animate coffee steam (using cached reference)
         if (!this.reducedMotion && this._coffeeMug?.userData.animateSteam) {
-            this._coffeeMug.userData.animateSteam.call(this._coffeeMug);
+            this._coffeeMug.userData.animateSteam.call(this._coffeeMug, elapsedSeconds);
         }
 
         // Update digital clock (using cached reference)
@@ -421,12 +458,13 @@ class Portfolio3D {
     }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+export async function startPortfolio() {
     // Give the browser two compositor opportunities to commit the opaque boot
     // screen before WebGL setup starts competing for the main thread/GPU.
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     const portfolio = new Portfolio3D();
+    const toggle = document.getElementById('accessibility-toggle');
     window._portfolio = portfolio;
     // Manual verification hook for the documented no-WebGL test path.
     if (new URLSearchParams(window.location.search).get('fallback') === '1') {
@@ -438,6 +476,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
         portfolio.showFallback(error);
     }
-});
+    if (toggle instanceof HTMLButtonElement) toggle.disabled = false;
+}
 
 window.Portfolio3D = Portfolio3D;

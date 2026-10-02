@@ -36,7 +36,9 @@ const TEXTURE_CONFIG = {
 export class FurnitureFactory {
     /**
      */
-    constructor() {
+    /** @param {THREE.LoadingManager} [loadingManager] */
+    constructor(loadingManager = new THREE.LoadingManager()) {
+        this.loadingManager = loadingManager;
         // WebGPURenderer does not expose a stable `getMaxAnisotropy()` during
         // backend initialization. Three clamps this portable cap at texture
         // upload, including on lower-capability WebGL fallbacks.
@@ -47,6 +49,7 @@ export class FurnitureFactory {
 
         this._textureCache = new Map();
         this._loadingPromises = new Map();
+        this._typeLoadPromises = new Map();
 
         // Texture state for each type
         this._textureState = {
@@ -77,7 +80,7 @@ export class FurnitureFactory {
         }
 
         const promise = new Promise((resolve, reject) => {
-            const loader = new THREE.TextureLoader();
+            const loader = new THREE.TextureLoader(this.loadingManager);
             loader.load(path, (texture) => {
                 if (useColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
                 texture.flipY = false;
@@ -90,7 +93,10 @@ export class FurnitureFactory {
                 this._textureCache.set(path, texture);
                 this._loadingPromises.delete(path);
                 resolve(texture);
-            }, undefined, reject);
+            }, undefined, (error) => {
+                this._loadingPromises.delete(path);
+                reject(error);
+            });
         });
 
         this._loadingPromises.set(path, promise);
@@ -101,26 +107,39 @@ export class FurnitureFactory {
         const state = this._textureState[type];
         const config = TEXTURE_CONFIG[type];
 
-        if (state.loaded || this._loadingPromises.has(type)) return;
-        this._loadingPromises.set(type, Promise.resolve());
+        if (state.loaded) return Promise.resolve();
+        const existing = this._typeLoadPromises.get(type);
+        if (existing) return existing;
 
-        requestAnimationFrame(() => setTimeout(() => {
-            Promise.all(config.files.map((f, index) => this._loadTexture(config.basePath + f, index === 0)))
-                .then(([diffuse, normal, roughness]) => {
-                    [diffuse, normal, roughness].forEach(t => t.repeat.set(config.repeat.x, config.repeat.y));
+        const promise = Promise.all(config.files.map((file, index) =>
+            this._loadTexture(config.basePath + file, index === 0)
+        )).then(([diffuse, normal, roughness]) => {
+            [diffuse, normal, roughness].forEach((texture) => texture.repeat.set(config.repeat.x, config.repeat.y));
+            state.textures = { diffuse, normal, roughness };
+            state.loaded = true;
+            state.pending.forEach((material) => {
+                material.map = diffuse;
+                material.normalMap = normal;
+                if (material.userData.useRoughnessMap) material.roughnessMap = roughness;
+                material.needsUpdate = true;
+            });
+            state.pending = [];
+        }).catch((error) => {
+            // Materials already have color-matched placeholders; keep them in
+            // place on failure so a missing optional surface map cannot leave
+            // materials dark or retain a permanently pending state.
+            console.warn(`Could not load ${type} furniture textures; keeping placeholders.`, error);
+            state.textures = this._placeholders[type];
+            state.loaded = true;
+            state.pending = [];
+        }).finally(() => this._typeLoadPromises.delete(type));
 
-                    state.textures = { diffuse, normal, roughness };
-                    state.loaded = true;
+        this._typeLoadPromises.set(type, promise);
+        return promise;
+    }
 
-                    state.pending.forEach(material => {
-                        material.map = diffuse;
-                        material.normalMap = normal;
-                        if (material.userData.useRoughnessMap) material.roughnessMap = roughness;
-                        material.needsUpdate = true;
-                    });
-                    state.pending = [];
-                });
-        }, 0));
+    waitForTextures() {
+        return Promise.all([...this._typeLoadPromises.values()]);
     }
 
     /**

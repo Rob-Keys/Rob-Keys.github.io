@@ -31,6 +31,11 @@ body {
     display: none;
 }
 
+body:not(.js-enabled) #canvas-container,
+body:not(.js-enabled) #accessibility-toggle {
+    display: none;
+}
+
 /* === ACCESSIBILITY HELPERS === */
 .skip-link {
     position: fixed;
@@ -75,11 +80,47 @@ button {
     cursor: pointer;
 }
 
-/* Keep the visual experience full-screen. JavaScript promotes the semantic
-   portfolio to an alternate view; before JavaScript runs, the semantic page
-   remains in normal document flow as the no-script fallback. */
-.js-enabled .semantic-portfolio {
+/* The semantic portfolio is the default page and no-script fallback. Starting
+   the requested 3D experience adds .visual-open; the accessible view can show it again. */
+.js-enabled.visual-open .semantic-portfolio {
     display: none;
+}
+
+/* A selected 3D object exposes its matching semantic disclosure as a compact
+   panel over the scene, so the text and contact links are visible immediately. */
+.js-enabled.selection-open .semantic-portfolio {
+    display: block;
+    position: fixed;
+    inset: auto 24px 24px auto;
+    z-index: 60;
+    width: min(440px, calc(100vw - 32px));
+    min-height: 0;
+    max-height: min(70vh, 620px);
+    margin: 0;
+    overflow: auto;
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    background: rgba(10, 12, 16, 0.96);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+.js-enabled.selection-open .portfolio-header,
+.js-enabled.selection-open .accessibility-statement,
+.js-enabled.selection-open .site-footer,
+.js-enabled.selection-open #portfolio-items > h2,
+.js-enabled.selection-open .portfolio-item:not([open]) {
+    display: none;
+}
+
+.js-enabled.selection-open #portfolio-items,
+.js-enabled.selection-open .portfolio-item[open] {
+    width: 100%;
+    margin: 0;
+}
+
+.js-enabled.selection-open .portfolio-item[open] > summary {
+    margin-bottom: 12px;
 }
 
 .semantic-portfolio {
@@ -90,6 +131,14 @@ button {
     padding: 64px max(24px, 5vw) 80px;
     color: #f4f1ec;
     background: #0a0c10;
+}
+
+body:not(.js-enabled) .semantic-portfolio {
+    margin-top: 0;
+}
+
+.js-enabled:not(.visual-open) .semantic-portfolio {
+    margin-top: 0;
 }
 
 .js-enabled.accessibility-open {
@@ -294,6 +343,10 @@ body.no-webgl #look-around-hint {
 
 /* === LOADING SCREEN === */
 #loading {
+    display: none;
+}
+
+.js-enabled.visual-loading #loading {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     position: fixed;
     inset: 0;
@@ -311,6 +364,7 @@ body.no-webgl #look-around-hint {
     text-align: center;
     transition: opacity 0.6s ease, visibility 0.6s ease;
 }
+
 
 #loading.loading-hidden {
     opacity: 0;

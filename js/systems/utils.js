@@ -52,22 +52,6 @@ export function applyOrigin(group, origin, isStatic = false) {
 }
 
 /**
- * Create a mesh with a standard material.
- * @param {THREE.BufferGeometry} geometry
- * @param {import('../config/config.js').MaterialPreset} materialProps
- * @param {{ x: number, y: number, z: number } | null} [position]
- * @param {boolean} [castShadow]
- * @returns {THREE.Mesh}
- */
-export function createMesh(geometry, materialProps, position = null, castShadow = true) {
-    const material = new THREE.MeshStandardMaterial(materialProps);
-    const mesh = new THREE.Mesh(geometry, material);
-    if (position) mesh.position.set(position.x, position.y, position.z);
-    mesh.castShadow = castShadow;
-    return mesh;
-}
-
-/**
  * Create a canvas texture with the given dimensions and a render callback.
  * @param {number} width
  * @param {number} height

@@ -6,7 +6,7 @@
 
 import * as THREE from 'three/webgpu';
 import { gsap } from 'gsap';
-import { PORTFOLIO_CONFIG, ZOOM_CONFIG, INTERACTION_CONFIG } from '../config/config.js';
+import { PORTFOLIO_CONFIG, ZOOM_CONFIG } from '../config/config.js';
 import { MonitorRenderer } from '../factories/monitor-renderer.js';
 
 export class InteractionManager {
@@ -34,6 +34,7 @@ export class InteractionManager {
         this.currentZoomedObject = null;
         this.originalCameraPosition = { x: 0, y: 3, z: 5 };
         this.originalControlsTarget = { x: 0, y: 0, z: 0 };
+        this._cameraTransitionId = 0;
 
         this.monitorScrollOffset = 0;
         this.monitorMesh = null;
@@ -44,12 +45,10 @@ export class InteractionManager {
         this._pointerInsideCanvas = false;
         this._hoverRaycastScheduled = false;
 
-        // Hint glow state -- outlines appear after 5s without clicking an object
+        // Hint glow state -- the hovered object gets an immediate outline.
         /** @type {THREE.Group | null} */ this.hintOutlineGroup = null;
         /** @type {THREE.MeshBasicMaterial | null} */ this.hintOutlineMaterial = null;
         this.hintActive = false;
-        this.hintTimer = null;
-        this.HINT_DELAY = INTERACTION_CONFIG.hintDelay;
 
         this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.semanticPortfolio = semanticPortfolio;
@@ -60,7 +59,13 @@ export class InteractionManager {
         this.initEventListeners();
         this.semanticPortfolio?.setActivationHandler((name, control) => this.activateObjectByName(name, control));
         this.semanticPortfolio?.setCloseHandler(() => {
-            if (this.currentZoomedObject) this.resetCamera();
+            if (this.currentZoomedObject && !document.body.classList.contains('accessibility-open')) this.resetCamera();
+        });
+        document.addEventListener('portfolio-view-change', (event) => {
+            const accessible = /** @type {CustomEvent<{accessible: boolean}>} */ (event).detail.accessible;
+            if (!accessible && this.currentZoomedObject && !this.semanticPortfolio?.activeDetails?.open) {
+                this.resetCamera();
+            }
         });
     }
 
@@ -95,6 +100,10 @@ export class InteractionManager {
 
     /** @param {string} name @param {HTMLElement} [control] */
     activateObjectByName(name, control) {
+        if (document.body.classList.contains('accessibility-open')) {
+            this.semanticPortfolio?.openDetails(name, control);
+            return;
+        }
         const object = this.interactiveObjects.find(item => item.userData?.name === name) || null;
         if (object) this.activateObject(object, control);
         else this.semanticPortfolio?.openDetails(name, control);
@@ -103,15 +112,13 @@ export class InteractionManager {
     /** @param {THREE.Object3D} object @param {HTMLElement} [control] */
     activateObject(object, control = undefined) {
         this.hideHint();
-        this.startHintTimer();
 
         if (this.currentZoomedObject && object === this.currentZoomedObject) {
-            this.resetCamera();
+            this.semanticPortfolio?.closeDetails();
         } else {
             this.zoomToObject(object);
+            this.semanticPortfolio?.openDetails(object.userData.name, control);
         }
-
-        this.semanticPortfolio?.openDetails(object.userData.name, control);
     }
 
     onTouchStart(event) {
@@ -171,8 +178,7 @@ export class InteractionManager {
         // `visible` flag was never flipped back to true after creation, so it never
         // actually illuminated anything — it just forced a full post-processing
         // re-render on every mousemove for zero visual effect (P0-4,
-        // The cursor swap is the only surviving affordance,
-        // and requestRender only fires on the object identity actually changing.
+        // The hover outline and cursor are updated only when the target object changes.
         if (!this.currentZoomedObject) {
             this.raycaster.setFromCamera(this.mouse, this.camera);
             const intersects = this.raycaster.intersectObjects(this.interactiveObjects, true);
@@ -239,7 +245,8 @@ export class InteractionManager {
         } else {
             // Clicked on empty space - zoom out if currently zoomed
             if (this.currentZoomedObject) {
-                this.resetCamera();
+                this.semanticPortfolio?.closeDetails();
+                if (!this.semanticPortfolio) this.resetCamera();
             }
         }
     }
@@ -248,20 +255,19 @@ export class InteractionManager {
      * Zoom camera to focus on an object
      */
     zoomToObject(object) {
+        if (!this.currentZoomedObject) {
+            this.originalCameraPosition = {
+                x: this.camera.position.x,
+                y: this.camera.position.y,
+                z: this.camera.position.z
+            };
+            this.originalControlsTarget = { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z };
+        }
+        const transitionId = ++this._cameraTransitionId;
+        gsap.killTweensOf(this.camera.position);
+        gsap.killTweensOf(this.controls.target);
         this.currentZoomedObject = object;
         this.controls.enabled = false;
-
-        // Store original camera position
-        this.originalCameraPosition = {
-            x: this.camera.position.x,
-            y: this.camera.position.y,
-            z: this.camera.position.z
-        };
-        this.originalControlsTarget = {
-            x: this.controls.target.x,
-            y: this.controls.target.y,
-            z: this.controls.target.z
-        };
 
         // Calculate zoom position based on object type
         const objectPosition = new THREE.Vector3();
@@ -307,7 +313,7 @@ export class InteractionManager {
             z: zoomPosition.z,
             duration: duration,
             ease: ease,
-            onUpdate: () => this.requestRender()
+            onUpdate: () => { if (transitionId === this._cameraTransitionId) this.requestRender(); }
         });
 
         gsap.to(this.controls.target, {
@@ -326,6 +332,9 @@ export class InteractionManager {
      */
     resetCamera() {
         if (this.currentZoomedObject) {
+            const transitionId = ++this._cameraTransitionId;
+            gsap.killTweensOf(this.camera.position);
+            gsap.killTweensOf(this.controls.target);
             const duration = this.reducedMotion ? 0 : PORTFOLIO_CONFIG.animation.zoomDuration;
             const ease = PORTFOLIO_CONFIG.animation.zoomEase;
 
@@ -336,7 +345,7 @@ export class InteractionManager {
                 z: this.originalCameraPosition.z,
                 duration: duration,
                 ease: ease,
-                onUpdate: () => this.requestRender()
+                onUpdate: () => { if (transitionId === this._cameraTransitionId) this.requestRender(); }
             });
 
             gsap.to(this.controls.target, {
@@ -346,9 +355,9 @@ export class InteractionManager {
                 duration: duration,
                 ease: ease,
                 onComplete: () => {
+                    if (transitionId !== this._cameraTransitionId) return;
                     this.controls.enabled = true;
                     this.currentZoomedObject = null;
-                    this.startHintTimer();
                 }
             });
         }
@@ -497,7 +506,6 @@ export class InteractionManager {
         }
 
         if (this.scene) this.scene.add(this.hintOutlineGroup);
-        this.startHintTimer();
     }
 
     /** @param {THREE.Object3D | null} object */
@@ -513,26 +521,6 @@ export class InteractionManager {
         this.hintOutlineGroup.visible = visible;
         this.hintActive = visible;
         this.hintOutlineMaterial.opacity = visible ? 0.22 : 0;
-    }
-
-    /**
-     * Start or restart the hint timer
-     */
-    startHintTimer() {
-        if (this.reducedMotion) return;
-        if (this.hintTimer) {
-            clearTimeout(this.hintTimer);
-        }
-        this.hintTimer = setTimeout(() => this.showHint(), this.HINT_DELAY);
-    }
-
-    /**
-     * Fade in the hint outlines on interactive objects
-     */
-    showHint() {
-        if (this.currentZoomedObject || !this.hoveredObject) return;
-        this.updateHintOutlineTarget(this.hoveredObject);
-        this.requestRender();
     }
 
     /**
@@ -556,10 +544,4 @@ export class InteractionManager {
         });
     }
 
-    /**
-     * Check if currently zoomed on an object
-     */
-    isZoomed() {
-        return this.currentZoomedObject !== null;
-    }
 }

@@ -1,13 +1,12 @@
 // @ts-check
 /**
  * Configuration file for portfolio settings.
- * Contains technical configuration: shadows, lighting, materials, colors, zoom, and scene settings.
+ * Contains technical configuration: shadows, lighting, zoom, and scene settings.
  * Monitor copy is rendered from the small canvas-specific source in content.js.
  */
 
 /**
  * @typedef {{ x: number, y: number, z: number, rotationX: number, rotationY: number, rotationZ: number }} Origin
- * @typedef {{ color?: number, roughness?: number, metalness?: number, clearcoat?: number, clearcoatRoughness?: number, emissiveIntensity?: number }} MaterialPreset
  * @typedef {{ distance: number, yOffset: number, targetYOffset: number, useRotation?: boolean }} ZoomSettings
  */
 
@@ -58,44 +57,6 @@ export const LIGHTING_CONFIG = Object.freeze({
     })
 });
 
-/** @type {Readonly<Record<string, MaterialPreset>>} */
-export const MATERIALS = Object.freeze({
-    // Metal finishes
-    darkMetal:    Object.freeze({ color: 0x1a1a1a, roughness: 0.4, metalness: 0.9 }),
-    brushedMetal: Object.freeze({ color: 0x2a2a2a, roughness: 0.3, metalness: 0.8 }),
-
-    // Plastics
-    darkPlastic: Object.freeze({ color: 0x1a1a1a, roughness: 0.8, metalness: 0.1 }),
-
-    // Glass
-    screenGlass: Object.freeze({ roughness: 0.05, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
-
-    // Wood
-    darkWood: Object.freeze({ color: 0x4a3c2a, roughness: 0.5, metalness: 0.2 }),
-
-    // Pottery
-    terracotta: Object.freeze({ color: 0xd4a574, roughness: 0.7, metalness: 0.0 })
-});
-
-export const COLORS = Object.freeze({
-    // UI and lighting
-    background: 0x1a1614,
-    fog: 0x1a1614,
-
-    // LED indicator colors
-    ledGreen: 0x00ff00,
-    ledRed:   0xff0000,
-    ledBlue:  0x00aaff,
-
-    // Accent colors
-    gold:      0xffd700,
-    warmLight: 0xffffcc,
-
-    // Paper and fabric
-    paper:     0xf8f8f0,
-    parchment: 0xf5f0e1
-});
-
 /**
  * Zoom distances for each interactive object type.
  * Smaller values = closer zoom.
@@ -109,12 +70,6 @@ export const ZOOM_CONFIG = Object.freeze({
     notebook: Object.freeze({ distance: 0.1, yOffset: 1,    targetYOffset: 0,   useRotation: true }),
     lamp:     Object.freeze({ distance: 1.8, yOffset: 0.25, targetYOffset: 0.43 }),
     default:  Object.freeze({ distance: 1.5, yOffset: 0,    targetYOffset: 0 })
-});
-
-export const INTERACTION_CONFIG = Object.freeze({
-    // Delay before the inflated-backface hint outline fades in on interactive
-    // objects, once the user has gone this long without clicking one.
-    hintDelay: 5000
 });
 
 /**
@@ -165,9 +120,7 @@ export const OBJECT_ORIGINS = Object.freeze({
 export const PORTFOLIO_CONFIG = Object.freeze({
     scene: Object.freeze({
         backgroundColor: 0x1a1614,
-        fogColor: 0x1a1614,
-        fogNear: 10,
-        fogFar: 50
+        fogColor: 0x1a1614
     }),
     rendering: Object.freeze({
         // Capped below the display's native devicePixelRatio -- every full-screen
@@ -208,7 +161,6 @@ export const PORTFOLIO_CONFIG = Object.freeze({
     }),
     animation: Object.freeze({
         zoomDuration: 1.5,
-        zoomDistance: 2,
         zoomEase: 'power2.inOut'
     })
 });

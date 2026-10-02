@@ -32,6 +32,7 @@ export class SceneManager {
 
         /** @type {'high' | 'medium' | 'low'} */
         this.qualityTier = isMobileDevice() ? 'medium' : 'high';
+        this._reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         /** @type {import('../config/config.js').RenderingConfig} */
         this._renderingConfig = isMobileDevice()
             ? { ...PORTFOLIO_CONFIG.rendering, ...QUALITY_TIERS.medium }
@@ -115,7 +116,7 @@ export class SceneManager {
         renderer.setPixelRatio(this.getMaxPixelRatio());
         renderer.setSize(window.innerWidth, window.innerHeight);
         this.postProcessing?.setResolutionScale(this._renderingConfig.postProcessResolutionScale);
-        this.postProcessing?.setGrainAmplitude(this._renderingConfig.filmGrainAmplitude);
+        this.postProcessing?.setGrainAmplitude(this._reducedMotion ? 0 : this._renderingConfig.filmGrainAmplitude);
         this.postProcessing?.setBloomEnabled(this._renderingConfig.enableBloom);
         this.lightingSystem?.setSimpleGlare(this._renderingConfig.simpleGlare);
         if (this.dustCloud) this.dustCloud.visible = this._renderingConfig.enableDustParticles;
@@ -131,7 +132,7 @@ export class SceneManager {
         const lights = /** @type {{ deskLamp?: THREE.Light, fill?: THREE.Light } | null} */ (this.lights);
         if (lights?.deskLamp) lights.deskLamp.castShadow = this._renderingConfig.lampShadowEnabled;
         if (lights?.fill) lights.fill.castShadow = this._renderingConfig.ceilingShadowEnabled;
-        if (renderer.shadowMap.autoUpdate === false) renderer.shadowMap.needsUpdate = true;
+        this.refreshShadowMaps();
     }
 
     /**
@@ -191,7 +192,27 @@ export class SceneManager {
     }
 
     freezeShadowMap() {
-        if (this.renderer) this.renderer.shadowMap.autoUpdate = false;
+        this.scene?.traverse((object) => {
+            if (!object.castShadow || !('shadow' in object)) return;
+            const light = /** @type {THREE.Light & { shadow: THREE.LightShadow }} */ (object);
+            light.shadow.autoUpdate = false;
+            light.shadow.needsUpdate = false;
+        });
+    }
+
+    refreshShadowMaps() {
+        this.scene?.traverse((object) => {
+            if (!object.castShadow || !('shadow' in object)) return;
+            const light = /** @type {THREE.Light & { shadow: THREE.LightShadow }} */ (object);
+            light.shadow.needsUpdate = true;
+        });
+    }
+
+    /** @param {boolean} reduced */
+    setReducedMotion(reduced) {
+        this._reducedMotion = reduced;
+        const amplitude = reduced ? 0 : this._renderingConfig.filmGrainAmplitude;
+        this.postProcessing?.setGrainAmplitude(amplitude);
     }
 
     createFloor() {

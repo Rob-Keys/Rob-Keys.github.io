@@ -152,7 +152,7 @@ The main scene pipeline is `js/core/postprocessing-webgpu.js`: TSL MRT captures 
 
 ## Hint-glow outline
 
-Interactive objects get a hint outline (fades in after `HINT_DELAY` of no clicks) via an inflated-backface mesh per object — see `InteractionManager.initHintOutline()` in `js/core/interactions.js`. This replaced `THREE.OutlinePass`, which dimmed the whole scene whenever enabled: its internal depth/mask scene re-renders temporarily altered scene background, clear color, and object visibility, and no overlay-material fix could prevent that (only overriding its `render()` or dropping the pass could). The current approach draws real geometry in the normal scene pass instead, so there's no separate pass and no dimming.
+Interactive objects get an immediate hover outline via an inflated-backface mesh per object — see `InteractionManager.initHintOutline()` in `js/core/interactions.js`. This replaced `THREE.OutlinePass`, which dimmed the whole scene whenever enabled: its internal depth/mask scene re-renders temporarily altered scene background, clear color, and object visibility, and no overlay-material fix could prevent that (only overriding its `render()` or dropping the pass could). The current approach draws real geometry in the normal scene pass instead, so there's no separate pass and no dimming.
 
 ## Mobile
 

@@ -20,6 +20,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -59,16 +63,28 @@ jobs:
 
       - name: Commit and push if changed
         working-directory: /tmp/prod-worktree
+        env:
+          DEPLOY_REF: ${{ inputs.ref || github.ref_name }}
         run: |
           set -euo pipefail
+
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            git -C "${GITHUB_WORKSPACE}/source" fetch origin main
+            SOURCE_SHA=$(git -C "${GITHUB_WORKSPACE}/source" rev-parse HEAD)
+            MAIN_SHA=$(git -C "${GITHUB_WORKSPACE}/source" rev-parse origin/main)
+            if [ "$SOURCE_SHA" != "$MAIN_SHA" ]; then
+              echo "Skipping stale deployment for $SOURCE_SHA; main is now $MAIN_SHA."
+              exit 0
+            fi
+          fi
 
           git add -A
 
           if git diff --cached --quiet; then
-            echo "No changes to deploy -- prod already matches ${{ inputs.ref }}."
+            echo "No changes to deploy -- prod already matches $DEPLOY_REF."
             exit 0
           fi
 
           SOURCE_SHA=$(git -C "${GITHUB_WORKSPACE}/source" rev-parse --short HEAD)
-          git commit -m "Deploy ${{ inputs.ref }}@${SOURCE_SHA} to prod"
+          git commit -m "Deploy ${DEPLOY_REF}@${SOURCE_SHA} to prod"
           git push origin HEAD:prod
