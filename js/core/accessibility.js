@@ -45,9 +45,6 @@ export class SemanticPortfolioController {
                 if (element.open) {
                     if (this.activeDetails && this.activeDetails !== element) this.activeDetails.open = false;
                     this.activeDetails = element;
-                    if (!document.body.classList.contains('accessibility-open')) {
-                        document.body.classList.add('selection-open');
-                    }
                     const name = element.id.replace(/^portfolio-item-/, '');
                     const summary = element.querySelector('summary');
                     if (name && this._pendingName === name && summary instanceof HTMLElement) {
@@ -103,11 +100,9 @@ export class SemanticPortfolioController {
         if (!this.accessibilityToggle) return;
 
         document.body.classList.toggle('accessibility-open', open);
-        if (open) document.body.classList.remove('selection-open');
-        else if (this.activeDetails?.open) document.body.classList.add('selection-open');
         document.dispatchEvent(new CustomEvent('portfolio-view-change', { detail: { accessible: open } }));
         this.accessibilityToggle.setAttribute('aria-expanded', String(open));
-        this.accessibilityToggle.textContent = open ? 'Close accessible view' : 'Open accessible view';
+        this.accessibilityToggle.textContent = open ? 'Return to 3D scene' : 'Open accessible view';
 
         if (open) {
             this.portfolioContent?.focus({ preventScroll: true });
@@ -142,9 +137,6 @@ export class SemanticPortfolioController {
         details.open = true;
         this.activeDetails = details;
         this.lastInvokingControl = control || this.accessibilityToggle || summary;
-        if (!document.body.classList.contains('accessibility-open')) {
-            document.body.classList.add('selection-open');
-        }
         if (this.portfolioStatus) this.portfolioStatus.textContent = `Opened ${summary.textContent || 'portfolio'} details.`;
 
         if (!control || control !== summary) {
@@ -161,7 +153,6 @@ export class SemanticPortfolioController {
         if (details.open) details.open = false;
         this.activeDetails = null;
         this.lastInvokingControl = null;
-        document.body.classList.remove('selection-open');
         if (this.portfolioStatus) this.portfolioStatus.textContent = 'Portfolio details closed.';
 
         this.closeHandler?.();

@@ -80,47 +80,14 @@ button {
     cursor: pointer;
 }
 
-/* The semantic portfolio is the default page and no-script fallback. Starting
-   the requested 3D experience adds .visual-open; the accessible view can show it again. */
+/* The semantic portfolio remains available as a no-script fallback and through
+   the accessibility toggle while the 3D scene is the default visual experience. */
 .js-enabled.visual-open .semantic-portfolio {
     display: none;
 }
 
-/* A selected 3D object exposes its matching semantic disclosure as a compact
-   panel over the scene, so the text and contact links are visible immediately. */
-.js-enabled.selection-open .semantic-portfolio {
-    display: block;
-    position: fixed;
-    inset: auto 24px 24px auto;
-    z-index: 60;
-    width: min(440px, calc(100vw - 32px));
-    min-height: 0;
-    max-height: min(70vh, 620px);
-    margin: 0;
-    overflow: auto;
-    padding: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    background: rgba(10, 12, 16, 0.96);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
-}
-
-.js-enabled.selection-open .portfolio-header,
-.js-enabled.selection-open .accessibility-statement,
-.js-enabled.selection-open .site-footer,
-.js-enabled.selection-open #portfolio-items > h2,
-.js-enabled.selection-open .portfolio-item:not([open]) {
+.js-enabled.visual-loading .semantic-portfolio {
     display: none;
-}
-
-.js-enabled.selection-open #portfolio-items,
-.js-enabled.selection-open .portfolio-item[open] {
-    width: 100%;
-    margin: 0;
-}
-
-.js-enabled.selection-open .portfolio-item[open] > summary {
-    margin-bottom: 12px;
 }
 
 .semantic-portfolio {

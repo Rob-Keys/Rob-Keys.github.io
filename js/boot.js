@@ -1,26 +1,26 @@
-// Keep the semantic portfolio usable without downloading the WebGPU/Three.js
-// graph. The large visual experience is loaded only when requested.
-document.body.classList.add('js-enabled');
+// Load the 3D scene on entry. The semantic portfolio remains available through
+// its toggle and as the fallback if the renderer cannot start.
+document.body.classList.add('js-enabled', 'visual-loading');
 
 const button = document.getElementById('accessibility-toggle');
 if (button instanceof HTMLButtonElement) {
-    button.textContent = 'Open 3D experience';
-    const launch = async () => {
-        button.disabled = true;
-        button.textContent = 'Loading 3D experience';
-        document.getElementById('portfolio-content')?.setAttribute('aria-busy', 'true');
-        document.body.classList.add('visual-loading');
-        try {
-            const { startPortfolio } = await import('./core/main.js');
-            button.removeEventListener('click', launch);
-            await startPortfolio();
-        } catch (error) {
-            console.error('Could not load the 3D experience.', error);
-            document.body.classList.remove('visual-loading', 'visual-open');
-            document.getElementById('portfolio-content')?.setAttribute('aria-busy', 'false');
-            button.disabled = false;
-            button.textContent = 'Try the 3D experience again';
-        }
-    };
-    button.addEventListener('click', launch);
+    button.textContent = 'Open accessibility view';
+    button.disabled = true;
 }
+
+void (async () => {
+    try {
+        const { startPortfolio } = await import('./core/main.js');
+        await startPortfolio();
+    } catch (error) {
+        console.error('Could not load the 3D experience.', error);
+        document.body.classList.remove('visual-loading', 'visual-open');
+        document.body.classList.add('no-webgl');
+        const loading = document.getElementById('loading');
+        if (loading) {
+            loading.style.display = 'none';
+            loading.setAttribute('aria-hidden', 'true');
+        }
+        document.getElementById('portfolio-content')?.setAttribute('aria-busy', 'false');
+    }
+})();

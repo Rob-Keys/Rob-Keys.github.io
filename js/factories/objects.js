@@ -42,7 +42,7 @@ export class ObjectFactory {
     async createAllObjects() {
         const { furniture, technology, shelf, desk, wall } = this.factories;
 
-        // Create all objects - interactive: true means clickable for zoom/info panel
+        // Only the five requested portfolio objects respond to pointer selection.
         const objects = [
             // Furniture (non-interactive)
             { create: () => furniture.createWall(), interactive: false },
@@ -52,21 +52,19 @@ export class ObjectFactory {
             { create: () => furniture.createWallShelf(), interactive: false },
             // Wall objects
             { create: () => wall.createWallDiploma(), interactive: true },
-            { create: () => wall.createVinylRecord(), interactive: true },
+            { create: () => wall.createVinylRecord(), interactive: false },
             // Shelf objects
-            { create: () => shelf.createShelfPlant(), interactive: true },
-            { create: () => shelf.createShelfBooks(), interactive: true },
+            { create: () => shelf.createShelfPlant(), interactive: false },
+            { create: () => shelf.createShelfBooks(), interactive: false },
             { create: () => shelf.createTidbyt(), interactive: true },
             // Technology
             { create: () => technology.createMonitor(), interactive: true },
             { create: () => technology.createMonitor(technology.origins.monitorRight), interactive: true },
-            { create: () => technology.createMouse(), interactive: true },
+            { create: () => technology.createMouse(), interactive: false },
             { create: () => technology.createLaptop(), interactive: true },
-            // Content-bearing desk objects are also available through the
-            // semantic controls and therefore remain discoverable in the scene.
-            { create: () => desk.createCoffeeMug(), interactive: true },
+            { create: () => desk.createCoffeeMug(), interactive: false },
             { create: () => desk.createNotebook(), interactive: true },
-            { create: () => desk.createDeskLamp(), interactive: true }
+            { create: () => desk.createDeskLamp(), interactive: false }
         ];
 
         // Object creation includes geometry generation and 2D canvas drawing.

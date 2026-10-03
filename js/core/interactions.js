@@ -105,19 +105,18 @@ export class InteractionManager {
             return;
         }
         const object = this.interactiveObjects.find(item => item.userData?.name === name) || null;
-        if (object) this.activateObject(object, control);
+        if (object) this.activateObject(object);
         else this.semanticPortfolio?.openDetails(name, control);
     }
 
-    /** @param {THREE.Object3D} object @param {HTMLElement} [control] */
-    activateObject(object, control = undefined) {
+    /** @param {THREE.Object3D} object */
+    activateObject(object) {
         this.hideHint();
 
         if (this.currentZoomedObject && object === this.currentZoomedObject) {
-            this.semanticPortfolio?.closeDetails();
+            this.resetCamera();
         } else {
             this.zoomToObject(object);
-            this.semanticPortfolio?.openDetails(object.userData.name, control);
         }
     }
 
@@ -245,8 +244,7 @@ export class InteractionManager {
         } else {
             // Clicked on empty space - zoom out if currently zoomed
             if (this.currentZoomedObject) {
-                this.semanticPortfolio?.closeDetails();
-                if (!this.semanticPortfolio) this.resetCamera();
+                this.resetCamera();
             }
         }
     }
