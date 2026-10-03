@@ -164,20 +164,21 @@ export class WallObjectFactory {
         // once at the root, so every small detail shares the same scene scale.
         const coverSize = 0.34;
         const spacing = 0.37;
-        const coverDepth = 0.028;
+        const coverDepth = 0.012;
+        const coverBackOffset = 0.014;
         const printSize = 0.302;
-        // The sleeve bevel projects past its nominal half-depth, so the printed
-        // face sits just proud of that bevel rather than z-fighting with it.
-        const printZ = 0.056;
+        // Keep the sleeve close to the wall and let its paper edge and art stand
+        // only slightly proud of the thin cardboard so it reads as a record jacket.
+        const printZ = coverBackOffset + coverDepth + 0.004;
 
         // A substantial rounded cardboard sleeve gives the display a visible edge
         // at an oblique camera angle and a soft, continuous shadow on the plaster.
-        const coverGeometry = createBeveledBox(coverSize, coverSize, coverDepth, 0.006, 3);
+        const coverGeometry = createBeveledBox(coverSize, coverSize, coverDepth, 0.0025, 3);
         // Keep the image-bearing face planar. ExtrudeGeometry is ideal for the
         // sleeve silhouette, but its cap UV generator is not a reliable square
         // projection for artwork.
         const printGeometry = new THREE.PlaneGeometry(printSize, printSize);
-        const paperEdgeGeometry = createBeveledBox(printSize + 0.006, printSize + 0.006, 0.0014, 0.001, 2);
+        const paperEdgeGeometry = createBeveledBox(printSize + 0.006, printSize + 0.006, 0.0014, 0.0005, 2);
 
         // Cover images load post-reveal (Phase 5.3) -- the vinyl wall is behind the
         // initial camera, so gating the loading screen on 4 album-art images is
@@ -210,7 +211,7 @@ export class WallObjectFactory {
         // art so the image reads as a printed insert rather than a lit decal.
         albumImages.forEach((album) => {
             const cover = new THREE.Mesh(coverGeometry, sleeveMaterial);
-            cover.position.set(album.position.x, album.position.y, 0.028);
+            cover.position.set(album.position.x, album.position.y, coverBackOffset + coverDepth / 2);
             cover.castShadow = true;
             cover.receiveShadow = true;
             group.add(cover);

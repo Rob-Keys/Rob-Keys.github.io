@@ -555,16 +555,16 @@ export class TechnologyFactory {
         const mouseHalfLength = 0.12;
         const mouseRadius = 0.09;
         const bodyHeight = 0.16;
-        const domeProfile = [];
-        const profileSegments = 8;
-        for (let i = 0; i <= profileSegments; i++) {
-            const t = i / profileSegments; // 0 = base rim, 1 = crown
-            const angle = (t * Math.PI) / 2;
-            domeProfile.push(new THREE.Vector2(
-                Math.max(mouseRadius * Math.cos(angle), 0.001),
-                bodyHeight * Math.sin(angle)
-            ));
-        }
+        const domeProfile = [
+            new THREE.Vector2(mouseRadius * 0.94, 0),
+            new THREE.Vector2(mouseRadius, bodyHeight * 0.08),
+            new THREE.Vector2(mouseRadius * 1.08, bodyHeight * 0.22),
+            new THREE.Vector2(mouseRadius * 1.10, bodyHeight * 0.42),
+            new THREE.Vector2(mouseRadius * 0.98, bodyHeight * 0.66),
+            new THREE.Vector2(mouseRadius * 0.72, bodyHeight * 0.85),
+            new THREE.Vector2(mouseRadius * 0.38, bodyHeight * 0.97),
+            new THREE.Vector2(0.001, bodyHeight)
+        ];
         const bodyGeometry = new THREE.LatheGeometry(domeProfile, 20);
         bodyGeometry.scale(1, 1, mouseHalfLength / mouseRadius);
 
@@ -575,6 +575,7 @@ export class TechnologyFactory {
             const tFront = THREE.MathUtils.clamp(z / mouseHalfLength, -1, 1); // -1 palm, +1 front tip
             const widthScale = THREE.MathUtils.lerp(1.08, 0.55, Math.pow(Math.max(tFront, 0), 1.6));
             bodyPos.setX(i, x * widthScale);
+            bodyPos.setY(i, bodyPos.getY(i) * (1 + Math.max(-tFront, 0) * 0.08));
         }
         bodyPos.needsUpdate = true;
         bodyGeometry.computeVertexNormals();
@@ -585,8 +586,20 @@ export class TechnologyFactory {
         body.receiveShadow = true;
         group.add(body);
 
+        // The shallow thumb wing gives the left flank a sculpted palm rest
+        // instead of the symmetric capsule silhouette of a generic prop.
+        const thumbRest = new THREE.Mesh(
+            new THREE.SphereGeometry(1, 16, 10),
+            bodyMaterial
+        );
+        thumbRest.position.set(-0.082, -0.14, -0.02);
+        thumbRest.scale.set(0.042, 0.022, 0.075);
+        thumbRest.castShadow = true;
+        thumbRest.receiveShadow = true;
+        group.add(thumbRest);
+
         // Flat bottom
-        const bottomGeometry = new THREE.BoxGeometry(0.16, 0.02, 0.24);
+        const bottomGeometry = new THREE.BoxGeometry(0.20, 0.02, 0.27);
         const bottom = new THREE.Mesh(bottomGeometry, bodyMaterial);
         bottom.position.set(0, -0.2, 0);
         bottom.castShadow = true;
@@ -596,37 +609,41 @@ export class TechnologyFactory {
         // Recessed scroll-wheel channel: a slightly wider dark ring sunk just
         // below the shell surface so the wheel itself reads as sitting in a
         // cavity rather than floating on top of the dome.
-        const wheelWellGeometry = new THREE.CylinderGeometry(0.024, 0.024, 0.006, 16);
+        const wheelWellGeometry = new THREE.CylinderGeometry(0.029, 0.029, 0.006, 16);
         const wheelWellMaterial = new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.9 });
         const wheelWell = new THREE.Mesh(wheelWellGeometry, wheelWellMaterial);
-        wheelWell.position.set(0, -0.065, 0.04);
+        wheelWell.position.set(0, -0.055, 0.045);
         wheelWell.rotation.z = Math.PI / 2;
         wheelWell.receiveShadow = true;
         group.add(wheelWell);
 
         // Scroll wheel
-        const wheelGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.025, 8);
+        const wheelGeometry = new THREE.CylinderGeometry(0.018, 0.018, 0.03, 8);
         const wheelMaterial = new THREE.MeshStandardMaterial({
             color: 0x4a4a4a,
             roughness: 0.6
         });
         const scrollWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-        scrollWheel.position.set(0, -0.06, 0.04);
+        scrollWheel.position.set(0, -0.05, 0.045);
         scrollWheel.rotation.z = Math.PI / 2;
         scrollWheel.castShadow = true;
         group.add(scrollWheel);
 
         // Button seam: real mice split the top shell between left/right
         // buttons from the front tip back to just past the scroll wheel.
-        const seamGeometry = new THREE.BoxGeometry(0.003, 0.008, 0.14);
+        const seamGeometry = new THREE.BoxGeometry(0.005, 0.01, 0.16);
         const seam = new THREE.Mesh(seamGeometry, new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.9 }));
-        seam.position.set(0, -0.045, 0.03);
+        seam.position.set(0, -0.08, 0.045);
         seam.castShadow = true;
         group.add(seam);
 
         // Contact shadow for realistic grounding (Phase 3.1)
         addContactShadow(group, 0.25, 0.35, -0.21);
 
+        // Give the mouse a fuller palm-sized footprint while keeping its flat
+        // base planted on the desktop. A little extra height emphasizes the
+        // ergonomic palm hump without turning it into an oversized trackball.
+        group.scale.set(1.6, 1.25, 1.6);
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'mouse', label: 'Mouse - Navigation & Tools' };
         return group;

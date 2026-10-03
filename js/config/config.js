@@ -87,33 +87,33 @@ export const OBJECT_ORIGINS = Object.freeze({
         wallShelf: Object.freeze({ x: 0, y: 3.5,  z: -1.7, rotationX: 0, rotationY: 0, rotationZ: 0 })
     }),
     technology: Object.freeze({
-        monitor:  Object.freeze({ x: -1.72, y: 1,    z: -1.1, rotationX: 0, rotationY: 0,              rotationZ: 0 }),
-        monitorRight: Object.freeze({ x: 1.72, y: 1,  z: -1.1, rotationX: 0, rotationY: 0,              rotationZ: 0 }),
+        monitor:  Object.freeze({ x: -1.72, y: 1,    z: -1.1, rotationX: 0, rotationY: Math.PI / 24,  rotationZ: 0 }),
+        monitorRight: Object.freeze({ x: 1.72, y: 1,  z: -1.1, rotationX: 0, rotationY: -Math.PI / 24, rotationZ: 0 }),
         keyboard: Object.freeze({ x: 0,    y: 0.94, z: 0.1,  rotationX: 0, rotationY: Math.PI,        rotationZ: 0 }),
-        mouse:    Object.freeze({ x: 1.3,  y: 1,    z: 0,    rotationX: 0, rotationY: 0,              rotationZ: 0 }),
+        mouse:    Object.freeze({ x: -0.15, y: 1.0525, z: -0.05, rotationX: 0, rotationY: Math.PI / 4, rotationZ: 0 }),
         // The unibody base starts at local y=0; match it to the desktop's top
         // surface so the laptop reads as resting on the wood instead of hovering.
-        laptop:   Object.freeze({ x: -1.72, y: 0.80, z: 0.2,  rotationX: 0, rotationY: 0,            rotationZ: 0 }),
+        laptop:   Object.freeze({ x: -1.72, y: 0.80, z: 0.45, rotationX: 0, rotationY: Math.PI / 4, rotationZ: 0 }),
         clock:    Object.freeze({ x: 1,    y: 0.83, z: -1,   rotationX: 0, rotationY: -Math.PI / 9,  rotationZ: 0 })
     }),
     desk: Object.freeze({
-        notebook: Object.freeze({ x: 2.2,  y: 1, z: 0.4,  rotationX: 0, rotationY: -Math.PI / 6, rotationZ: 0 }),
+        notebook: Object.freeze({ x: 1.1,  y: 1, z: 0.55, rotationX: 0, rotationY: -Math.PI / 6, rotationZ: 0 }),
         // The cup is modeled from its base up, so its root sits at desktop height.
-        coffee:   Object.freeze({ x: 2.8,  y: 1.19, z: 0.55, rotationX: 0, rotationY: 0,            rotationZ: 0 }),
-        lamp:     Object.freeze({ x: 2.5,  y: 1, z: -1.1, rotationX: 0, rotationY: 0,             rotationZ: 0 })
+        coffee:   Object.freeze({ x: 2.65, y: 1.19, z: 0.95, rotationX: 0, rotationY: 0,            rotationZ: 0 }),
+        lamp:     Object.freeze({ x: 2.8,  y: 1, z: -0.35, rotationX: 0, rotationY: 0,             rotationZ: 0 })
     }),
     shelf: Object.freeze({
         // The shelf is 0.15 units thick and centered at y=3.5. Object roots
         // sit on its top surface, not at its center, so every prop shares the
         // same physically meaningful ground plane.
-        books:      Object.freeze({ x: 0,    y: 3.575, z: -1.7, rotationX: 0, rotationY: 0, rotationZ: 0 }),
+        books:      Object.freeze({ x: -0.1, y: 3.575, z: -1.7, rotationX: 0, rotationY: 0, rotationZ: 0 }),
         // Pull the planter toward the shelf's front edge so the pot sits in front
         // of the 0.02-unit front trim instead of disappearing behind it.
-        shelfPlant: Object.freeze({ x: -2.0, y: 3.575, z: -1.39, rotationX: 0, rotationY: 0, rotationZ: 0 }),
-        tidbyt:     Object.freeze({ x: 1.4,  y: 3.575, z: -1.65, rotationX: 0, rotationY: 0, rotationZ: 0 })
+        shelfPlant: Object.freeze({ x: -2.1, y: 3.575, z: -1.72, rotationX: 0, rotationY: 0, rotationZ: 0 }),
+        tidbyt:     Object.freeze({ x: 1.8,  y: 3.575, z: -1.65, rotationX: 0, rotationY: 0, rotationZ: 0 })
     }),
     wall: Object.freeze({
-        diploma: Object.freeze({ x: 3.7,  y: 3,   z: -1.8, rotationX: 0, rotationY: 0, rotationZ: 0 }),
+        diploma: Object.freeze({ x: 3.7,  y: 4.05, z: -1.8, rotationX: 0, rotationY: 0, rotationZ: 0 }),
         vinyl:   Object.freeze({ x: -4.3, y: 3.5, z: -1.9, rotationX: 0, rotationY: 0, rotationZ: 0 })
     })
 });

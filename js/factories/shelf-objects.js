@@ -109,7 +109,8 @@ export class ShelfObjectFactory {
         books.forEach((data, index) => {
             const lean = (jitter(index * 3.1) - 0.5) * 0.09; // slight random lean
             const depthOffset = (jitter(index * 5.7) - 0.5) * 0.03; // slight random depth stagger
-            bodyPosition.set(cursorX + data.width / 2, data.height / 2, 0.15 + depthOffset);
+            const leanClearance = Math.abs(Math.sin(lean)) * data.width / 2 + 0.006;
+            bodyPosition.set(cursorX + data.width / 2, data.height / 2 + leanClearance, 0.15 + depthOffset);
             bodyQuaternion.setFromAxisAngle(bookAxis, lean);
             bodyScale.set(data.width, data.height, bookDepth);
             bodyMatrix.compose(bodyPosition, bodyQuaternion, bodyScale);
@@ -173,6 +174,7 @@ export class ShelfObjectFactory {
 
         addContactShadow(group, 1.0, 0.42, -0.005);
 
+        group.scale.setScalar(1.5);
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'books', label: 'Books - Knowledge Base' };
         return group;
@@ -285,11 +287,11 @@ export class ShelfObjectFactory {
         // their own weight and the leaves fan toward the light, as a real trailing
         // pothos would rather than forming a repeated curtain.
         const vineConfigs = [
-            { points: [[-0.10, 0.29, 0.02], [-0.18, 0.18, 0.16], [-0.28, -0.08, 0.36], [-0.22, -0.40, 0.47], [-0.34, -0.74, 0.43]], leafCount: 5 },
-            { points: [[0.02, 0.29, 0.03], [0.12, 0.15, 0.20], [0.17, -0.12, 0.42], [0.10, -0.46, 0.54], [0.24, -0.91, 0.50]], leafCount: 6 },
-            { points: [[-0.02, 0.29, 0.06], [0.00, 0.10, 0.28], [-0.08, -0.18, 0.47], [0.04, -0.52, 0.58], [-0.03, -1.08, 0.55]], leafCount: 6 },
-            { points: [[0.09, 0.29, 0.00], [0.25, 0.16, 0.08], [0.34, -0.08, 0.27], [0.30, -0.36, 0.40], [0.47, -0.70, 0.35]], leafCount: 5 },
-            { points: [[-0.12, 0.29, 0.00], [-0.28, 0.15, 0.06], [-0.45, -0.10, 0.18], [-0.56, -0.35, 0.29], [-0.65, -0.64, 0.24]], leafCount: 5 },
+            { points: [[-0.10, 0.29, 0.02], [-0.25, 0.14, 0.10], [-0.72, -0.12, 0.27], [-0.76, -0.42, 0.29], [-0.82, -0.74, 0.29]], leafCount: 5 },
+            { points: [[0.02, 0.29, 0.03], [-0.15, 0.14, 0.11], [-0.60, -0.12, 0.28], [-0.64, -0.46, 0.30], [-0.65, -0.91, 0.30]], leafCount: 6 },
+            { points: [[-0.02, 0.29, 0.06], [-0.25, 0.10, 0.14], [-0.86, -0.18, 0.29], [-0.88, -0.52, 0.30], [-0.91, -1.08, 0.30]], leafCount: 6 },
+            { points: [[0.09, 0.29, 0.00], [-0.12, 0.14, 0.08], [-0.55, -0.10, 0.25], [-0.58, -0.36, 0.29], [-0.55, -0.70, 0.29]], leafCount: 5 },
+            { points: [[-0.12, 0.29, 0.00], [-0.35, 0.14, 0.08], [-1.00, -0.10, 0.22], [-1.02, -0.35, 0.28], [-1.05, -0.64, 0.28]], leafCount: 5 },
             { points: [[0.00, 0.29, -0.02], [-0.05, 0.43, 0.00], [-0.02, 0.55, 0.06]], leafCount: 3, isNewGrowth: true },
             { points: [[0.07, 0.29, 0.01], [0.16, 0.41, 0.06], [0.11, 0.53, 0.10]], leafCount: 2, isNewGrowth: true }
         ].map((config) => ({
@@ -313,7 +315,9 @@ export class ShelfObjectFactory {
 
             // Add leaves along vine
             for (let i = 0; i < config.leafCount; i++) {
-                const t = (i + 0.5) / config.leafCount;
+                const t = config.isNewGrowth
+                    ? (i + 0.5) / config.leafCount
+                    : 0.28 + ((i + 0.5) / config.leafCount) * 0.68;
                 const position = curve.getPointAt(t);
                 const tangent = curve.getTangentAt(t);
                 const seed = vineIndex * 100 + i; // stable per-leaf jitter seed
@@ -324,6 +328,16 @@ export class ShelfObjectFactory {
                 const leafPos = position.clone();
                 leafPos.add(right.multiplyScalar(side * (0.045 + jitter(seed * 2.1) * 0.018)));
                 leafPos.y += (jitter(seed * 3.7) - 0.5) * 0.025;
+
+                // Keep the first trailing leaves outside the planter rim as the
+                // stems turn over its edge; the connecting petiole follows the
+                // extra reach so the leaves still read as attached to the vine.
+                const horizontalRadius = Math.hypot(leafPos.x, leafPos.z);
+                if (!config.isNewGrowth && position.y < 0.48 && horizontalRadius < 0.31) {
+                    const scale = (0.31 - horizontalRadius) / Math.max(horizontalRadius, 0.001);
+                    leafPos.x += leafPos.x * scale;
+                    leafPos.z += leafPos.z * scale;
+                }
 
                 petioleGeometries.push(new THREE.TubeGeometry(
                     new THREE.LineCurve3(position, leafPos),
@@ -431,6 +445,7 @@ export class ShelfObjectFactory {
 
         addContactShadow(group, 0.58, 0.44, -0.005);
 
+        group.scale.setScalar(1.5);
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'shelfPlant', label: 'Pothos - Work-Life Balance' };
         return group;
@@ -516,6 +531,7 @@ export class ShelfObjectFactory {
 
         addContactShadow(group, bodyWidth * 1.1, bodyDepth * 2.2, -0.001);
 
+        group.scale.setScalar(2.5);
         applyOrigin(group, origin, true); // Static object
         group.userData = { name: 'tidbyt', label: 'Tidbyt - Daily Dashboard' };
         return group;
