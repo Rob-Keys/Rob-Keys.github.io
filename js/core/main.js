@@ -40,7 +40,6 @@ class Portfolio3D {
         /** @type {import('./interactions.js').InteractionManager | null} */ this.interactionManager = null;
         this.semanticPortfolio = new SemanticPortfolioController();
         /** @type {Object3D | null} */ this._coffeeMug = null;
-        /** @type {Object3D | null} */ this._clock = null;
 
         // Render-on-demand state (Phase 1)
         this._lastInteractionTime = 0; // 0 keeps the reveal frame(s) rendering at full rate.
@@ -169,7 +168,6 @@ class Portfolio3D {
         /** @param {string} name @returns {Object3D | null} */
         const findByName = (name) => scene.children.find((child) => child.userData?.name === name) || null;
         this._coffeeMug = findByName('coffee');
-        this._clock = findByName('clock');
 
         // Force full render while loading screen is visible (compiles shaders + uploads to GPU),
         // populating the shadow maps before we freeze them.
@@ -449,11 +447,6 @@ class Portfolio3D {
         // Animate coffee steam (using cached reference)
         if (!this.reducedMotion && this._coffeeMug?.userData.animateSteam) {
             this._coffeeMug.userData.animateSteam.call(this._coffeeMug, elapsedSeconds);
-        }
-
-        // Update digital clock (using cached reference)
-        if (this._clock?.userData.updateTime) {
-            this._clock.userData.updateTime();
         }
     }
 }

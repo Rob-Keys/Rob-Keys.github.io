@@ -30,15 +30,17 @@ export class TechnologyFactory {
         // screen's design. Using the same renderer for the initial frame means there's
         // one content source and no first-scroll swap.
         this.monitorRenderer = new MonitorRenderer();
+        /** @type {THREE.CanvasTexture | null} */
+        this.monitorTexture = null;
     }
 
     /**
      * Create realistic computer monitor with detailed design
      * All part positions are relative to the monitor origin defined in this.origins.monitor
+     * @param {{ x: number, y: number, z: number, rotationX: number, rotationY: number, rotationZ: number }} [origin]
      */
-    createMonitor() {
+    createMonitor(origin = this.origins.monitor) {
         const group = new THREE.Group();
-        const origin = this.origins.monitor;
 
         // Part offsets relative to monitor origin (origin is at base center)
         // Screen faces forward (+Z), stand/arm is behind (-Z)
@@ -58,7 +60,10 @@ export class TechnologyFactory {
         // Render the same browser-window content used for scrolling before the
         // monitor enters the scene. This removes the first-frame/first-scroll design
         // swap and leaves MonitorRenderer as the single content source (P2-4).
-        const texture = new THREE.CanvasTexture(this.monitorRenderer.createMonitorCanvas(0));
+        if (!this.monitorTexture) {
+            this.monitorTexture = new THREE.CanvasTexture(this.monitorRenderer.createMonitorCanvas(0));
+        }
+        const texture = this.monitorTexture;
 
         // Canvas pixels represent display colors, so keep the texture in sRGB.
         texture.colorSpace = THREE.SRGBColorSpace;

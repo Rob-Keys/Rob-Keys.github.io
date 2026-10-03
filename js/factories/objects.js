@@ -59,10 +59,9 @@ export class ObjectFactory {
             { create: () => shelf.createTidbyt(), interactive: true },
             // Technology
             { create: () => technology.createMonitor(), interactive: true },
-            { create: () => technology.createKeyboard(), interactive: true },
+            { create: () => technology.createMonitor(technology.origins.monitorRight), interactive: true },
             { create: () => technology.createMouse(), interactive: true },
             { create: () => technology.createLaptop(), interactive: true },
-            { create: () => technology.createDigitalClock(), interactive: true },
             // Content-bearing desk objects are also available through the
             // semantic controls and therefore remain discoverable in the scene.
             { create: () => desk.createCoffeeMug(), interactive: true },
