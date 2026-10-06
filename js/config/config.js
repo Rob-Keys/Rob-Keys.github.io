@@ -90,7 +90,7 @@ export const OBJECT_ORIGINS = Object.freeze({
         monitor:  Object.freeze({ x: -1.72, y: 1,    z: -1.1, rotationX: 0, rotationY: Math.PI / 24,  rotationZ: 0 }),
         monitorRight: Object.freeze({ x: 1.72, y: 1,  z: -1.1, rotationX: 0, rotationY: -Math.PI / 24, rotationZ: 0 }),
         keyboard: Object.freeze({ x: 0,    y: 0.94, z: 0.1,  rotationX: 0, rotationY: Math.PI,        rotationZ: 0 }),
-        mouse:    Object.freeze({ x: -0.15, y: 1.0525, z: -0.05, rotationX: 0, rotationY: Math.PI / 4, rotationZ: 0 }),
+        mouse:    Object.freeze({ x: -0.15, y: 0.805, z: -0.05, rotationX: 0, rotationY: Math.PI / 4, rotationZ: 0 }),
         // The unibody base starts at local y=0; match it to the desktop's top
         // surface so the laptop reads as resting on the wood instead of hovering.
         laptop:   Object.freeze({ x: -1.72, y: 0.80, z: 0.45, rotationX: 0, rotationY: Math.PI / 4, rotationZ: 0 }),

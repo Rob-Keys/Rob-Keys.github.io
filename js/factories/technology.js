@@ -537,114 +537,218 @@ export class TechnologyFactory {
     createMouse() {
         const group = new THREE.Group();
         const origin = this.origins.mouse;
-
-        const bodyMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.3,
+        const shellMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x262a2f,
+            roughness: 0.64,
             roughnessMap: createRoughnessVariationTexture(),
-            metalness: 0.1,
-            clearcoat: 0.25,
-            clearcoatRoughness: 0.5
+            metalness: 0.015,
+            clearcoat: 0.08,
+            clearcoatRoughness: 0.65
         });
+        const seamMaterial = new THREE.MeshStandardMaterial({ color: 0x090c10, roughness: 0.9 });
+        const baseY = 0.014;
+        const point = (x, y) => new THREE.Vector3(x, y, 0);
 
-        // Ergonomic shell (Phase 5.1): a domed cross-section revolved into an
-        // axisymmetric blob, elongated into an oval footprint, then tapered
-        // narrower toward the front (buttons/wheel) and fuller toward the back
-        // (palm rest). A uniform-radius cylinder reads as an obvious CG capsule;
-        // real mice are widest under the palm and pinch toward the fingertips.
-        const mouseHalfLength = 0.12;
-        const mouseRadius = 0.09;
-        const bodyHeight = 0.16;
-        const domeProfile = [
-            new THREE.Vector2(mouseRadius * 0.94, 0),
-            new THREE.Vector2(mouseRadius, bodyHeight * 0.08),
-            new THREE.Vector2(mouseRadius * 1.08, bodyHeight * 0.22),
-            new THREE.Vector2(mouseRadius * 1.10, bodyHeight * 0.42),
-            new THREE.Vector2(mouseRadius * 0.98, bodyHeight * 0.66),
-            new THREE.Vector2(mouseRadius * 0.72, bodyHeight * 0.85),
-            new THREE.Vector2(mouseRadius * 0.38, bodyHeight * 0.97),
-            new THREE.Vector2(0.001, bodyHeight)
-        ];
-        const bodyGeometry = new THREE.LatheGeometry(domeProfile, 20);
-        bodyGeometry.scale(1, 1, mouseHalfLength / mouseRadius);
-
-        const bodyPos = bodyGeometry.attributes.position;
-        for (let i = 0; i < bodyPos.count; i++) {
-            const x = bodyPos.getX(i);
-            const z = bodyPos.getZ(i);
-            const tFront = THREE.MathUtils.clamp(z / mouseHalfLength, -1, 1); // -1 palm, +1 front tip
-            const widthScale = THREE.MathUtils.lerp(1.08, 0.55, Math.pow(Math.max(tFront, 0), 1.6));
-            bodyPos.setX(i, x * widthScale);
-            bodyPos.setY(i, bodyPos.getY(i) * (1 + Math.max(-tFront, 0) * 0.08));
-        }
-        bodyPos.needsUpdate = true;
-        bodyGeometry.computeVertexNormals();
-
-        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.set(0, -0.2, 0); // rests on the flat bottom plate below
-        body.castShadow = true;
-        body.receiveShadow = true;
-        group.add(body);
-
-        // The shallow thumb wing gives the left flank a sculpted palm rest
-        // instead of the symmetric capsule silhouette of a generic prop.
-        const thumbRest = new THREE.Mesh(
-            new THREE.SphereGeometry(1, 16, 10),
-            bodyMaterial
+        // Local -Z is the nose. The +X flank carries the fingers; the -X
+        // flank forms a soft C, from the thumb shelf into the recessed waist.
+        const fingerCurve = new THREE.CubicBezierCurve3(
+            point(-0.018, 0.253), point(0.042, 0.258),
+            point(0.113, 0.112), point(0.106, 0.017)
         );
-        thumbRest.position.set(-0.082, -0.14, -0.02);
-        thumbRest.scale.set(0.042, 0.022, 0.075);
-        thumbRest.castShadow = true;
-        thumbRest.receiveShadow = true;
-        group.add(thumbRest);
+        const profile = new THREE.CurvePath();
+        profile.add(fingerCurve);
+        profile.add(new THREE.CubicBezierCurve3(
+            point(0.106, 0.017), point(0.073, 0.001),
+            point(-0.096, 0.001), point(-0.118, 0.019)
+        ));
+        profile.add(new THREE.CubicBezierCurve3(
+            point(-0.118, 0.019), point(-0.139, 0.045),
+            point(-0.035, 0.043), point(-0.036, 0.105)
+        ));
+        profile.add(new THREE.CubicBezierCurve3(
+            point(-0.036, 0.105), point(-0.032, 0.150),
+            point(-0.080, 0.173), point(-0.067, 0.208)
+        ));
+        profile.add(new THREE.CubicBezierCurve3(
+            point(-0.067, 0.208), point(-0.060, 0.238),
+            point(-0.046, 0.253), point(-0.018, 0.253)
+        ));
+        const stations = [
+            { z: -0.187, width: 0.01, height: 0.035 },
+            { z: -0.170, width: 0.48, height: 0.38 },
+            { z: -0.135, width: 0.82, height: 0.72 },
+            { z: -0.075, width: 0.96, height: 0.94 },
+            { z: 0.000, width: 1.00, height: 1.00 },
+            { z: 0.070, width: 1.00, height: 0.94 },
+            { z: 0.130, width: 0.86, height: 0.70 },
+            { z: 0.170, width: 0.53, height: 0.37 },
+            { z: 0.187, width: 0.01, height: 0.035 }
+        ];
+        const sectionAt = (z) => {
+            let index = stations.findIndex((station, i) => i < stations.length - 1 && z <= stations[i + 1].z);
+            if (index < 0) index = stations.length - 2;
+            const a = stations[index];
+            const b = stations[index + 1];
+            const previous = stations[Math.max(0, index - 1)];
+            const next = stations[Math.min(stations.length - 1, index + 2)];
+            const span = b.z - a.z;
+            const t = THREE.MathUtils.clamp((z - a.z) / span, 0, 1);
+            const interpolate = (key) => {
+                const slopeA = (b[key] - previous[key]) / (b.z - previous.z);
+                const slopeB = (next[key] - a[key]) / (next.z - a.z);
+                return (2 * t ** 3 - 3 * t ** 2 + 1) * a[key]
+                    + (t ** 3 - 2 * t ** 2 + t) * span * slopeA
+                    + (-2 * t ** 3 + 3 * t ** 2) * b[key]
+                    + (t ** 3 - t ** 2) * span * slopeB;
+            };
+            return { width: interpolate('width'), height: interpolate('height') };
+        };
+        const loftPoint = (z, crossPoint) => {
+            const section = sectionAt(z);
+            return new THREE.Vector3(crossPoint.x * section.width, baseY + crossPoint.y * section.height, z);
+        };
+        const fingerPoint = (z, u) => loftPoint(z, fingerCurve.getPoint(u));
+        const fingerNormal = (z, u) => {
+            const along = fingerPoint(z + 0.0005, u).sub(fingerPoint(z - 0.0005, u));
+            const across = fingerPoint(z, Math.min(1, u + 0.0005)).sub(fingerPoint(z, Math.max(0, u - 0.0005)));
+            return along.cross(across).normalize();
+        };
+        const crossPoints = profile.getSpacedPoints(96);
+        const rows = 72;
+        const ringSize = crossPoints.length;
+        const vertices = [];
+        const uvs = [];
+        const indices = [];
+        for (let i = 0; i <= rows; i++) {
+            const z = THREE.MathUtils.lerp(-0.187, 0.187, i / rows);
+            for (let j = 0; j < ringSize; j++) {
+                const vertex = loftPoint(z, crossPoints[j]);
+                vertices.push(vertex.x, vertex.y, vertex.z);
+                uvs.push(j / (ringSize - 1), i / rows);
+            }
+        }
+        for (let i = 0; i < rows; i++) {
+            for (let j = 0; j < ringSize - 1; j++) {
+                const a = i * ringSize + j;
+                const b = a + ringSize;
+                indices.push(a, b, a + 1, b, b + 1, a + 1);
+            }
+        }
+        const shellGeometry = new THREE.BufferGeometry();
+        shellGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        shellGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        shellGeometry.setIndex(indices);
+        shellGeometry.computeVertexNormals();
+        const shell = new THREE.Mesh(shellGeometry, shellMaterial);
+        shell.castShadow = shell.receiveShadow = true;
+        group.add(shell);
 
-        // Flat bottom
-        const bottomGeometry = new THREE.BoxGeometry(0.20, 0.02, 0.27);
-        const bottom = new THREE.Mesh(bottomGeometry, bodyMaterial);
-        bottom.position.set(0, -0.2, 0);
-        bottom.castShadow = true;
-        bottom.receiveShadow = true;
-        group.add(bottom);
-
-        // Recessed scroll-wheel channel: a slightly wider dark ring sunk just
-        // below the shell surface so the wheel itself reads as sitting in a
-        // cavity rather than floating on top of the dome.
-        const wheelWellGeometry = new THREE.CylinderGeometry(0.029, 0.029, 0.006, 16);
-        const wheelWellMaterial = new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.9 });
-        const wheelWell = new THREE.Mesh(wheelWellGeometry, wheelWellMaterial);
-        wheelWell.position.set(0, -0.055, 0.045);
-        wheelWell.rotation.z = Math.PI / 2;
-        wheelWell.receiveShadow = true;
-        group.add(wheelWell);
-
-        // Scroll wheel
-        const wheelGeometry = new THREE.CylinderGeometry(0.018, 0.018, 0.03, 8);
-        const wheelMaterial = new THREE.MeshStandardMaterial({
-            color: 0x4a4a4a,
-            roughness: 0.6
+        const footprint = new THREE.Shape();
+        footprint.moveTo(0, -0.188);
+        footprint.bezierCurveTo(-0.073, -0.188, -0.117, -0.135, -0.122, -0.047);
+        footprint.bezierCurveTo(-0.128, 0.050, -0.109, 0.143, -0.058, 0.176);
+        footprint.bezierCurveTo(-0.008, 0.203, 0.073, 0.183, 0.103, 0.118);
+        footprint.bezierCurveTo(0.126, 0.062, 0.117, -0.063, 0.090, -0.128);
+        footprint.bezierCurveTo(0.067, -0.175, 0.029, -0.188, 0, -0.188);
+        const baseGeometry = new THREE.ExtrudeGeometry(footprint, {
+            depth: 0.011, bevelEnabled: true, bevelSegments: 3,
+            bevelSize: 0.0018, bevelThickness: 0.0015, curveSegments: 24
         });
-        const scrollWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-        scrollWheel.position.set(0, -0.05, 0.045);
-        scrollWheel.rotation.z = Math.PI / 2;
-        scrollWheel.castShadow = true;
-        group.add(scrollWheel);
+        baseGeometry.rotateX(Math.PI / 2);
+        const base = new THREE.Mesh(baseGeometry, new THREE.MeshStandardMaterial({ color: 0x16191d, roughness: 0.83 }));
+        base.position.y = 0.012;
+        base.castShadow = base.receiveShadow = true;
+        group.add(base);
 
-        // Button seam: real mice split the top shell between left/right
-        // buttons from the front tip back to just past the scroll wheel.
-        const seamGeometry = new THREE.BoxGeometry(0.005, 0.01, 0.16);
-        const seam = new THREE.Mesh(seamGeometry, new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.9 }));
-        seam.position.set(0, -0.08, 0.045);
-        seam.castShadow = true;
-        group.add(seam);
+        // Both clicks run lengthwise on the same outside face. The rounded
+        // corners trim only the corners, preserving full, usable panel areas.
+        const makePanel = (startZ, endZ, startU, endU, material, lift) => {
+            const positions = [];
+            const panelIndices = [];
+            const longitudinalSegments = 32;
+            const acrossSegments = 12;
+            const cornerZ = Math.min(0.010, (endZ - startZ) / 4);
+            const cornerU = Math.min(0.040, (endU - startU) / 4);
+            for (let i = 0; i <= longitudinalSegments; i++) {
+                const z = THREE.MathUtils.lerp(startZ, endZ, i / longitudinalSegments);
+                const endDistance = Math.min(z - startZ, endZ - z);
+                const inset = endDistance < cornerZ
+                    ? cornerU * (1 - Math.sqrt(Math.max(0, 1 - (1 - endDistance / cornerZ) ** 2)))
+                    : 0;
+                for (let j = 0; j <= acrossSegments; j++) {
+                    const u = THREE.MathUtils.lerp(startU + inset, endU - inset, j / acrossSegments);
+                    const vertex = fingerPoint(z, u).addScaledVector(fingerNormal(z, u), lift);
+                    positions.push(vertex.x, vertex.y, vertex.z);
+                }
+            }
+            for (let i = 0; i < longitudinalSegments; i++) {
+                for (let j = 0; j < acrossSegments; j++) {
+                    const a = i * (acrossSegments + 1) + j;
+                    const b = a + acrossSegments + 1;
+                    panelIndices.push(a, b, a + 1, b, b + 1, a + 1);
+                }
+            }
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setIndex(panelIndices);
+            geometry.computeVertexNormals();
+            const panel = new THREE.Mesh(geometry, material);
+            panel.castShadow = panel.receiveShadow = true;
+            group.add(panel);
+        };
+        const clickMaterial = new THREE.MeshPhysicalMaterial({ color: 0x32373e, roughness: 0.53, metalness: 0.015, clearcoat: 0.08 });
+        makePanel(-0.149, 0.029, 0.035, 0.405, clickMaterial, 0.0014);
+        makePanel(-0.149, 0.029, 0.485, 0.935, clickMaterial, 0.0014);
+        for (const u of [0.018, 0.445, 0.951]) {
+            const seamPoints = [];
+            for (let i = 0; i <= 40; i++) {
+                const z = THREE.MathUtils.lerp(-0.148, 0.030, i / 40);
+                seamPoints.push(fingerPoint(z, u).addScaledVector(fingerNormal(z, u), 0.0010));
+            }
+            const seam = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(seamPoints), 40, 0.0008, 5, false), seamMaterial);
+            seam.castShadow = seam.receiveShadow = true;
+            group.add(seam);
+        }
+        const rearSeamPoints = [];
+        for (let i = 0; i <= 32; i++) {
+            const u = THREE.MathUtils.lerp(0.018, 0.951, i / 32);
+            rearSeamPoints.push(fingerPoint(0.031, u).addScaledVector(fingerNormal(0.031, u), 0.0010));
+        }
+        const rearSeam = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rearSeamPoints), 32, 0.0008, 5, false), seamMaterial);
+        rearSeam.castShadow = rearSeam.receiveShadow = true;
+        group.add(rearSeam);
 
-        // Contact shadow for realistic grounding (Phase 3.1)
-        addContactShadow(group, 0.25, 0.35, -0.21);
+        // The wheel axis follows the transverse face tangent. Only its rubber
+        // crown emerges from the recessed slot in the shared button seam.
+        const wheelZ = -0.087;
+        const wheelU = 0.445;
+        makePanel(wheelZ - 0.029, wheelZ + 0.029, 0.409, 0.481, seamMaterial, 0.0020);
+        const wheelGroup = new THREE.Group();
+        const wheelAxis = fingerPoint(wheelZ, wheelU + 0.001).sub(fingerPoint(wheelZ, wheelU - 0.001)).normalize();
+        wheelGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), wheelAxis);
+        wheelGroup.position.copy(fingerPoint(wheelZ, wheelU).addScaledVector(fingerNormal(wheelZ, wheelU), -0.007));
+        const tireMaterial = new THREE.MeshStandardMaterial({ color: 0x111418, roughness: 0.85 });
+        const hubMaterial = new THREE.MeshStandardMaterial({ color: 0x6a7077, roughness: 0.38, metalness: 0.5 });
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.020, 0.020, 0.013, 40), [tireMaterial, hubMaterial, hubMaterial]);
+        wheel.castShadow = wheel.receiveShadow = true;
+        wheelGroup.add(wheel);
+        const treadGeometry = new THREE.BoxGeometry(0.0012, 0.014, 0.0012);
+        const tread = new THREE.InstancedMesh(treadGeometry, new THREE.MeshStandardMaterial({ color: 0x272c32, roughness: 0.9 }), 32);
+        const treadTransform = new THREE.Object3D();
+        for (let i = 0; i < 32; i++) {
+            const angle = i * Math.PI * 2 / 32;
+            treadTransform.position.set(Math.sin(angle) * 0.0203, 0, Math.cos(angle) * 0.0203);
+            treadTransform.rotation.y = angle;
+            treadTransform.updateMatrix();
+            tread.setMatrixAt(i, treadTransform.matrix);
+        }
+        tread.castShadow = tread.receiveShadow = true;
+        wheelGroup.add(tread);
+        group.add(wheelGroup);
 
-        // Give the mouse a fuller palm-sized footprint while keeping its flat
-        // base planted on the desktop. A little extra height emphasizes the
-        // ergonomic palm hump without turning it into an oversized trackball.
-        group.scale.set(1.6, 1.25, 1.6);
-        applyOrigin(group, origin, true); // Static object
+        addContactShadow(group, 0.25, 0.40, 0);
+        group.scale.setScalar(1.5);
+        applyOrigin(group, origin, true);
         group.userData = { name: 'mouse', label: 'Mouse - Navigation & Tools' };
         return group;
     }
