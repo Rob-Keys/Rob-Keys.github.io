@@ -110,11 +110,14 @@ class Portfolio3D {
         // Fit the sun's shadow frustum to actual scene bounds now that every object exists.
         this.sceneManager.lightingSystem?.fitMainShadowToScene(scene);
 
-        // Wait for the critical environment, floor, and furniture textures before
-        // revealing the scene. Wall art is intentionally deferred until after the
-        // fade because it sits outside the initial camera composition.
-        this.updateLoadingStatus('Finishing asset imports');
-        await Promise.all([this.sceneManager.waitForAssets(), this.objectFactory.waitForAssets()]);
+        // Show the first scene as soon as its geometry and renderer are ready.
+        // Environment, floor, and furniture maps already load asynchronously and
+        // replace their lightweight placeholders as they arrive; waiting for every
+        // image here kept the full-screen boot UI up for the entire asset waterfall.
+        void Promise.all([this.sceneManager.waitForAssets(), this.objectFactory.waitForAssets()])
+            .catch((error) => {
+                console.warn('Some visual assets could not be loaded; placeholders remain visible.', error);
+            });
 
         this.interactionManager = new InteractionManager(
             /** @type {PerspectiveCamera} */ (camera),
@@ -198,6 +201,10 @@ class Portfolio3D {
         // treating startup as a 60-second-old idle session.
         this._lastInteractionTime = performance.now();
         this.markPortfolioReady();
+        // Environment reflections refine the scene but are not needed for its
+        // first frame. Start the HDR request after reveal so it cannot compete
+        // with startup code or the textures needed by objects in view.
+        this.sceneManager?.lightingSystem?.loadEnvironmentMap();
 
         if (this._perfEnabled && this.sceneManager.renderer) {
             this._perfUpdate = createPerfMonitor(this.sceneManager.renderer);

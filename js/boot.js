@@ -10,6 +10,11 @@ if (button instanceof HTMLButtonElement) {
 
 void (async () => {
     try {
+        // Give the browser two animation frames to paint the lightweight boot UI
+        // before evaluating the Three.js scene graph and initializing WebGPU.
+        // A single rAF callback runs before paint, so the nested frame creates an
+        // actual rendering opportunity without adding a perceptible startup wait.
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         const { startPortfolio } = await import('./core/main.js');
         await startPortfolio();
     } catch (error) {

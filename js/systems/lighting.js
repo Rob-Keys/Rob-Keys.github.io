@@ -91,7 +91,6 @@ export class LightingSystem {
      * Initialize the lighting system
      */
     init() {
-        this.createEnvironmentMap();
         this.setupLights();
     }
 
@@ -100,7 +99,7 @@ export class LightingSystem {
      * The HDRI drives material reflections/IBL; direct scene illumination
      * comes from discrete lights so we can control it precisely.
      */
-    createEnvironmentMap() {
+    loadEnvironmentMap() {
         const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
         const loader = new HDRLoader(this.loadingManager || undefined);
         loader.load('assets/textures/env.hdr', (texture) => {
