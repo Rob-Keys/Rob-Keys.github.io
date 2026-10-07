@@ -42,7 +42,7 @@ export class ObjectFactory {
     async createAllObjects() {
         const { furniture, technology, shelf, desk, wall } = this.factories;
 
-        // Only the five requested portfolio objects respond to pointer selection.
+        // Only objects marked interactive below respond to pointer selection.
         const objects = [
             // Furniture (non-interactive)
             { create: () => furniture.createWall(), interactive: false },

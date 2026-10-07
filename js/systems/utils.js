@@ -489,9 +489,7 @@ export function addContactShadow(group, width, depth, groundY) {
 
 /**
  * Create a dev-only frame profiler, active behind `?perf=1`. Draws a rolling
- * frame-time average plus renderer.info counters to a small corner canvas —
- * exempt from the no-HTML-overlay rule since it's a debug view, not portfolio
- * content (see CLAUDE.md Phase 0 baseline measurement).
+ * frame-time average plus renderer.info counters to a small corner canvas.
  * @param {THREE.Renderer} renderer
  * @returns {() => void} Call once per rendered frame to refresh the readout.
  */

@@ -461,10 +461,10 @@ export class InteractionManager {
      * the real object occlude the inner backfaces of the clone, leaving only a silhouette
      * edge visible around it -- the classic "inflated hull" outline technique. This draws
      * as ordinary geometry in the normal scene pass (no extra scene re-renders, no
-     * depth/mask buffers), replacing the old OutlinePass -- which dimmed the whole scene
-     * via those internal buffers even after its overlay-material fix (see the closed-out
-     * CLAUDE.md TODO). Geometry is shared by reference with the source meshes; only new
-     * Mesh wrapper objects are created, and instanced meshes (keycaps) are skipped since
+     * depth/mask buffers), replacing the old OutlinePass, whose internal buffers dimmed
+     * the whole scene even after an overlay-material fix. Geometry is shared by reference
+     * with the source meshes; only new Mesh wrapper objects are created, and instanced
+     * meshes (keycaps) are skipped since
      * a single non-instanced draw can't reproduce their per-instance transforms.
      * @param {THREE.Object3D[]} interactiveObjects
      */

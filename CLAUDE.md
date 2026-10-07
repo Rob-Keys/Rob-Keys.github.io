@@ -16,33 +16,20 @@ Create a production bundle with `npm run build` and serve it locally with
 `npm run preview`. Vite resolves the Three.js and GSAP packages from
 `node_modules`; the deployed site no longer uses a browser import map.
 
-### Claude Code preview server
+### Preview server
 
-Use `.claude/launch.json` at the repo root with the package script:
-```json
-{
-  "version": "0.0.1",
-  "configurations": [
-    {
-      "name": "3D Personal Site",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--host", "127.0.0.1"],
-      "port": 5173
-    }
-  ]
-}
+Run the Vite development server so package imports resolve:
+```sh
+npm run dev
 ```
+Open the URL printed by Vite, normally `http://localhost:5173`. See
+`.claude/skills/verify/SKILL.md` for the browser-check procedure.
+
 ## Visual Verification
 
-After making changes, use the in-app browser tools to see the result:
-
-```
-preview_start { name: "3D Personal Site" }   // starts the server
-navigate { url: "http://localhost:5173" }     // reload after edits
-computer { action: "screenshot" }             // capture what's visible
-```
-
-Wait ~2 seconds after load before screenshotting — Three.js needs time to initialize. See `.claude/skills/verify/SKILL.md` for the full verification workflow (invokable via `/verify`).
+After making changes, use the browser preview to inspect both the 3D scene and
+the semantic portfolio. Follow `.claude/skills/verify/SKILL.md` for the manual
+checks and allow a few seconds for the Three.js scene to initialize.
 
 ## Quality Checks
 
@@ -71,14 +58,17 @@ modern `three/addons/` modules.
 
 ## File Structure
 
-| Directory | Purpose |
-|-----------|---------|
-| `js/core/` | Entry point (`main.js`), scene setup (`scene.js`), user interactions (`interactions.js`), semantic controls (`accessibility.js`) |
+| Path | Purpose |
+|------|---------|
+| `index.html`, `lost.html` | Semantic portfolio and renderer-failure page |
+| `js/boot.js` | Browser entry point and deferred scene startup |
+| `js/core/` | Scene setup, renderer lifecycle, post-processing, interactions, and semantic controls |
 | `js/config/` | Technical settings (`config.js`), monitor canvas copy (`content.js`) |
 | `js/systems/` | Lighting system + day/night cycle (`lighting.js`), shared utilities (`utils.js`) |
-| `js/factories/` | 3D object creation: `objects.js` (orchestrator), `furniture.js`, `technology.js`, `desk-objects.js`, `wall-objects.js`, `shelf-objects.js`, `monitor-renderer.js` |
+| `js/factories/` | 3D object creation, including `objects.js` (orchestrator), `keycap-legends.js`, and the furniture, technology, and prop factories |
 | `assets/textures/` | PBR textures (wood, wall) in WebP |
 | `assets/images/` | Vinyl album art in WebP |
+| `types/` | Project-local TypeScript declarations |
 
 ## Code Style
 
@@ -156,8 +146,12 @@ Interactive objects get an immediate hover outline via an inflated-backface mesh
 
 ## Mobile
 
-- Mobile works in both portrait and landscape orientations
-- No mobile-specific camera/controls adjustments; mobile gets the same experience as desktop
+- The scene supports portrait and landscape orientations and pointer/touch input.
+- Coarse-pointer devices start with a lower rendering-quality tier and use
+  mobile-specific pixel-ratio and shadow settings; contact shadows and dust
+  particles are omitted to reduce GPU work.
+- The semantic portfolio remains available on mobile and does not depend on the
+  3D renderer.
 
 ## Testing
 

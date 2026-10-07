@@ -1,6 +1,6 @@
 # 3D Interactive Desk Portfolio
 
-An interactive 3D portfolio built with Three.js. A desk environment where each object reveals professional background, skills, and projects. The renderer prefers WebGPU and falls back to Three.js' WebGL2 backend when WebGPU is unavailable.
+An interactive 3D portfolio built with Three.js. Selectable desk objects connect to professional background, skills, and projects, while a semantic HTML portfolio keeps every topic available to keyboard and screen-reader users. The renderer prefers WebGPU and falls back to Three.js' WebGL2 backend when WebGPU is unavailable.
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ npm run preview
 
 | Input | Action |
 |-------|--------|
-| Left click | Select and zoom into object |
+| Left click | Select and zoom into a selectable object |
 | Right click + drag | Rotate camera |
 | Scroll wheel | Zoom in/out |
 | Tab | Move through semantic portfolio controls |
@@ -38,23 +38,27 @@ WebGL/WebGPU is unavailable, and remains available without JavaScript.
 The dismissible interaction guide explains the keyboard, pointer, touch, and
 fallback paths.
 
-## Interactive Objects
+## Portfolio Topics and Scene Props
 
-| Object | Content |
-|--------|---------|
-| Monitor | About me |
-| Laptop | Work experience |
-| Picture frame | Education |
-| Notebook | Personal projects |
-| Tidbyt | Daily dashboard |
-| Books | Knowledge base |
-| Plant | Work-life balance |
-| Vinyl | Music and creativity |
-| Keyboard | Skills |
-| Mouse | Navigation and tools |
-| Clock | Time management |
-| Coffee | What drives me |
-| Desk lamp | Contact and documents |
+These topics are all available in the semantic portfolio. The monitor, laptop,
+diploma frame, notebook, and Tidbyt have selectable 3D props; the remaining
+props are decorative in the current scene.
+
+| Topic | Scene prop |
+|-------|------------|
+| About me | Monitor — selectable |
+| Work experience | Laptop — selectable |
+| Education | Diploma frame — selectable |
+| Personal projects | Notebook — selectable |
+| Daily dashboard | Tidbyt — selectable |
+| Knowledge base | Books — decorative |
+| Work-life balance | Plant — decorative |
+| Music and creativity | Vinyl — decorative |
+| Skills | Keyboard — decorative |
+| Navigation and tools | Mouse — decorative |
+| Time management | Clock — decorative |
+| What drives me | Coffee — decorative |
+| Contact and documents | Desk lamp — decorative |
 
 ## Customization
 
@@ -64,21 +68,16 @@ monitor-specific canvas copy lives in `js/config/content.js`; scene settings
 
 ## Project Structure
 
-```
-3D-personal-site/
-├── index.html
-├── css/styles.css
-├── js/
-│   ├── core/           # main.js, scene.js, interactions.js
-│   ├── config/         # config.js, content.js
-│   ├── systems/        # lighting.js, utils.js
-│   └── factories/      # objects.js, furniture.js, technology.js,
-│                       # desk-objects.js, wall-objects.js,
-│                       # shelf-objects.js, monitor-renderer.js
-└── assets/
-    ├── images/
-    └── textures/
-```
+- `index.html`, `lost.html` — semantic portfolio and renderer-failure page
+- `js/boot.js` — browser entry point; `js/core/` owns scene startup,
+  accessibility, interaction, and rendering
+- `js/config/` — scene settings and canvas-rendered monitor copy
+- `js/factories/` — furniture, technology, and scene props
+- `js/systems/` — lighting and shared rendering utilities
+- `css/styles.css`, `assets/`, `types/` — styling, visual assets, and local
+  TypeScript declarations
+- `vite.config.mjs`, `package.json`, `.github/workflows/` — build and deploy
+  configuration
 
 ## Deployment
 
@@ -120,6 +119,13 @@ restoration.
 WebGPU post-processing uses TSL MRT bloom plus a procedural grain/vignette
 composite; the semantic fallback in `index.html` is revealed if both GPU
 backends fail.
+
+## Project guidance
+
+This README is the starting point for setup, user controls, deployment, and
+accessibility. [CLAUDE.md](CLAUDE.md) contains contributor conventions and
+architecture notes. The [Claude visual-verification workflow](.claude/skills/verify/SKILL.md)
+contains browser-check procedures.
 
 ## License
 
