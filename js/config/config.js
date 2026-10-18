@@ -161,8 +161,10 @@ export const PORTFOLIO_CONFIG = Object.freeze({
         enableZoom: false
     }),
     animation: Object.freeze({
-        zoomDuration: 1.5,
-        zoomEase: 'power2.inOut'
+        // Keep focus changes deliberate while letting users move between
+        // objects without waiting through a long camera glide.
+        zoomDuration: 0.9,
+        zoomEase: 'power3.inOut'
     })
 });
 

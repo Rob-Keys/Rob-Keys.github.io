@@ -25,6 +25,15 @@ body {
     position: fixed;
     inset: 0;
     z-index: 0;
+    /* The canvas is a drag surface; keep browser pan/zoom gestures available
+       everywhere else, especially when the semantic view is open. */
+    touch-action: none;
+}
+
+@supports (height: 100dvh) {
+    #canvas-container {
+        height: 100dvh;
+    }
 }
 
 #canvas-container[hidden] {
@@ -48,6 +57,8 @@ body:not(.js-enabled) #accessibility-toggle {
     border-radius: 6px;
     transform: translateY(-160%);
     transition: transform 0.2s ease;
+    top: max(12px, env(safe-area-inset-top));
+    left: max(12px, env(safe-area-inset-left));
 }
 
 .skip-link:focus {
@@ -98,6 +109,15 @@ button {
     padding: 64px max(24px, 5vw) 80px;
     color: #f4f1ec;
     background: #0a0c10;
+    padding-top: max(64px, calc(64px + env(safe-area-inset-top)));
+    padding-bottom: max(80px, calc(80px + env(safe-area-inset-bottom)));
+}
+
+@supports (height: 100dvh) {
+    .semantic-portfolio {
+        min-height: 100dvh;
+        margin-top: 100dvh;
+    }
 }
 
 body:not(.js-enabled) .semantic-portfolio {
@@ -126,6 +146,13 @@ body:not(.js-enabled) .semantic-portfolio {
     overflow-y: auto;
     overscroll-behavior: contain;
     padding-top: 96px;
+    padding-top: max(96px, calc(72px + env(safe-area-inset-top)));
+}
+
+@supports (height: 100dvh) {
+    .js-enabled.accessibility-open .semantic-portfolio {
+        height: 100dvh;
+    }
 }
 
 #accessibility-toggle {
@@ -142,6 +169,8 @@ body:not(.js-enabled) .semantic-portfolio {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    top: max(18px, env(safe-area-inset-top));
+    right: max(24px, env(safe-area-inset-right));
 }
 
 #accessibility-toggle:hover {
@@ -221,6 +250,7 @@ body:not(.js-enabled) .semantic-portfolio {
     font-size: clamp(1.25rem, 3vw, 1.7rem);
     font-weight: 700;
     cursor: pointer;
+    min-height: 44px;
 }
 
 .portfolio-item[open] > summary {
@@ -457,6 +487,14 @@ body.no-webgl #look-around-hint {
     transition: opacity 0.45s ease, transform 0.45s ease, visibility 0.45s ease;
     z-index: 20;
     pointer-events: none;
+    padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+    bottom: calc(clamp(72px, 15vh, 140px) + env(safe-area-inset-bottom));
+}
+
+@supports (height: 100dvh) {
+    #look-around-hint {
+        bottom: calc(clamp(72px, 15dvh, 140px) + env(safe-area-inset-bottom));
+    }
 }
 
 #look-around-hint.look-around-hint-visible {
@@ -538,7 +576,11 @@ body.no-webgl #look-around-hint {
 /* === RESPONSIVE DESIGN === */
 @media (max-width: 768px) {
     .semantic-portfolio {
-        padding-right: 18px;
-        padding-left: 18px;
+        padding-right: max(18px, env(safe-area-inset-right));
+        padding-left: max(18px, env(safe-area-inset-left));
+    }
+
+    .portfolio-item > summary {
+        min-height: 48px;
     }
 }

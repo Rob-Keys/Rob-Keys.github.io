@@ -50,7 +50,11 @@ export class InteractionManager {
         /** @type {THREE.MeshBasicMaterial | null} */ this.hintOutlineMaterial = null;
         this.hintActive = false;
 
-        this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        this.motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        this.reducedMotion = this.motionQuery.matches;
+        this.motionQuery.addEventListener('change', (event) => {
+            this.reducedMotion = event.matches;
+        });
         this.semanticPortfolio = semanticPortfolio;
 
         // Monitor renderer for canvas content
@@ -510,6 +514,11 @@ export class InteractionManager {
     updateHintOutlineTarget(object) {
         if (!this.hintOutlineGroup || !this.hintOutlineMaterial) return;
 
+        // A new hover target can arrive while the click fade is still running.
+        // Stop that fade before restoring the outline so its completion callback
+        // cannot hide a freshly targeted hint.
+        gsap.killTweensOf(this.hintOutlineMaterial);
+
         const visible = object !== null && this.currentZoomedObject === null;
         this.hintOutlineGroup.traverse((child) => {
             if (child instanceof THREE.Mesh) {
@@ -527,10 +536,22 @@ export class InteractionManager {
     hideHint() {
         if (!this.hintOutlineGroup || !this.hintOutlineMaterial || !this.hintActive) return;
 
+        gsap.killTweensOf(this.hintOutlineMaterial);
+        if (this.reducedMotion) {
+            this.hintOutlineMaterial.opacity = 0;
+            this.hintOutlineGroup.visible = false;
+            this.hintOutlineGroup.traverse((child) => {
+                if (child instanceof THREE.Mesh) child.visible = false;
+            });
+            this.hintActive = false;
+            this.requestRender();
+            return;
+        }
+
         gsap.to(this.hintOutlineMaterial, {
             opacity: 0,
-            duration: 1.0,
-            ease: 'power1.in',
+            duration: 0.18,
+            ease: 'power1.out',
             onUpdate: () => this.requestRender(),
             onComplete: () => {
                 /** @type {THREE.Group} */ (this.hintOutlineGroup).visible = false;

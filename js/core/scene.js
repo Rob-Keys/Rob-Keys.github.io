@@ -119,7 +119,7 @@ export class SceneManager {
         this.postProcessing?.setGrainAmplitude(this._reducedMotion ? 0 : this._renderingConfig.filmGrainAmplitude);
         this.postProcessing?.setBloomEnabled(this._renderingConfig.enableBloom);
         this.lightingSystem?.setSimpleGlare(this._renderingConfig.simpleGlare);
-        if (this.dustCloud) this.dustCloud.visible = this._renderingConfig.enableDustParticles;
+        this.syncDustParticlesEffect();
 
         // Contact cards are ordinary scene meshes, so they can be disabled after
         // startup without rebuilding any geometry or materials.
@@ -213,6 +213,7 @@ export class SceneManager {
         this._reducedMotion = reduced;
         const amplitude = reduced ? 0 : this._renderingConfig.filmGrainAmplitude;
         this.postProcessing?.setGrainAmplitude(amplitude);
+        this.syncDustParticlesEffect();
     }
 
     createFloor() {
@@ -252,12 +253,21 @@ export class SceneManager {
     }
 
     createDustParticlesEffect() {
-        if (isMobileDevice() || !PORTFOLIO_CONFIG.rendering.enableDustParticles || !this.scene) return;
+        if (isMobileDevice() || this._reducedMotion || !this._renderingConfig.enableDustParticles || !this.scene || this.dustCloud) return;
         const dustCloud = createDustParticles(PORTFOLIO_CONFIG.rendering.dustParticleCount, 1.5);
         dustCloud.position.set(0.5, 2.0, -1.0);
         this.scene.add(dustCloud);
         this.dustCloud = dustCloud;
         this._dustCloudBaseY = dustCloud.position.y;
+    }
+
+    syncDustParticlesEffect() {
+        if (!isMobileDevice() && !this._reducedMotion && this._renderingConfig.enableDustParticles) {
+            this.createDustParticlesEffect();
+        }
+        if (this.dustCloud) {
+            this.dustCloud.visible = !this._reducedMotion && this._renderingConfig.enableDustParticles;
+        }
     }
 
     updateDustParticles() {
